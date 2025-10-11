@@ -12,7 +12,7 @@ export default function Header() {
         <input
           type="text"
           placeholder="Search for product"
-          className="w-full p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-[#0680cd] shadow-md hover:scale-105 transition-transform duration-200"
+          className="w-full p-2 pl-[20px] rounded-full focus:outline-none focus:ring-2 focus:ring-[#0680cd] shadow-md hover:scale-105 transition-transform duration-200"
         />
       </div>
       <div className="flex items-center space-x-4">

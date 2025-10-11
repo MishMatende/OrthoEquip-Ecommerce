@@ -16,12 +16,13 @@ export default function Card() {
       </div>
 
       <div className="mt-4">
-        <h3 className="font-semibold text-gray-900 text-sm mb-1">
+        <h3 className="font-semibold text-gray-900 text-sm mb-1 text-left">
           M. n/s product title
         </h3>
         <div className="flex items-center space-x-2">
           <span className="text-gray-900 font-bold">$110.00</span>
-          <span className="text-red-500 line-through text-sm">$130.00</span>
+          <span className="text-red-500 line-through text-sm"></span>
+          {/*TODO: conditional rendering for discounted amount.*/}
         </div>
       </div>
     </div>

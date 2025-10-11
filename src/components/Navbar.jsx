@@ -13,7 +13,6 @@ import {
   Heater,
   Settings,
 } from "lucide-react";
-import InfoBanner from "./InfoBanner";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -25,6 +24,8 @@ export default function Navbar() {
         <div className="flex items-center relative">
           <button
             onClick={() => setOpen(!open)}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setOpen(false)}
             className="flex items-center gap-2 text-white px-4 py-2 rounded-sm"
           >
             <Menu size={18} />
@@ -74,8 +75,11 @@ export default function Navbar() {
           <li className="hover:text-[#0680cd] cursor-pointer">Product</li>
 
           <li
+            tabIndex={0}
             className="hover:text-[#0680cd] cursor-pointer flex flex-row justify-center flex-wrap"
             onClick={() => setPageOpen(!pageOpen)}
+            onFocus={() => setPageOpen(true)}
+            onBlur={() => setPageOpen(false)}
           >
             Pages
             <span className="ml-1">

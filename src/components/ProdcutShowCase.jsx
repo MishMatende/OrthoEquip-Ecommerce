@@ -35,7 +35,7 @@ export default function ProductShowCase() {
   }, [slides.length]);
 
   return (
-    <div className="w-full py-10 px-6 h-[1000px]">
+    <div className="w-full py-10 px-6">
       <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
         <div
           className={`col-span-2 p-10 flex flex-col justify-center transition-all duration-500 ${slides[current].bg}`}
