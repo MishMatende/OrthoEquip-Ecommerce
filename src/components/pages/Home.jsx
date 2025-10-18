@@ -1,11 +1,13 @@
 import React from "react";
-import Navbar from "./Navbar";
-import Header from "./Header";
-import ProdcutShowCase from "./ProdcutShowCase";
-import Card from "./Card";
-import TrendingProduct from "./TrendingProduct";
-import MaskThermometer from "../assets/MaskThermometer.webp";
+import Navbar from "../Navbar";
+import Header from "../Header";
+import ProdcutShowCase from "../ProdcutShowCase";
+import Card from "../Card";
+import TrendingProduct from "../TrendingProduct";
+import MaskThermometer from "../../assets/MaskThermometer.webp";
 import { Link } from "react-router-dom";
+import Footer from "../Footer";
+import FooterInfoBanner from "../FooterInfoBanner";
 
 export default function Home() {
   return (
@@ -13,7 +15,7 @@ export default function Home() {
       <Header />
       <Navbar />
       <ProdcutShowCase />
-      <h1>Featured Products</h1>
+      <h1 className="text-black pb-10">Featured Products</h1>
       <div className="grid grid-cols-4 gap-6">
         {/* TODO: Use Mapping to render multiple cards components */}
         {/* Left Column - Tall Banners */}
@@ -73,6 +75,34 @@ export default function Home() {
           </div>
         </div>
       </div>
+      {/* Best Selling Product */}
+      <h1 className="text-black pb-10">Best Selling</h1>
+      <div className="grid grid-cols-4 gap-6">
+        {/* TODO: Use Mapping to render multiple cards components */}
+        {/* Left Column - Tall Banners */}
+        <div className="flex flex-col gap-6 col-span-1">
+          <Card className="h-[300px]" />
+          <Card className="h-[300px]" />
+        </div>
+
+        {/* Right Section - Product Grid */}
+        <div className="col-span-3 grid grid-cols-3 gap-6">
+          {/* Top row */}
+          <Card className="h-[200px]" />
+          <Card className="h-[200px]" />
+          <Card className="h-[200px]" />
+
+          {/* Middle row */}
+          <Card className="h-[200px]" />
+          <Card className="h-[200px]" />
+          <Card className="h-[200px]" />
+
+          {/* Bottom row */}
+          {/* <Card className="h-[200px]" /> */}
+        </div>
+      </div>
+      <FooterInfoBanner />
+      <Footer />
     </>
   );
 }
