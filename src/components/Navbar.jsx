@@ -13,6 +13,7 @@ import {
   Heater,
   Settings,
 } from "lucide-react";
+import { Link } from "react-router";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -69,12 +70,16 @@ export default function Navbar() {
         </div>
 
         <ul className="flex items-center gap-6 ml-6 text-sm font-medium text-gray-800">
-          <li className="hover:text-[#0680cd] cursor-pointer">Home</li>
-          <li className="hover:text-[#0680cd] cursor-pointer">Shop</li>
+          <Link to="/">
+            <li className="hover:text-[#0680cd] cursor-pointer">Home</li>
+          </Link>
+          <Link to="/shop">
+            <li className="hover:text-[#0680cd] cursor-pointer">Shop</li>
+          </Link>
           <li className="hover:text-[#0680cd] cursor-pointer">About</li>
-          <li className="hover:text-[#0680cd] cursor-pointer">Product</li>
+          {/* <li className="hover:text-[#0680cd] cursor-pointer">Product</li> */}
 
-          <li
+          {/* <li
             tabIndex={0}
             className="hover:text-[#0680cd] cursor-pointer flex flex-row justify-center flex-wrap"
             onClick={() => setPageOpen(!pageOpen)}
@@ -106,8 +111,10 @@ export default function Navbar() {
                 </ul>
               </div>
             )}
-          </li>
-          <li className="hover:text-[#0680cd] cursor-pointer">Contact</li>
+          </li> */}
+          <Link to="/contact">
+            <li className="hover:text-[#0680cd] cursor-pointer">Contact</li>
+          </Link>
         </ul>
 
         <div className="flex items-center gap-2 text-[#0680cd] font-medium">

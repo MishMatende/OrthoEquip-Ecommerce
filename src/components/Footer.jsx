@@ -9,23 +9,7 @@ export default function Footer() {
         {/* Left section */}
         <div className="md:col-span-2">
           <div className="flex items-center mb-4 space-x-2">
-            <div className="bg-teal-500 p-2 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="white"
-                className="w-5 h-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-semibold text-white">Vicodin</h2>
+            <h2 className="text-2xl font-semibold text-white">OrthoEquip</h2>
           </div>
           <p className="text-sm leading-6 mb-4">
             Lorem Ipsum is simply dummy text of the and typesetting industry.
@@ -106,9 +90,9 @@ export default function Footer() {
               className="h-6"
             />
             <img
-              src="https://upload.wikimedia.org/wikipedia/commons/5/5a/Discover_Card_logo.svg"
-              alt="Discover"
-              className="h-6"
+              src="https://upload.wikimedia.org/wikipedia/commons/1/15/M-PESA_LOGO-01.svg"
+              alt="MPESA"
+              className="h-6 bg-white"
             />
             <img
               src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Mastercard_2019_logo.svg"

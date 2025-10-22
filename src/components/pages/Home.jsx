@@ -1,20 +1,12 @@
 import React from "react";
-import Navbar from "../Navbar";
-import Header from "../Header";
-import ProdcutShowCase from "../ProdcutShowCase";
+import ProductShowCase from "../ProductShowCase";
 import Card from "../Card";
-import TrendingProduct from "../TrendingProduct";
 import MaskThermometer from "../../assets/MaskThermometer.webp";
-import { Link } from "react-router-dom";
-import Footer from "../Footer";
-import FooterInfoBanner from "../FooterInfoBanner";
 
 export default function Home() {
   return (
     <>
-      <Header />
-      <Navbar />
-      <ProdcutShowCase />
+      <ProductShowCase />
       <h1 className="text-black pb-10">Featured Products</h1>
       <div className="grid grid-cols-4 gap-6">
         {/* TODO: Use Mapping to render multiple cards components */}
@@ -101,8 +93,6 @@ export default function Home() {
           {/* <Card className="h-[200px]" /> */}
         </div>
       </div>
-      <FooterInfoBanner />
-      <Footer />
     </>
   );
 }

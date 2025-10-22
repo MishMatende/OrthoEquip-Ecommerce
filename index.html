@@ -41,7 +41,91 @@
         </div> -->
       </div>
     </div>
+
+    <!-- Preloader Spinning Medical Cross -->
+    <div id="preloader">
+      <style>
+        #preloader {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background-color: #0d1224; /* dark medical theme */
+          z-index: 9999;
+          transition: opacity 0.4s ease;
+        }
+
+        #preloader.fade-out {
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        /* Cross container */
+        .cross {
+          position: relative;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: rotate 1.4s linear infinite;
+        }
+
+        /* Cross arms */
+        .cross::before,
+        .cross::after {
+          content: "";
+          position: absolute;
+          background-color: #14b8a6; /* Tailwind teal-500 */
+          border-radius: 2px;
+        }
+
+        .cross::before {
+          width: 12px;
+          height: 40px; /* vertical bar */
+        }
+
+        .cross::after {
+          width: 40px;
+          height: 12px; /* horizontal bar */
+        }
+
+        /* Smooth rotation */
+        @keyframes rotate {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
+        /* Text below */
+        #preloader p {
+          margin-top: 14px;
+          color: #ffffff;
+          font-family: system-ui, sans-serif;
+          font-size: 0.95rem;
+          letter-spacing: 0.3px;
+        }
+      </style>
+
+      <div class="cross"></div>
+      <p>Preparing medical supplies...</p>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      window.addEventListener("load", () => {
+        const loader = document.getElementById("preloader");
+        if (loader) {
+          loader.classList.add("fade-out");
+          setTimeout(() => loader.remove(), 1000);
+        }
+      });
+    </script>
   </body>
 </html>
