@@ -35,10 +35,10 @@ export default function ProductShowCase() {
   }, [slides.length]);
 
   return (
-    <div className="w-full py-10 px-6">
-      <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
+    <div className="w-full py-10 h-[60vh]">
+      <div className="flex gap-6 h-full">
         <div
-          className={`col-span-2 p-10 flex flex-col justify-center transition-all duration-500 ${slides[current].bg}`}
+          className={`col-span-2 p-10 flex flex-col justify-center w-1/2 transition-all duration-500 ${slides[current].bg}`}
         >
           <p className="text-emerald-700 font-semibold mb-2">
             {slides[current].subtitle}
@@ -66,8 +66,8 @@ export default function ProductShowCase() {
           </div>
         </div>
 
-        <div className="flex flex-col space-y-6">
-          <div className="bg-orange-50 p-6 flex justify-between items-center rounded-sm">
+        <div className="flex flex-col space-y-6 w-1/2 h-full">
+          <div className="bg-orange-50 h-1/2 p-6 flex justify-between items-center rounded-sm">
             <div>
               <h3 className="text-xl font-extrabold text-gray-900 mb-1">
                 First Aid Kits <br /> Pre Package
@@ -86,7 +86,7 @@ export default function ProductShowCase() {
             />
           </div>
 
-          <div className="bg-teal-50 p-6 flex justify-between items-center rounded-sm">
+          <div className="bg-teal-50 h-1/2 p-6 flex justify-between items-center rounded-sm">
             <div>
               <p className="text-emerald-700 text-sm font-semibold mb-1">
                 Hot product

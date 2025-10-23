@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Send, Loader2 } from "lucide-react";
 import emailjs from "emailjs-com";
 
 const Contact = () => {
@@ -12,6 +12,7 @@ const Contact = () => {
   });
 
   const [status, setStatus] = useState({ type: "", message: "" });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,6 +36,9 @@ const Contact = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    setLoading(true);
+    setStatus({ type: "", message: "" });
 
     emailjs
       .send(
@@ -64,38 +68,38 @@ const Contact = () => {
             message: "❌ Failed to send message. Please try again later.",
           });
         }
-      );
+      )
+      .finally(() => setLoading(false));
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center mx-[0%] md:mx-[2%] lg:mx-[20%] text-center">
       {/* Contact Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10 w-full max-w-6xl px-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 w-full max-w-6xl px-4">
         <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
-          <Mail className="mx-auto mb-4 text-green-600 w-10 h-10" />
+          <Mail className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
           <h3 className="font-semibold text-lg mb-2">Email Address</h3>
-          <p className="text-gray-600">info@webmail.com</p>
-          <p className="text-gray-600">jobs@webexample.com</p>
+          <p className="text-gray-600">hnyambura1997@gmail.com</p>
         </div>
 
         <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
-          <Phone className="mx-auto mb-4 text-green-600 w-10 h-10" />
+          <Phone className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
           <h3 className="font-semibold text-lg mb-2">Phone Number</h3>
-          <p className="text-gray-600">+0123-456789</p>
-          <p className="text-gray-600">+987-6543210</p>
+          <p className="text-gray-600">(+254)740-375-473</p>
         </div>
 
-        <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
+        {/* Physical Location */}
+        {/* <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
           <MapPin className="mx-auto mb-4 text-green-600 w-10 h-10" />
           <h3 className="font-semibold text-lg mb-2">Office Address</h3>
           <p className="text-gray-600">18/A, New Born Town Hall</p>
           <p className="text-gray-600">New York, US</p>
-        </div>
+        </div> */}
       </div>
 
       {/* Contact Form */}
       <div className="bg-white shadow-md rounded-2xl mt-10 p-8 w-full max-w-5xl border">
-        <h2 className="text-xl font-semibold mb-6 border-l-4 border-green-600 pl-3">
+        <h2 className="text-xl font-semibold mb-6 border-l-4 border-[#0680cd] pl-3">
           Get a Queue
         </h2>
 
@@ -139,7 +143,6 @@ const Contact = () => {
               className="border rounded-lg p-3 w-full focus:outline-green-600"
             >
               <option value="">Select Service Type</option>
-              <option value="Consultation">Consultation</option>
               <option value="Support">Support</option>
               <option value="Feedback">Feedback</option>
             </select>
@@ -164,16 +167,30 @@ const Contact = () => {
 
           <button
             type="submit"
-            className="bg-green-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+            disabled={loading}
+            className={`${
+              loading
+                ? "bg-green-500 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            } text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2`}
           >
-            Get a free service
-            <Send className="w-4 h-4" />
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                Send Request
+                <Send className="w-4 h-4" />
+              </>
+            )}
           </button>
         </form>
       </div>
 
       {/* Google Map */}
-      <div className="w-full mt-10">
+      {/* <div className="w-full mt-10">
         <iframe
           title="Google Map"
           src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3021.863965430174!2d-73.964784923648!3d40.66762237933798!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25b935c7e3911%3A0xf958a93d62c76d6a!2sBrooklyn%20Botanic%20Garden%20Shop!5e0!3m2!1sen!2sus!4v1713892349281!5m2!1sen!2sus"
@@ -183,7 +200,7 @@ const Contact = () => {
           loading="lazy"
           className="border-0"
         ></iframe>
-      </div>
+      </div> */}
     </div>
   );
 };

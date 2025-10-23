@@ -20,8 +20,8 @@ export default function FooterInfoBanner() {
     },
   ];
   return (
-    <section className="bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 text-center px-6">
+    <section className="bg-gray-50 py-8 -px-16">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 text-center px-6">
         {items.map((item, index) => (
           <div key={index} className="flex flex-col items-center space-y-2">
             {item.icon}

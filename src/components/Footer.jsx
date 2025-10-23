@@ -17,17 +17,17 @@ export default function Footer() {
           </p>
 
           <ul className="space-y-2 text-sm">
-            <li className="flex items-center space-x-2">
+            {/* <li className="flex items-center space-x-2">
               <FaLocationDot className="text-teal-500" />
               <span>Brooklyn, New York, United States</span>
-            </li>
+            </li> */}
             <li className="flex items-center space-x-2">
               <FaPhone className="text-teal-500" />
-              <span>+0123-456789</span>
+              <span>(+254) 740-375-473</span>
             </li>
             <li className="flex items-center space-x-2">
               <FaEnvelope className="text-teal-500" />
-              <span>example@example.com</span>
+              <span>hnyambura1997@gmail.com</span>
             </li>
           </ul>
 

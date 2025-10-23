@@ -13,13 +13,25 @@ import {
   SelectContent,
   SelectItem,
 } from "../../components/ui/select";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 export default function Shop() {
   const [priceRange, setPriceRange] = useState([0, 110]);
   const [inStock, setInStock] = useState(true);
   const [outStock, setOutStock] = useState(true);
   const [sort, setSort] = useState("A-Z");
+  const [open, setOpen] = useState({
+    availability: false,
+    price: false,
+    productType: false,
+    brand: false,
+    color: false,
+    material: false,
+    size: false,
+  });
   const navigate = useNavigate();
+
+  const toggle = (key) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // ----- Filtering -----
   const filteredProducts = products.filter((p) => {
@@ -37,127 +49,135 @@ export default function Shop() {
     return 0;
   });
 
-  return (
-    <div className="grid grid-cols-12 gap-6 mt-8">
-      {/* ====================== Sidebar ====================== */}
-      <aside className="col-span-3 space-y-6">
-        {/* Availability */}
-        <div>
-          <h3 className="font-semibold mb-2">Availability</h3>
-          <div className="flex flex-col space-y-2">
-            <label className="flex items-center gap-2">
-              <Checkbox checked={inStock} onCheckedChange={setInStock} /> In
-              Stock
-            </label>
-            <label className="flex items-center gap-2">
-              <Checkbox checked={outStock} onCheckedChange={setOutStock} /> Out
-              of Stock
-            </label>
-          </div>
-        </div>
+  // ----- Collapsible Section Component -----
+  const Section = ({ title, name, children }) => (
+    <div className="border-b border-gray-100 pb-4">
+      <button
+        onClick={() => toggle(name)}
+        className="w-full flex justify-between items-center mb-2 text-gray-800 font-semibold text-lg hover:text-blue-600 transition"
+      >
+        {title}
+        {open[name] ? (
+          <ChevronUp size={18} className="text-gray-500" />
+        ) : (
+          <ChevronDown size={18} className="text-gray-500" />
+        )}
+      </button>
 
-        {/* Price Filter */}
-        <div>
-          <h3 className="font-semibold mb-2">Price</h3>
-          <Slider
-            min={0}
-            max={110}
-            step={1}
-            value={priceRange}
-            onValueChange={setPriceRange}
-          />
-          <div className="flex justify-between text-sm mt-2">
-            <span>${priceRange[0]}</span>
-            <span>${priceRange[1]}</span>
+      <div
+        className={`transition-all duration-300 overflow-hidden ${
+          open[name] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-12 gap-6 mt-8 mx-[0%] md:mx-[2%] lg:mx-[20%] text-center">
+      {/* ====================== Sidebar ====================== */}
+      <aside className="col-span-3 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+        {/* Availability */}
+        <Section title="Availability" name="availability">
+          <div className="flex flex-col gap-2 text-gray-700">
+            <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+              <Checkbox checked={inStock} onCheckedChange={setInStock} />
+              <span>In Stock</span>
+            </label>
+            <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+              <Checkbox checked={outStock} onCheckedChange={setOutStock} />
+              <span>Out of Stock</span>
+            </label>
           </div>
-        </div>
+        </Section>
+
+        {/* Price */}
+        <Section title="Price" name="price">
+          <div className="px-2 mt-2">
+            <Slider
+              min={0}
+              max={110}
+              step={1}
+              value={priceRange}
+              onValueChange={setPriceRange}
+              className="w-full"
+            />
+            <div className="flex justify-between text-sm text-gray-600 mt-2">
+              <span>${priceRange[0]}</span>
+              <span>${priceRange[1]}</span>
+            </div>
+          </div>
+        </Section>
 
         {/* Product Type */}
-        <div>
-          <h3 className="font-semibold mb-2">Product Type</h3>
-          <div className="flex flex-col space-y-1 text-sm text-gray-600">
-            <label>
-              <input type="checkbox" /> Gloves
-            </label>
-            <label>
-              <input type="checkbox" /> Masks
-            </label>
-            <label>
-              <input type="checkbox" /> Sanitizers
-            </label>
-            <label>
-              <input type="checkbox" /> Equipment
-            </label>
+        <Section title="Product Type" name="productType">
+          <div className="flex flex-col gap-1 text-sm text-gray-700 mt-1">
+            {["Gloves", "Masks", "Sanitizers", "Equipment"].map((type) => (
+              <label
+                key={type}
+                className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+              >
+                <input type="checkbox" className="accent-blue-600" /> {type}
+              </label>
+            ))}
           </div>
-        </div>
+        </Section>
 
         {/* Brand */}
-        <div>
-          <h3 className="font-semibold mb-2">Brand</h3>
-          <div className="flex flex-col space-y-1 text-sm text-gray-600">
-            <label>
-              <input type="checkbox" /> Vendor A
-            </label>
-            <label>
-              <input type="checkbox" /> Vendor B
-            </label>
-            <label>
-              <input type="checkbox" /> Vendor C
-            </label>
+        <Section title="Brand" name="brand">
+          <div className="flex flex-col gap-1 text-sm text-gray-700 mt-1">
+            {["Vendor A", "Vendor B", "Vendor C"].map((brand) => (
+              <label
+                key={brand}
+                className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+              >
+                <input type="checkbox" className="accent-blue-600" /> {brand}
+              </label>
+            ))}
           </div>
-        </div>
+        </Section>
 
         {/* Color */}
-        <div>
-          <h3 className="font-semibold mb-2">Color</h3>
-          <div className="flex flex-wrap gap-2">
+        <Section title="Color" name="color">
+          <div className="flex flex-wrap gap-3 mt-2">
             {["blue", "green", "white", "gray", "black"].map((color) => (
               <div
                 key={color}
-                className={`w-6 h-6 rounded-full border cursor-pointer`}
+                className="w-7 h-7 rounded-full border border-gray-300 hover:scale-110 transition-transform cursor-pointer shadow-sm"
                 style={{ backgroundColor: color }}
               ></div>
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* Material */}
-        <div>
-          <h3 className="font-semibold mb-2">Material</h3>
-          <div className="flex flex-col space-y-1 text-sm text-gray-600">
-            <label>
-              <input type="checkbox" /> Cotton
-            </label>
-            <label>
-              <input type="checkbox" /> Latex
-            </label>
-            <label>
-              <input type="checkbox" /> Plastic
-            </label>
-          </div>
-        </div>
-
-        {/* Size */}
-        <div>
-          <h3 className="font-semibold mb-2">Size</h3>
-          <div className="flex flex-wrap gap-2">
-            {["S", "M", "L", "XL"].map((size) => (
-              <span
-                key={size}
-                className="border rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-green-100"
+        <Section title="Material" name="material">
+          <div className="flex flex-col gap-1 text-sm text-gray-700 mt-1">
+            {["Cotton", "Latex", "Plastic"].map((material) => (
+              <label
+                key={material}
+                className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
               >
-                {size}
-              </span>
+                <input type="checkbox" className="accent-blue-600" /> {material}
+              </label>
             ))}
           </div>
-        </div>
+        </Section>
 
-        {/* Promo Card */}
-        <div className="bg-green-100 p-4 rounded-2xl text-center">
-          <h4 className="text-sm font-semibold mb-2">20% OFF</h4>
-          <p className="text-xs mb-2">Covid-19 Mask Protection</p>
-          <Button size="sm">Buy Now</Button>
-        </div>
+        {/* Size */}
+        <Section title="Size" name="size">
+          <div className="flex flex-wrap gap-2 mt-2">
+            {["S", "M", "L", "XL"].map((size) => (
+              <button
+                key={size}
+                className="border border-gray-300 px-3 py-1 rounded-lg text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-500 transition-colors"
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </Section>
       </aside>
 
       {/* ====================== Product Section ====================== */}
@@ -196,10 +216,12 @@ export default function Shop() {
 
         {/* Pagination */}
         <div className="flex justify-center mt-8 space-x-2">
-          <Button variant="outline">1</Button>
+          <Button variant="default">1</Button>
           <Button variant="ghost">2</Button>
         </div>
       </section>
     </div>
   );
 }
+
+// TODO: Make the filters selectable

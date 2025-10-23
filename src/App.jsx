@@ -12,7 +12,7 @@ function App() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <Navbar />
-      <main className="flex-grow p-8">
+      <main className="flex-grow">
         <Outlet />
       </main>
       <FooterInfoBanner />

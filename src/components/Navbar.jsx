@@ -12,116 +12,129 @@ import {
   BedSingle,
   Heater,
   Settings,
+  ShoppingCart,
+  UserRoundPen,
+  X,
+  ChevronUp,
 } from "lucide-react";
-import { Link } from "react-router";
+import img from "../assets/OrthoEquip.jpg";
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false);
-  const [pageOpen, setPageOpen] = useState(false);
+  const [openCategories, setOpenCategories] = useState(false);
+  const [openMobileMenu, setOpenMobileMenu] = useState(false);
 
   return (
-    <>
-      <nav className="w-full flex items-center justify-between px-6 py-3 bg-white relative">
-        <div className="flex items-center relative">
+    <div className="mx-[0%] md:mx-[7%] lg:mx-[17%] text-center pt-5">
+      <nav className="w-full flex items-center justify-between px-4 py-3 bg-white relative">
+        {/* Left Section: Categories or Hamburger */}
+        <div className="flex items-center">
+          {/* Mobile Hamburger */}
           <button
-            onClick={() => setOpen(!open)}
-            onFocus={() => setOpen(true)}
-            onBlur={() => setOpen(false)}
-            className="flex items-center gap-2 text-white px-4 py-2 rounded-sm"
+            className="md:hidden flex items-center justify-center p-2 text-white"
+            onClick={() => setOpenMobileMenu(!openMobileMenu)}
+          >
+            Categories
+            {openMobileMenu ? (
+              <ChevronUp size={16} />
+            ) : (
+              <ChevronDown size={16} />
+            )}
+          </button>
+
+          {/* Desktop Categories Button */}
+          <button
+            onClick={() => setOpenCategories(!openCategories)}
+            className="hidden md:flex items-center gap-2 text-white bg-[#0680cd] px-4 py-2 rounded-md hover:bg-blue-600 transition-all duration-200"
           >
             <Menu size={18} />
             <span className="font-semibold uppercase">Categories</span>
             <ChevronDown size={16} />
           </button>
 
-          {open && (
-            <div className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-md mt-2 z-50 text-black">
+          {/* Categories Dropdown (Desktop Only) */}
+          {openCategories && (
+            <div className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-md mt-2 z-50 text-black hidden md:block">
               <ul className="flex flex-col">
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <Bed /> Hospital Stretchers
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <Zap /> Defibrillators
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <SprayCan /> Anesthesia Machines
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <Monitor /> Patient Monitors
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <BottleWine /> Sterilizers
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <ChartColumnBig /> EKG/ECG Machines
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <BedSingle /> Surgical Tables
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <Heater /> Blanket & Fluid Warmers
-                </li>
-                <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  <Settings /> Electrosurgical Units
-                </li>
+                {[
+                  { icon: <Bed />, label: "Hospital Stretchers" },
+                  { icon: <Zap />, label: "Defibrillators" },
+                  { icon: <SprayCan />, label: "Anesthesia Machines" },
+                  { icon: <Monitor />, label: "Patient Monitors" },
+                  { icon: <BottleWine />, label: "Sterilizers" },
+                  { icon: <ChartColumnBig />, label: "EKG/ECG Machines" },
+                  { icon: <BedSingle />, label: "Surgical Tables" },
+                  { icon: <Heater />, label: "Blanket & Fluid Warmers" },
+                  { icon: <Settings />, label: "Electrosurgical Units" },
+                ].map((item, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                    {item.icon} {item.label}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
         </div>
 
-        <ul className="flex items-center gap-6 ml-6 text-sm font-medium text-gray-800">
-          <Link to="/">
-            <li className="hover:text-[#0680cd] cursor-pointer">Home</li>
-          </Link>
-          <Link to="/shop">
-            <li className="hover:text-[#0680cd] cursor-pointer">Shop</li>
-          </Link>
-          <li className="hover:text-[#0680cd] cursor-pointer">About</li>
-          {/* <li className="hover:text-[#0680cd] cursor-pointer">Product</li> */}
-
-          {/* <li
-            tabIndex={0}
-            className="hover:text-[#0680cd] cursor-pointer flex flex-row justify-center flex-wrap"
-            onClick={() => setPageOpen(!pageOpen)}
-            onFocus={() => setPageOpen(true)}
-            onBlur={() => setPageOpen(false)}
-          >
-            Pages
-            <span className="ml-1">
-              <ChevronDown className="self-center h-[100%]" size={16} />
-            </span>
-            {pageOpen && (
-              <div className="absolute top-full left-170 w-64 bg-white shadow-xl rounded-md mt-2 z-50 text-black">
-                <ul className="flex flex-col">
-                  <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                    Private Policy
-                  </li>
-                  <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                    Refund Policy
-                  </li>
-                  <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                    Terms of Service
-                  </li>
-                  <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                    Service
-                  </li>
-                  <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                    FAQ
-                  </li>
-                </ul>
-              </div>
-            )}
-          </li> */}
-          <Link to="/contact">
-            <li className="hover:text-[#0680cd] cursor-pointer">Contact</li>
-          </Link>
-        </ul>
-
-        <div className="flex items-center gap-2 text-[#0680cd] font-medium">
-          <Phone size={18} />
-          <span className="text-gray-800">(+254) 740-375-473</span>
+        {/* Center: Search Bar */}
+        <div className="hidden md:flex flex-1 max-w-lg mx-4 text-black font-bold">
+          <input
+            type="text"
+            placeholder="Search for product"
+            className="w-full p-2 pl-[20px] rounded-full focus:outline-none focus:ring-2 focus:ring-[#0680cd] shadow-md hover:scale-[1.02] transition-transform duration-200"
+          />
         </div>
+
+        {/* Right Section: Icons */}
+        <div className="flex items-center space-x-4">
+          <ShoppingCart
+            size={22}
+            className="hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+          />
+          <UserRoundPen
+            size={22}
+            className="hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+          />
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        {openMobileMenu && (
+          <div className="absolute  top-full w-full bg-white shadow-md z-40 py-4">
+            {/* Search Field */}
+            <div className="px-4 pb-3">
+              <input
+                type="text"
+                placeholder="Search for product"
+                className="w-full p-2 pl-[15px] rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0680cd]"
+              />
+            </div>
+
+            {/* Categories */}
+            <div className="flex flex-col text-left">
+              {[
+                { icon: <Bed />, label: "Hospital Stretchers" },
+                { icon: <Zap />, label: "Defibrillators" },
+                { icon: <SprayCan />, label: "Anesthesia Machines" },
+                { icon: <Monitor />, label: "Patient Monitors" },
+                { icon: <BottleWine />, label: "Sterilizers" },
+                { icon: <ChartColumnBig />, label: "EKG/ECG Machines" },
+                { icon: <BedSingle />, label: "Surgical Tables" },
+                { icon: <Heater />, label: "Blanket & Fluid Warmers" },
+                { icon: <Settings />, label: "Electrosurgical Units" },
+              ].map((item, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-3 px-6 py-2 hover:bg-gray-100 cursor-pointer text-gray-700"
+                >
+                  {item.icon} {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
-    </>
+    </div>
   );
 }

@@ -26,7 +26,7 @@ export default function ProductDetails() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-10">
+    <div className="max-w-6xl py-10 mx-[0%] md:mx-[2%] lg:mx-[20%] text-center">
       {/* Top Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* Left: Images */}
