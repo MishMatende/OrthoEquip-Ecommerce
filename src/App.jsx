@@ -1,7 +1,5 @@
 import "./App.css";
-import Home from "./components/pages/Home";
 import Navbar from "./components/Navbar";
-import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Footer from "./components/Footer";
 import FooterInfoBanner from "./components/FooterInfoBanner";

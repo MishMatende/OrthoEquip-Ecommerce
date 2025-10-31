@@ -1,16 +1,18 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Phone, Menu, X } from "lucide-react";
+import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
 
 export default function Header() {
   const [pageOpen, setPageOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="relative flex justify-between items-center py-6 px-[8%] bg-white shadow-sm mx-[0%] md:mx-[5%] lg:mx-[15%] text-center">
-      {/* Logo */}
+    <nav className="relative flex justify-between items-center py-6 px-[4%] bg-white shadow-sm mx-[0%] md:mx-[5%] lg:mx-[10%] text-center">
       <div className="flex items-center space-x-2">
-        <span className="text-2xl font-semibold">OrthoEquip</span>
+        <img src={BalmOrthoLogo} className="h-[50px]" alt="Balm Ortho image" />
+
+        <span className="text-2xl font-semibold">Balm Ortho</span>
       </div>
 
       {/* Desktop Menu */}
