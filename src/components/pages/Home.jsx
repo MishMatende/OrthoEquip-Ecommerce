@@ -1,37 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ProductShowCase from "../ProductShowCase";
 import Card from "../Card";
 import MaskThermometer from "../../assets/MaskThermometer.webp";
 import { Check } from "lucide-react";
+import { fetchProductStats } from "../../data/FetchProductStats";
 
 export default function Home() {
+  // Logic for featured Products
+  // const { data: topProducts } = await supabase
+  // .from("products")
+  // .select("*")
+  // .order("sales_count", { ascending: false })
+  // .limit(5);
+
+  const [stats, setStats] = useState({ most_sold: [], trending: [] });
+
+  useEffect(() => {
+    fetchProductStats().then(setStats);
+  }, []);
+
   return (
     <>
       <section className="mx-[0%] lg:mx-[2%] xl:mx-[20%] text-center">
         <ProductShowCase />
         <h1 className="text-black pb-10">Featured Products</h1>
+        {/* Product Grid */}
         <div className="grid grid-cols-3 xl:grid-cols-4 gap-6">
-          {/* TODO: Use Mapping to render multiple cards components */}
-          {/* Left Column - Tall Banners */}
-          <div className="flex flex-row xl:flex-col gap-6 col-span-3 xl:col-span-1 justify-center">
-            <Card className="h-[300px]" />
-            <Card className="h-[300px]" />
-          </div>
-
-          {/* Right Section - Product Grid */}
           <div className="col-span-3 grid grid-cols-3 gap-6">
-            {/* Top row */}
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-
-            {/* Middle row */}
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-
-            {/* Bottom row */}
-            {/* <Card className="h-[200px]" /> */}
+            {stats.trending.map((product) => (
+              <Card key={product.id} product={product} />
+            ))}
           </div>
         </div>
       </section>
@@ -97,25 +95,25 @@ export default function Home() {
         {/* Best Selling Product */}
         <h1 className="text-black pb-10">Best Selling</h1>
         <div className="grid grid-cols-4 gap-6 md:grid-cols-3">
-          {/* TODO: Use Mapping to render multiple cards components */}
-          {/* Left Column - Tall Banners */}
-          {/* Right Section - Product Grid */}
           <div className="col-span-3 grid grid-cols-3 gap-6">
-            {/* Top row */}
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-
-            {/* Middle row */}
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-            <Card className="h-[200px]" />
-
-            {/* Bottom row */}
-            {/* <Card className="h-[200px]" /> */}
+            {stats.most_sold.map((product) => (
+              <Card key={product.id} product={product} />
+            ))}
           </div>
         </div>
       </section>
     </>
   );
 }
+
+// Return JSON
+// {
+//   "most_sold": [
+//     { "id": "...", "name": "Wheelchair", "total_sold": 45 },
+//     { "id": "...", "name": "Stethoscope", "total_sold": 30 }
+//   ],
+//   "trending": [
+//     { "id": "...", "name": "Crutches", "total_sold_recently": 12 },
+//     { "id": "...", "name": "Surgical Mask", "total_sold_recently": 10 }
+//   ]
+// }

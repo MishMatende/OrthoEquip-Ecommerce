@@ -1,7 +1,7 @@
 // src/pages/ProductDetails.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { products } from "../../data/products";
+import { supabase } from "../../supabaseClient"; // import your Supabase client
 import { Button } from "../../components/ui/button";
 import {
   Tabs,
@@ -12,10 +12,41 @@ import {
 import { Minus, Plus } from "lucide-react";
 
 export default function ProductDetails() {
-  const { id } = useParams();
-  const product = products.find((p) => p.id === Number(id));
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]);
+  const { id } = useParams(); // product id from URL
+  const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch product from Supabase
+  useEffect(() => {
+    async function fetchProduct() {
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .single(); // since it's one product
+
+      if (error) {
+        console.error("Error fetching product:", error);
+      } else {
+        setProduct(data);
+      }
+
+      setLoading(false);
+    }
+
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="text-center py-20 text-gray-500">
+        Loading product details...
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -33,104 +64,102 @@ export default function ProductDetails() {
         <div>
           <div className="border rounded-2xl overflow-hidden">
             <img
-              src={selectedColor}
+              src={
+                product.image_url ||
+                "https://images.unsplash.com/photo-1584367360396-25b0d7c4b9a0?auto=format&fit=crop&w=600&q=80"
+              }
               alt={product.name}
-              className="w-full object-contain"
+              className="w-full h-[400px] object-contain bg-gray-50"
             />
-          </div>
-
-          {/* Thumbnails */}
-          <div className="flex gap-3 mt-4">
-            {product.colors.map((color, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedColor(color)}
-                className={`border rounded-xl p-1 w-20 h-20 flex items-center justify-center ${
-                  selectedColor === color
-                    ? "border-green-500"
-                    : "border-gray-200"
-                }`}
-              >
-                <img
-                  src={color}
-                  alt={`color ${i}`}
-                  className="object-contain w-full h-full"
-                />
-              </button>
-            ))}
           </div>
         </div>
 
         {/* Right: Product info */}
-        <div>
-          <h1 className="text-lg font-semibold text-gray-800">
+        <div className="text-left">
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
             {product.name}
           </h1>
 
           <div className="flex items-center gap-3 mt-3">
             <p className="text-3xl font-bold text-green-600">
-              ${product.price.toFixed(2)}
+              KES {Number(product.price).toLocaleString()}
             </p>
-            {product.oldPrice && (
+            {product.old_price && (
               <p className="text-xl text-gray-400 line-through">
-                ${product.oldPrice.toFixed(2)}
+                KES {Number(product.old_price).toLocaleString()}
               </p>
             )}
             {product.discount && (
-              <span className="text-sm bg-green-100 text-green-600 font-semibold px-2 py-1 rounded">
+              <span className="text-sm bg-[#0680cd] text-green-600 font-semibold px-2 py-1 rounded">
                 Save -{product.discount}%
               </span>
             )}
           </div>
 
           <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-            {product.description}
+            {product.description || "No description available."}
           </p>
 
           <div className="mt-6 space-y-2 text-sm">
-            <p>
-              <span className="font-semibold text-gray-700">SKU:</span>{" "}
-              {product.sku}
-            </p>
-            <p>
-              <span className="font-semibold text-gray-700">Vendor:</span>{" "}
-              {product.vendor}
-            </p>
-            <p>
-              <span className="font-semibold text-gray-700">Type:</span>{" "}
-              {product.type}
-            </p>
+            {product.category && (
+              <p>
+                <span className="font-semibold text-gray-700">Category:</span>{" "}
+                {product.category}
+              </p>
+            )}
+            {product.brand && (
+              <p>
+                <span className="font-semibold text-gray-700">Brand:</span>{" "}
+                {product.brand}
+              </p>
+            )}
+            {product.stock !== undefined && (
+              <p>
+                <span className="font-semibold text-gray-700">Stock:</span>{" "}
+                {product.stock > 0
+                  ? `${product.stock} available`
+                  : "Out of stock"}
+              </p>
+            )}
           </div>
 
           {/* Quantity + Buttons */}
           <div className="flex items-center gap-4 mt-6">
             <div className="flex items-center border rounded-xl">
               <button
-                className="p-2 hover:bg-gray-100"
+                className="p-2 hover:bg-gray-100 cursor-pointer"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
               >
                 <Minus size={16} />
               </button>
               <span className="px-4 text-gray-700">{quantity}</span>
               <button
-                className="p-2 hover:bg-gray-100"
+                className="p-2 hover:bg-gray-100 cursor-pointer"
                 onClick={() => setQuantity(quantity + 1)}
               >
                 <Plus size={16} />
               </button>
             </div>
-            <Button className="bg-green-600 hover:bg-green-700 rounded-xl px-6">
+            <Button className="bg-[#0680cd] hover:bg-[#0680cd] rounded-xl px-6 cursor-pointer">
               Add to Cart
             </Button>
-            <Button variant="outline" className="rounded-xl px-6">
-              Buy it now
+            <Button
+              variant="outline"
+              className={`rounded-xl px-6 ${
+                product.stock <= 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer hover:bg-gray-100"
+              }`}
+              disabled={product.stock <= 0} // ✅ disables the button
+            >
+              {product.stock <= 0 ? "Out of Stock" : "Buy it now"}
             </Button>
           </div>
         </div>
       </div>
 
       {/* Tabs Section */}
-      <div className="mt-10">
+      <div className="mt-10 text-left">
         <Tabs defaultValue="description">
           <TabsList className="border-b flex gap-6">
             <TabsTrigger value="description">Description</TabsTrigger>
@@ -142,14 +171,15 @@ export default function ProductDetails() {
             value="description"
             className="pt-6 text-gray-600 text-sm leading-relaxed"
           >
-            {product.description}
+            {product.description || "No description available."}
           </TabsContent>
+
           <TabsContent value="reviews" className="pt-6 text-gray-600 text-sm">
             No reviews yet.
           </TabsContent>
+
           <TabsContent value="shipping" className="pt-6 text-gray-600 text-sm">
-            Free worldwide shipping. Orders are processed within 1–2 business
-            days.
+            Fast delivery. Orders are processed within 1–2 business days.
           </TabsContent>
         </Tabs>
       </div>

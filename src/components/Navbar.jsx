@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   Phone,
   Menu,
@@ -20,10 +20,11 @@ import {
 import img from "../assets/OrthoEquip.jpg";
 import { UserAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-
+import { supabase } from "../supabaseClient";
 // TODO: HAVE TO CLICK LOGOUT TWICE TO LOGOUT
 
 export default function Navbar() {
+  const [categories, setCategories] = useState([]);
   const [openCategories, setOpenCategories] = useState(false);
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
   const [openUserManagement, setOpenUserManagement] = useState(false);
@@ -66,6 +67,43 @@ export default function Navbar() {
     { label: "Logout", action: handleSingOut, isLogout: true },
   ];
 
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data, error } = await supabase
+        .from("products")
+        .select("category");
+
+      if (error) console.error("Error fetching categories:", error);
+      else {
+        const uniqueCategories = [
+          ...new Set(data.map((p) => p.category).filter(Boolean)),
+        ];
+        setCategories(uniqueCategories);
+      }
+    }
+
+    fetchCategories();
+  }, []);
+
+  const handleCategoryClick = (category) => {
+    // Navigate to shop page with category as query param
+    navigate(`/shop?category=${encodeURIComponent(category)}`);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        !e.target.closest(".category-dropdown") &&
+        !e.target.closest(".categories-button")
+      ) {
+        setOpenCategories(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   return (
     <div className="mx-[0%] md:mx-[7%] lg:mx-[15%] text-center pt-5">
       <nav className="w-full flex items-center justify-between px-4 py-3 bg-white relative">
@@ -85,41 +123,50 @@ export default function Navbar() {
           </button>
 
           {/* Desktop Categories Button */}
-          <button
-            onFocus={() => setOpenCategories(true)}
-            onBlur={() => setOpenCategories(false)}
-            className="hidden md:flex items-center gap-2 border text-white bg-[#0680cd] px-4 py-2 rounded-md hover:bg-white hover:text-black hover:border hover:border-black focus:text-black focus:border focus:border-black focus:bg-white transition-all duration-200"
-          >
-            <Menu size={18} />
-            <span className="font-semibold uppercase">Categories</span>
-            <ChevronDown size={16} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenCategories((prev) => !prev);
+              }}
+              className="categories-button hidden md:flex items-center gap-2 border text-white bg-[#0680cd] px-4 py-2 rounded-md hover:bg-white hover:text-black hover:border hover:border-black transition-all duration-200"
+            >
+              <Menu size={18} />
+              <span className="font-semibold uppercase">Categories</span>
+              <ChevronDown size={16} />
+            </button>
 
-          {/* Categories Dropdown (Desktop Only) */}
-          {openCategories && (
-            <div className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-md mt-2 z-50 text-black hidden md:block">
-              <ul className="flex flex-col">
-                {[
-                  { icon: <Bed />, label: "Hospital Stretchers" },
-                  { icon: <Zap />, label: "Defibrillators" },
-                  { icon: <SprayCan />, label: "Anesthesia Machines" },
-                  { icon: <Monitor />, label: "Patient Monitors" },
-                  { icon: <BottleWine />, label: "Sterilizers" },
-                  { icon: <ChartColumnBig />, label: "EKG/ECG Machines" },
-                  { icon: <BedSingle />, label: "Surgical Tables" },
-                  { icon: <Heater />, label: "Blanket & Fluid Warmers" },
-                  { icon: <Settings />, label: "Electrosurgical Units" },
-                ].map((item, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    {item.icon} {item.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            {/* Categories Dropdown (Desktop Only) */}
+            {openCategories && (
+              <div
+                className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-md mt-2 z-50 text-black md:block category-dropdown" // ✅ removed 'hidden'
+                onClick={(e) => e.stopPropagation()} // ✅ stop clicks inside dropdown from closing it
+              >
+                <ul className="flex flex-col">
+                  {categories.length > 0 ? (
+                    categories.map((category, i) => (
+                      <li
+                        key={i}
+                        onClick={() => {
+                          setOpenCategories(false);
+                          navigate(
+                            `/shop?category=${encodeURIComponent(category)}`
+                          );
+                        }}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        {category}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="px-4 py-2 text-gray-500 text-sm">
+                      Loading categories...
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Center: Search Bar */}
