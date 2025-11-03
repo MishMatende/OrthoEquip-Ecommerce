@@ -21,6 +21,7 @@ import img from "../assets/OrthoEquip.jpg";
 import { UserAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useCart } from "../context/CartContext";
 // TODO: HAVE TO CLICK LOGOUT TWICE TO LOGOUT
 
 export default function Navbar() {
@@ -28,6 +29,7 @@ export default function Navbar() {
   const [openCategories, setOpenCategories] = useState(false);
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
   const [openUserManagement, setOpenUserManagement] = useState(false);
+  const { cartCount } = useCart();
   const menuRef = useRef(null);
 
   const { session, signoutUser } = UserAuth();
@@ -139,8 +141,8 @@ export default function Navbar() {
             {/* Categories Dropdown (Desktop Only) */}
             {openCategories && (
               <div
-                className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-md mt-2 z-50 text-black md:block category-dropdown" // ✅ removed 'hidden'
-                onClick={(e) => e.stopPropagation()} // ✅ stop clicks inside dropdown from closing it
+                className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-md mt-2 z-50 text-black md:block category-dropdown" // removed 'hidden'
+                onClick={(e) => e.stopPropagation()} // stop clicks inside dropdown from closing it
               >
                 <ul className="flex flex-col">
                   {categories.length > 0 ? (
@@ -180,10 +182,17 @@ export default function Navbar() {
 
         {/* Right Section: Icons */}
         <div className="flex items-center space-x-4">
-          <ShoppingCart
-            size={22}
-            className="hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-          />
+          <div className="relative" onClick={() => navigate("/cart")}>
+            <ShoppingCart
+              size={22}
+              className="hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+            />
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </div>
           <div
             tabIndex="0"
             className="cursor-pointer"

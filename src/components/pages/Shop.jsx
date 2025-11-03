@@ -173,7 +173,7 @@ export default function Shop() {
 
   // ---- RENDER ----
   return (
-    <div className="grid grid-cols-12 gap-6 mt-8 mx-[0%] md:mx-[2%] lg:mx-[20%] text-center">
+    <div className="grid grid-cols-12 gap-6 mt-8 mx-[0%] md:mx-[2%] lg:mx-[20%] text-center pb-10">
       {/* ====================== Sidebar ====================== */}
       <aside className="col-span-3 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-6">
         {/* Availability */}

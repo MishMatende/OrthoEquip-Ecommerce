@@ -12,7 +12,7 @@ export default function Header() {
       <div className="flex items-center space-x-2">
         <img src={BalmOrthoLogo} className="h-[50px]" alt="Balm Ortho image" />
 
-        <span className="text-2xl font-semibold">Balm Ortho</span>
+        <span className="text-2xl font-semibold">Balm Ortho Medical</span>
       </div>
 
       {/* Desktop Menu */}

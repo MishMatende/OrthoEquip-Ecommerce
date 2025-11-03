@@ -10,8 +10,11 @@ import {
   TabsContent,
 } from "../../components/ui/tabs";
 import { Minus, Plus } from "lucide-react";
+import { useCart } from "../../context/CartContext";
 
 export default function ProductDetails() {
+  const { addToCart } = useCart();
+
   const { id } = useParams(); // product id from URL
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -81,7 +84,7 @@ export default function ProductDetails() {
           </h1>
 
           <div className="flex items-center gap-3 mt-3">
-            <p className="text-3xl font-bold text-green-600">
+            <p className="text-3xl font-bold text-[#0680cd]">
               KES {Number(product.price).toLocaleString()}
             </p>
             {product.old_price && (
@@ -140,8 +143,12 @@ export default function ProductDetails() {
                 <Plus size={16} />
               </button>
             </div>
-            <Button className="bg-[#0680cd] hover:bg-[#0680cd] rounded-xl px-6 cursor-pointer">
-              Add to Cart
+            <Button
+              onClick={() => addToCart(product, quantity)}
+              className="bg-[#0680cd] hover:bg-[#0680cd] rounded-xl px-6 cursor-pointer"
+              disabled={product.stock <= 0}
+            >
+              {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
             <Button
               variant="outline"
