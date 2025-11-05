@@ -4,6 +4,7 @@ import Card from "../Card";
 import MaskThermometer from "../../assets/MaskThermometer.webp";
 import { Check } from "lucide-react";
 import { fetchProductStats } from "../../data/FetchProductStats";
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
   // Logic for featured Products
@@ -12,27 +13,49 @@ export default function Home() {
   // .select("*")
   // .order("sales_count", { ascending: false })
   // .limit(5);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const [stats, setStats] = useState({ most_sold: [], trending: [] });
 
   useEffect(() => {
     fetchProductStats().then(setStats);
+    setLoading(false);
   }, []);
 
   return (
     <>
-      <section className="mx-[0%] lg:mx-[2%] xl:mx-[20%] text-center">
-        <ProductShowCase />
-        <h1 className="text-black pb-10">Featured Products</h1>
-        {/* Product Grid */}
-        <div className="grid grid-cols-3 xl:grid-cols-4 gap-6">
-          <div className="col-span-3 grid grid-cols-3 gap-6">
+      <section className="px-4 sm:px-6 lg:px-8 xl:px-[15%] text-center mb-10">
+        {/* //TODO: Create ProductShowcase Graphics */}
+        {/* <ProductShowCase /> */}
+
+        <h1 className="text-2xl sm:text-3xl font-semibold text-black py-8">
+          Featured Products
+        </h1>
+
+        {loading ? (
+          <p className="text-center text-gray-500">Loading products...</p>
+        ) : (
+          <div
+            className="
+            grid gap-6
+            grid-cols-2 sm:grid-cols-3 md:grid-cols-3
+            place-items-stretch
+          "
+          >
             {stats.trending.map((product) => (
-              <Card key={product.id} product={product} />
+              <div
+                key={product.id}
+                onClick={() => navigate(`/shop/${product.id}`)}
+                className="cursor-pointer flex flex-col"
+              >
+                <Card product={product} />
+              </div>
             ))}
           </div>
-        </div>
+        )}
       </section>
+
       <section className="bg-gray-100 py-10">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between min-h-[70vh] lg:px-8 ">
           {/* Left Image */}
@@ -91,16 +114,32 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-[0%] lg:mx-[2%] xl:mx-[20%] text-center">
+      <section className="mx-[0%] lg:mx-[2%] xl:mx-[20%] text-center mb-10">
         {/* Best Selling Product */}
-        <h1 className="text-black pb-10">Best Selling</h1>
-        <div className="grid grid-cols-4 gap-6 md:grid-cols-3">
-          <div className="col-span-3 grid grid-cols-3 gap-6">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-black py-8">
+          Best Selling
+        </h1>
+        {loading ? (
+          <p className="text-center text-gray-500">Loading products...</p>
+        ) : (
+          <div
+            className="
+            grid gap-6
+            grid-cols-2 sm:grid-cols-3 md:grid-cols-3
+            place-items-stretch
+          "
+          >
             {stats.most_sold.map((product) => (
-              <Card key={product.id} product={product} />
+              <div
+                key={product.id}
+                onClick={() => navigate(`/shop/${product.id}`)}
+                className="cursor-pointer flex flex-col"
+              >
+                <Card product={product} />
+              </div>
             ))}
           </div>
-        </div>
+        )}
       </section>
     </>
   );

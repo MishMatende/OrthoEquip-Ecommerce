@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { UserAuth } from "./AuthContext";
+import { UserAuth } from "../context/AuthContext";
 
 const CartContext = createContext();
 
@@ -8,6 +8,7 @@ export function CartProvider({ children }) {
   const { session } = UserAuth();
   const [cart, setCart] = useState([]);
   const [cartId, setCartId] = useState(null);
+  const [loadingItemId, setLoadingItemId] = useState(null); // 🆕 Track item being removed/updated
 
   // ---------------------------
   // Load or create cart on login
@@ -26,7 +27,6 @@ export function CartProvider({ children }) {
   // ---------------------------
   async function fetchOrCreateCart() {
     try {
-      // Try to fetch existing cart
       const { data: carts, error: fetchError } = await supabase
         .from("carts")
         .select("id")
@@ -36,7 +36,6 @@ export function CartProvider({ children }) {
 
       let id;
       if (!carts || carts.length === 0) {
-        // No cart — create one
         const { data: newCart, error: insertError } = await supabase
           .from("carts")
           .insert({ user_id: session.user.id })
@@ -45,16 +44,14 @@ export function CartProvider({ children }) {
         if (insertError) throw insertError;
         id = newCart.id;
       } else {
-        // Use first cart
         id = carts[0].id;
       }
 
       setCartId(id);
 
-      // Fetch items for this cart
       const { data: items, error: itemsError } = await supabase
         .from("cart_items")
-        .select("*, products(name, image_url, price)")
+        .select("*, products(name, image_url, price, brand)")
         .eq("cart_id", id);
 
       if (itemsError) throw itemsError;
@@ -69,7 +66,6 @@ export function CartProvider({ children }) {
   // ---------------------------
   async function addToCart(product, quantity = 1) {
     if (!session) {
-      // Local cart for guests
       const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
       const existing = localCart.find((i) => i.product_id === product.id);
 
@@ -82,14 +78,12 @@ export function CartProvider({ children }) {
       return;
     }
 
-    // Ensure cart exists
     let id = cartId;
     if (!id) {
       await fetchOrCreateCart();
       id = cartId;
     }
 
-    // Check if item already exists in cart
     const { data: existingItem } = await supabase
       .from("cart_items")
       .select("id, quantity")
@@ -98,14 +92,12 @@ export function CartProvider({ children }) {
       .maybeSingle();
 
     if (existingItem) {
-      // Increment quantity
       const { error } = await supabase
         .from("cart_items")
         .update({ quantity: existingItem.quantity + quantity })
         .eq("id", existingItem.id);
       if (error) console.error("Error updating cart:", error);
     } else {
-      // Insert new item
       const { error } = await supabase.from("cart_items").insert({
         cart_id: id,
         product_id: product.id,
@@ -115,23 +107,54 @@ export function CartProvider({ children }) {
       if (error) console.error("Error inserting item:", error);
     }
 
-    await fetchOrCreateCart(); // refresh UI
+    await fetchOrCreateCart();
     alert("Added to cart!");
   }
 
   // ---------------------------
-  // Remove from cart
+  // Remove from cart (with loading)
   // ---------------------------
   async function removeFromCart(itemId) {
+    setLoadingItemId(itemId); // 🆕 show loading animation
     if (!session) {
       const localCart = cart.filter((item) => item.product_id !== itemId);
       localStorage.setItem("cart", JSON.stringify(localCart));
       setCart(localCart);
+      setLoadingItemId(null);
       return;
     }
 
     await supabase.from("cart_items").delete().eq("id", itemId);
-    fetchOrCreateCart();
+    await fetchOrCreateCart();
+    setLoadingItemId(null);
+  }
+
+  // ---------------------------
+  // Increase / Decrease Quantity
+  // ---------------------------
+  async function updateQuantity(itemId, newQuantity) {
+    if (newQuantity <= 0) {
+      await removeFromCart(itemId);
+      return;
+    }
+
+    if (!session) {
+      const updatedCart = cart.map((item) =>
+        item.product_id === itemId ? { ...item, quantity: newQuantity } : item
+      );
+      setCart(updatedCart);
+      localStorage.setItem("cart", JSON.stringify(updatedCart));
+      return;
+    }
+
+    setLoadingItemId(itemId);
+    const { error } = await supabase
+      .from("cart_items")
+      .update({ quantity: newQuantity })
+      .eq("id", itemId);
+    if (error) console.error("Error updating quantity:", error);
+    await fetchOrCreateCart();
+    setLoadingItemId(null);
   }
 
   // ---------------------------
@@ -143,7 +166,9 @@ export function CartProvider({ children }) {
         cart,
         addToCart,
         removeFromCart,
+        updateQuantity, // 🆕 expose
         cartCount: cart.length,
+        loadingItemId, // 🆕 expose
       }}
     >
       {children}

@@ -9,5 +9,7 @@ export async function fetchProductStats() {
     return { most_sold: [], trending: [] };
   }
 
+  console.log(data);
+
   return data;
 }

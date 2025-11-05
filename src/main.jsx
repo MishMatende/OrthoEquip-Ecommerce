@@ -13,6 +13,8 @@ import Signin from "./components/Signin";
 import Signup from "./components/Signup";
 import AuthLayout from "./components/AuthLayout";
 import Cart from "./components/pages/Cart";
+import Checkout from "./components/pages/Checkout";
+import CheckoutLayout from "./components/CheckoutLayout";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -26,6 +28,9 @@ createRoot(document.getElementById("root")).render(
               <Route path="shop/:id" element={<ProductDetails />} />
               <Route path="contact" element={<Contact />} />
               <Route path="cart" element={<Cart />} />
+            </Route>
+            <Route element={<CheckoutLayout />}>
+              <Route path="checkout" element={<Checkout />} />
             </Route>
             <Route element={<AuthLayout />}>
               <Route path="signin" element={<Signin />} />
