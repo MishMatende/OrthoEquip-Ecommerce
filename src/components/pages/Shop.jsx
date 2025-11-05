@@ -23,7 +23,7 @@ export default function Shop() {
   const initialCategory = queryParams.get("category");
 
   const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 9;
+  const productsPerPage = 12;
   const [selectedCategories, setSelectedCategories] = useState(
     initialCategory ? [initialCategory] : []
   );
@@ -173,9 +173,9 @@ export default function Shop() {
 
   // ---- RENDER ----
   return (
-    <div className="grid grid-cols-12 gap-6 mt-8 mx-[0%] md:mx-[2%] lg:mx-[20%] text-center pb-10">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-8 mx-[4%] md:mx-[6%] lg:mx-[12%] pb-10">
       {/* ====================== Sidebar ====================== */}
-      <aside className="col-span-3 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+      <aside className="hidden md:block col-span-3 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-6">
         {/* Availability */}
         <Section title="Availability" name="availability">
           <div className="flex flex-col gap-2 text-gray-700">
@@ -276,22 +276,150 @@ export default function Shop() {
       </aside>
 
       {/* ====================== Product Section ====================== */}
-      <section className="col-span-9">
+      <section className="col-span-12 md:col-span-9">
+        {/* ====================== Mobile Filters Drawer ====================== */}
+        {open.mobileFilters && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-end md:hidden animate-fade-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget)
+                setOpen((prev) => ({ ...prev, mobileFilters: false }));
+            }}
+          >
+            <div className="w-3/4 bg-white h-full p-6 overflow-y-auto shadow-lg transform transition-transform duration-300 translate-x-0">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Filters</h2>
+                <Button
+                  variant="ghost"
+                  onClick={() =>
+                    setOpen((prev) => ({ ...prev, mobileFilters: false }))
+                  }
+                >
+                  ✕
+                </Button>
+              </div>
+
+              {/* Reuse the same filter sections from sidebar */}
+              <Section title="Availability" name="availability">
+                <div className="flex flex-col gap-2 text-gray-700">
+                  <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+                    <Checkbox checked={inStock} onCheckedChange={setInStock} />
+                    <span>In Stock</span>
+                  </label>
+                  <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+                    <Checkbox
+                      checked={outStock}
+                      onCheckedChange={setOutStock}
+                    />
+                    <span>Out of Stock</span>
+                  </label>
+                </div>
+              </Section>
+
+              <Section title="Price" name="price">
+                <div className="px-2 mt-2">
+                  <Slider
+                    min={0}
+                    max={100000}
+                    step={100}
+                    value={priceRange}
+                    onValueChange={setPriceRange}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-sm text-gray-600 mt-2">
+                    <span>KES {priceRange[0]}</span>
+                    <span>KES {priceRange[1]}</span>
+                  </div>
+                </div>
+              </Section>
+
+              <Section title="Category" name="category">
+                <div className="flex flex-col gap-1 text-sm text-gray-700 mt-1">
+                  {categories.map((category) => {
+                    const isChecked = selectedCategories.includes(category);
+                    return (
+                      <label
+                        key={category}
+                        className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-blue-600"
+                          checked={isChecked}
+                          onChange={() =>
+                            setSelectedCategories((prev) =>
+                              isChecked
+                                ? prev.filter((c) => c !== category)
+                                : [...prev, category]
+                            )
+                          }
+                        />
+                        {category}
+                      </label>
+                    );
+                  })}
+                </div>
+              </Section>
+
+              <Section title="Brand" name="brand">
+                <div className="flex flex-col gap-1 text-sm text-gray-700 mt-1">
+                  {brands.map((brand) => {
+                    const isChecked = selectedBrands.includes(brand);
+                    return (
+                      <label
+                        key={brand}
+                        className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-blue-600"
+                          checked={isChecked}
+                          onChange={() =>
+                            setSelectedBrands((prev) =>
+                              isChecked
+                                ? prev.filter((b) => b !== brand)
+                                : [...prev, brand]
+                            )
+                          }
+                        />
+                        {brand}
+                      </label>
+                    );
+                  })}
+                </div>
+              </Section>
+            </div>
+          </div>
+        )}
+
         {/* Sorting & Count */}
         <div className="flex justify-between items-center mb-4">
-          <Select onValueChange={setSort}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Alphabetically, A-Z" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="A-Z">Alphabetically, A-Z</SelectItem>
-              <SelectItem value="Z-A">Alphabetically, Z-A</SelectItem>
-              <SelectItem value="Low-High">Price: Low to High</SelectItem>
-              <SelectItem value="High-Low">Price: High to Low</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <Select onValueChange={setSort}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Alphabetically, A-Z" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A-Z">Alphabetically, A-Z</SelectItem>
+                <SelectItem value="Z-A">Alphabetically, Z-A</SelectItem>
+                <SelectItem value="Low-High">Price: Low to High</SelectItem>
+                <SelectItem value="High-Low">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <p className="text-sm text-gray-500">
+            {/* Mobile Filter Button beside sorting */}
+            <Button
+              onClick={() =>
+                setOpen((prev) => ({ ...prev, mobileFilters: true }))
+              }
+              className="bg-[#0680cd] text-white rounded-lg md:hidden"
+            >
+              Filters
+            </Button>
+          </div>
+
+          {/* Product count (hidden on mobile) */}
+          <p className="hidden md:block text-sm text-gray-500">
             Showing {sortedProducts.length}{" "}
             {sortedProducts.length === 1 ? "product" : "products"}{" "}
             {sortedProducts.length !== products.length && (
@@ -299,25 +427,23 @@ export default function Shop() {
             )}
           </p>
         </div>
-        <div>
-          {initialCategory && (
-            <h2 className="text-xl font-semibold mb-4 text-left">
-              Showing products in:{" "}
-              <span className="text-[#0680cd]">{initialCategory}</span>
-            </h2>
-          )}
-        </div>
 
         {/* Product Grid */}
         {loading ? (
-          <p>Loading products...</p>
+          <p className="text-center text-gray-500">Loading products...</p>
         ) : (
-          <div className="grid grid-cols-3 gap-6">
+          <div
+            className="
+    grid gap-6
+    grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4
+    place-items-stretch
+  "
+          >
             {currentProducts.map((product) => (
               <div
                 key={product.id}
                 onClick={() => navigate(`/shop/${product.id}`)}
-                className="cursor-pointer"
+                className="cursor-pointer flex flex-col"
               >
                 <Card product={product} />
               </div>
@@ -327,7 +453,7 @@ export default function Shop() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center mt-8 space-x-2 items-center">
+          <div className="flex flex-wrap justify-center mt-8 gap-2 items-center px-2">
             {/* Prev Button */}
             <Button
               variant="ghost"

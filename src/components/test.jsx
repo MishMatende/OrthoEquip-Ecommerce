@@ -5,12 +5,6 @@ export default function Card({ product }) {
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col h-[360px]">
       {/* Image Section */}
       <div className="bg-gray-50 rounded-t-2xl flex items-center justify-center h-[200px] overflow-hidden">
-        {/* Discount Tag */}
-        {/* {product.discount && (
-          <span className="absolute top-2 right-2 bg-emerald-700 text-white text-xs font-semibold px-2 py-1 rounded-sm">
-            -{product.discount}%
-          </span>
-        )} */}
         <img
           src={
             product.image_url ||
