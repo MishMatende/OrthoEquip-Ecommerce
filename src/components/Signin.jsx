@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { UserAuth } from "../context/AuthContext";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
@@ -9,22 +9,21 @@ export default function Signin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState("");
-
   const { session, signinUser } = UserAuth();
   const navigate = useNavigate();
-  console.log(session);
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
 
   const handleSignIn = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const result = await signinUser(email, password);
-
       if (result.success) {
-        navigate("/");
+        navigate(from, { replace: true });
       }
     } catch (error) {
-      setError("An error occured");
+      setError("An error occurred");
     } finally {
       setLoading(false);
     }

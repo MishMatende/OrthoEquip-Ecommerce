@@ -16,6 +16,7 @@ import {
   UserRoundPen,
   X,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
 import img from "../assets/OrthoEquip.jpg";
 import { UserAuth } from "../context/AuthContext";
@@ -162,6 +163,7 @@ export default function Navbar() {
                     ))
                   ) : (
                     <li className="px-4 py-2 text-gray-500 text-sm">
+                      <Loader2 className="w-6 h-6 animate-spin mr-3" />
                       Loading categories...
                     </li>
                   )}
@@ -188,7 +190,7 @@ export default function Navbar() {
               className="hover:text-blue-600 transition-colors duration-200 cursor-pointer"
             />
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 bg-[#0680cd] text-white text-s font-semibold rounded-full w-4 h-4 flex items-center justify-center">
                 {cartCount}
               </span>
             )}

@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Phone, Menu, X } from "lucide-react";
+import { Phone, Menu, X, ChevronDown } from "lucide-react";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
+import { UserAuth } from "../context/AuthContext";
 
 export default function Header() {
   const [pageOpen, setPageOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
+  const { session } = UserAuth();
 
   return (
     <nav className="relative flex justify-between items-center py-6 px-[4%] bg-white shadow-sm mx-[0%] md:mx-[5%] lg:mx-[10%] text-center">
@@ -59,9 +62,16 @@ export default function Header() {
               </div>
             )}
           </li> */}
+
         <Link to="/contact">
           <li className="hover:text-[#0680cd] cursor-pointer">Contact</li>
         </Link>
+
+        {session && (
+          <Link to="/orders">
+            <li className="hover:text-[#0680cd] cursor-pointer">My Orders</li>
+          </Link>
+        )}
       </ul>
 
       {/* Mobile Hamburger Icon */}
@@ -100,6 +110,13 @@ export default function Header() {
           <Link to="/contact" onClick={() => setIsOpen(false)}>
             <span className="hover:text-[#0680cd] cursor-pointer">Contact</span>
           </Link>
+          {session && (
+            <Link to="/orders" onClick={() => setIsOpen(false)}>
+              <span className="hover:text-[#0680cd] cursor-pointer">
+                My Orders
+              </span>
+            </Link>
+          )}
 
           {/* Contact section for mobile */}
           <div className="flex items-center gap-2 text-[#0680cd] font-medium pt-4 border-t border-gray-200">

@@ -8,8 +8,5 @@ export async function fetchProductStats() {
     console.error("Error fetching product stats:", error);
     return { most_sold: [], trending: [] };
   }
-
-  console.log(data);
-
   return data;
 }

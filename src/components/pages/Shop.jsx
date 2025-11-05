@@ -13,7 +13,7 @@ import {
   SelectContent,
   SelectItem,
 } from "../../components/ui/select";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 
 export default function Shop() {
   // ---- STATE ----
@@ -430,7 +430,10 @@ export default function Shop() {
 
         {/* Product Grid */}
         {loading ? (
-          <p className="text-center text-gray-500">Loading products...</p>
+          <div className="flex items-center justify-center py-10 text-gray-500">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            <span>Loading products...</span>
+          </div>
         ) : (
           <div
             className="

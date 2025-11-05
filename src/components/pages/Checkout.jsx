@@ -5,6 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
+import { Loader2 } from "lucide-react";
 
 export default function Checkout() {
   const { cart } = useCart();
@@ -50,7 +51,12 @@ export default function Checkout() {
       return;
     }
 
-    if (!form.address.trim() || !form.city.trim()) {
+    if (
+      !form.address.trim() ||
+      !form.city.trim() ||
+      !form.firstName.trim() ||
+      !form.lastName.trim()
+    ) {
       alert("Please enter your full shipping details.");
       return;
     }
@@ -64,7 +70,6 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      // Build full shipping address
       const shippingAddress = `
 ${form.firstName} ${form.lastName}
 ${form.address}, ${form.apartment || ""}
@@ -72,27 +77,26 @@ ${form.city}, ${form.postalCode || ""}
 ${form.country}
 `;
 
-      // Create Order
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
           user_id: session.user.id,
           total_amount: total,
-          status: "pending",
+          status: "pending", // for business flow
+          tracking_stage: "placed", // for progress tracker
           shipping_address: shippingAddress,
-          payment_method: "None", // will integrate later
+          payment_method: "None",
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // Add Order Items
       const orderItems = cart.map((item) => ({
         order_id: order.id,
         product_id: item.products?.id || item.product_id,
         quantity: item.quantity,
-        unit_price: item.products?.price || item.price_at_add,
+        price: item.products?.price || item.price_at_add,
       }));
 
       const { error: itemsError } = await supabase
@@ -101,7 +105,6 @@ ${form.country}
 
       if (itemsError) throw itemsError;
 
-      // Clear Cart
       if (cart[0]?.cart_id) {
         await supabase
           .from("cart_items")
@@ -166,10 +169,6 @@ ${form.country}
               placeholder="Email or mobile phone number"
               className="w-full border rounded-xl p-3 text-gray-700 mb-2 focus:ring-2 focus:ring-[#0680cd]"
             />
-            <label className="flex items-center space-x-2 text-sm text-gray-600">
-              <input type="checkbox" />
-              <span>Email me with news and offers</span>
-            </label>
           </section>
 
           {/* Delivery */}
@@ -194,15 +193,15 @@ ${form.country}
                 name="firstName"
                 value={form.firstName}
                 onChange={handleChange}
-                placeholder="First name (optional)"
-                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd]"
+                placeholder="First name"
+                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
               />
               <input
                 name="lastName"
                 value={form.lastName}
                 onChange={handleChange}
                 placeholder="Last name"
-                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd]"
+                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
               />
             </div>
 
@@ -211,7 +210,7 @@ ${form.country}
               value={form.address}
               onChange={handleChange}
               placeholder="Address"
-              className="border rounded-xl p-3 w-full mb-3 text-gray-700 focus:ring-2 focus:ring-[#0680cd]"
+              className="border rounded-xl p-3 w-full mb-3 text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
             />
             <input
               name="apartment"
@@ -227,7 +226,7 @@ ${form.country}
                 value={form.city}
                 onChange={handleChange}
                 placeholder="City"
-                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd]"
+                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
               />
               <input
                 name="postalCode"
@@ -257,6 +256,7 @@ ${form.country}
               disabled={loading}
               className="bg-[#0680cd] hover:bg-[#0570b3] w-full py-3 rounded-xl text-white text-lg"
             >
+              {loading ? <Loader2 className="w-6 h-6 animate-spin mr-3" /> : ""}
               {loading ? "Placing order..." : "Place Order"}
             </Button>
           </div>

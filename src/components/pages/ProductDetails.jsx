@@ -70,6 +70,7 @@ export default function ProductDetails() {
   if (loading) {
     return (
       <div className="text-center py-20 text-gray-500">
+        <Loader2 className="w-6 h-6 animate-spin mr-3" />
         Loading product details...
       </div>
     );

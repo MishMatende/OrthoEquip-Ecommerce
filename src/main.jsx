@@ -14,7 +14,11 @@ import Signup from "./components/Signup";
 import AuthLayout from "./components/AuthLayout";
 import Cart from "./components/pages/Cart";
 import Checkout from "./components/pages/Checkout";
+import OtherLayout from "./components/OtherLayout";
+import OrderConfirmation from "./components/pages/OrderConfirmation";
+import Orders from "./components/pages/Orders";
 import CheckoutLayout from "./components/CheckoutLayout";
+import OrderTracking from "./components/pages/OrderTracking";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -28,6 +32,12 @@ createRoot(document.getElementById("root")).render(
               <Route path="shop/:id" element={<ProductDetails />} />
               <Route path="contact" element={<Contact />} />
               <Route path="cart" element={<Cart />} />
+              <Route path="track/:orderId" element={<OrderTracking />} />
+              <Route path="orders" element={<Orders />} />
+              <Route
+                path="order-confirmation/:orderId"
+                element={<OrderConfirmation />}
+              />
             </Route>
             <Route element={<CheckoutLayout />}>
               <Route path="checkout" element={<Checkout />} />

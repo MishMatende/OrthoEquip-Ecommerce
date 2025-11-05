@@ -5,6 +5,12 @@ import { UserAuth } from "../context/AuthContext";
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
+  const auth = UserAuth();
+
+  if (!auth) {
+    console.error("CartProvider: AuthContext not ready yet.");
+    return null; // prevent crash on initial render
+  }
   const { session } = UserAuth();
   const [cart, setCart] = useState([]);
   const [cartId, setCartId] = useState(null);

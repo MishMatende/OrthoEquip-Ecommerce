@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import ProductShowCase from "../ProductShowCase";
 import Card from "../Card";
 import MaskThermometer from "../../assets/MaskThermometer.webp";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { fetchProductStats } from "../../data/FetchProductStats";
 import { useNavigate } from "react-router-dom";
 
@@ -19,8 +19,19 @@ export default function Home() {
   const [stats, setStats] = useState({ most_sold: [], trending: [] });
 
   useEffect(() => {
-    fetchProductStats().then(setStats);
-    setLoading(false);
+    async function loadStats() {
+      setLoading(true); // make sure it starts in loading mode
+      try {
+        const data = await fetchProductStats();
+        setStats(data);
+      } catch (error) {
+        console.error("Error fetching product stats:", error);
+      } finally {
+        setLoading(false); // only stop loading *after* data is fetched
+      }
+    }
+
+    loadStats();
   }, []);
 
   return (
@@ -34,7 +45,10 @@ export default function Home() {
         </h1>
 
         {loading ? (
-          <p className="text-center text-gray-500">Loading products...</p>
+          <div className="flex items-center justify-center py-10 text-gray-500">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            <span>Loading products...</span>
+          </div>
         ) : (
           <div
             className="
@@ -120,7 +134,10 @@ export default function Home() {
           Best Selling
         </h1>
         {loading ? (
-          <p className="text-center text-gray-500">Loading products...</p>
+          <div className="flex items-center justify-center py-10 text-gray-500">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            <span>Loading products...</span>
+          </div>
         ) : (
           <div
             className="
