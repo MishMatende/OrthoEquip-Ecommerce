@@ -36,13 +36,16 @@ export default function Home() {
 
   return (
     <>
-      <section className="px-4 sm:px-6 lg:px-8 xl:px-[15%] text-center mb-10">
+      <section className="px-4 sm:px-6 lg:px-8 xl:px-[15%] md:mt-4 text-center mb-10">
         {/* //TODO: Create ProductShowcase Graphics */}
         {/* <ProductShowCase /> */}
 
-        <h1 className="text-2xl sm:text-3xl font-semibold text-black py-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Featured Products
         </h1>
+        <p className="text-sm text-gray-500 mb-6">
+          Shop our best-selling and trending medical equipment.
+        </p>
 
         {loading ? (
           <div className="flex items-center justify-center py-10 text-gray-500">

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Mail, Phone, MapPin, Send, Loader2 } from "lucide-react";
 import emailjs from "emailjs-com";
+import { Link } from "react-router-dom";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -11,26 +12,35 @@ const Contact = () => {
     message: "",
   });
 
+  const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setErrors({ ...errors, [e.target.name]: "" }); // clear error when typing
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.message) {
-      setStatus({
-        type: "error",
-        message: "Please fill in all required fields.",
-      });
-      return false;
+    const newErrors = {};
+
+    if (!formData.name.trim()) newErrors.name = "Name is required.";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address.";
     }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setStatus({ type: "error", message: "Please enter a valid email." });
-      return false;
+
+    if (!formData.service) newErrors.service = "Please select a service type.";
+
+    if (formData.phone && !/^\+?\d{7,15}$/.test(formData.phone)) {
+      newErrors.phone = "Enter a valid phone number (7–15 digits).";
     }
-    return true;
+
+    if (!formData.message.trim()) newErrors.message = "Message is required.";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
@@ -60,6 +70,7 @@ const Contact = () => {
             phone: "",
             message: "",
           });
+          setErrors({});
         },
         (error) => {
           console.error("EmailJS Error:", error);
@@ -76,22 +87,27 @@ const Contact = () => {
     <div className="flex flex-col items-center mx-[0%] md:mx-[2%] lg:mx-[20%] text-center">
       {/* Contact Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 w-full max-w-6xl px-4">
-        <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
-          <Mail className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
-          <h3 className="font-semibold text-lg mb-2">Email Address</h3>
-          <p className="text-gray-600">hnyambura1997@gmail.com</p>
-        </div>
+        <Link to="mailto:hnyambura1997@gmail.com">
+          <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
+            <Mail className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
+            <h3 className="font-semibold text-lg mb-2">Email Address</h3>
+            <p className="text-gray-600">hnyambura1997@gmail.com</p>
+          </div>
+        </Link>
 
-        <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
-          <Phone className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
-          <h3 className="font-semibold text-lg mb-2">Phone Number</h3>
-          <p className="text-gray-600">(+254)740-375-473</p>
-        </div>
+        <Link to="https://wa.me/254100219639">
+          <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
+            <Phone className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
+            <h3 className="font-semibold text-lg mb-2">Call or WhatsApp</h3>
+
+            <p className="text-gray-600">(+254)100-219-639</p>
+          </div>
+        </Link>
 
         {/* Physical Location */}
-        {/* <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
+        {/* <div className="bg-white shadow-md rounded-2xl p-6 text-center border col-span-2">
           <MapPin className="mx-auto mb-4 text-green-600 w-10 h-10" />
-          <h3 className="font-semibold text-lg mb-2">Office Address</h3>
+          <h3 className="font-semibold text-lg mb-2">Shop Address</h3>
           <p className="text-gray-600">18/A, New Born Town Hall</p>
           <p className="text-gray-600">New York, US</p>
         </div> */}
@@ -115,64 +131,105 @@ const Contact = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          {/* Name + Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              name="name"
-              placeholder="Enter your name"
-              value={formData.name}
-              onChange={handleChange}
-              className="border rounded-lg p-3 w-full focus:outline-green-600"
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="Enter email address"
-              value={formData.email}
-              onChange={handleChange}
-              className="border rounded-lg p-3 w-full focus:outline-green-600"
-            />
+            <div>
+              <input
+                type="text"
+                name="name"
+                placeholder="Enter your name"
+                value={formData.name}
+                onChange={handleChange}
+                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                  errors.name ? "border-red-500" : ""
+                }`}
+              />
+              {errors.name && (
+                <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+              )}
+            </div>
+
+            <div>
+              <input
+                type="email"
+                name="email"
+                placeholder="Enter email address"
+                value={formData.email}
+                onChange={handleChange}
+                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                  errors.email ? "border-red-500" : ""
+                }`}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
+            </div>
           </div>
 
+          {/* Service + Phone */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <select
-              name="service"
-              value={formData.service}
-              onChange={handleChange}
-              className="border rounded-lg p-3 w-full focus:outline-green-600"
-            >
-              <option value="">Select Service Type</option>
-              <option value="Support">Support</option>
-              <option value="Feedback">Feedback</option>
-            </select>
-            <input
-              type="tel"
-              name="phone"
-              placeholder="Enter phone number"
-              value={formData.phone}
-              onChange={handleChange}
-              className="border rounded-lg p-3 w-full focus:outline-green-600"
-            />
+            <div>
+              <select
+                name="service"
+                value={formData.service}
+                onChange={handleChange}
+                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                  errors.service ? "border-red-500" : ""
+                }`}
+              >
+                <option value="">Select Service Type</option>
+                <option value="Support">Support</option>
+                <option value="Feedback">Feedback</option>
+              </select>
+              {errors.service && (
+                <p className="text-red-500 text-sm mt-1">{errors.service}</p>
+              )}
+            </div>
+
+            <div>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="Enter phone number"
+                value={formData.phone}
+                onChange={handleChange}
+                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                  errors.phone ? "border-red-500" : ""
+                }`}
+              />
+              {errors.phone && (
+                <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+              )}
+            </div>
           </div>
 
-          <textarea
-            name="message"
-            rows="4"
-            placeholder="Enter message"
-            value={formData.message}
-            onChange={handleChange}
-            className="border rounded-lg p-3 w-full focus:outline-green-600"
-          ></textarea>
+          {/* Message */}
+          <div>
+            <textarea
+              name="message"
+              rows="4"
+              placeholder="Enter message"
+              value={formData.message}
+              onChange={handleChange}
+              className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                errors.message ? "border-red-500" : ""
+              }`}
+            ></textarea>
+            {errors.message && (
+              <p className="text-red-500 text-sm mt-1">{errors.message}</p>
+            )}
+          </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
             className={`${
               loading
-                ? "bg-green-500 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700"
-            } text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2`}
+                ? "bg-[#0680cd] cursor-not-allowed"
+                : "bg-white text-[#0680cd] cursor-pointer hover:bg-[#0680cd] hover:text-white"
+            } font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 border border-[#0680cd]`}
           >
             {loading ? (
               <>

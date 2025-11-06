@@ -94,7 +94,7 @@ export default function Header() {
       {/* Contact (Desktop Only) */}
       <div className="hidden md:flex items-center gap-2 text-[#0680cd] font-medium">
         <Phone size={18} />
-        <span className="text-gray-800">(+254) 740-375-473</span>
+        <span className="text-gray-800">(+254)100-219-639</span>
       </div>
 
       {/* Mobile Menu Dropdown */}

@@ -29,8 +29,6 @@ export default function ProductDetails() {
     async function fetchProduct() {
       setLoading(true);
 
-      console.log("🧠 ID from useParams:", id, typeof id);
-
       // Fetch main product
       const { data: productData, error: productError } = await supabase
         .from("products")
@@ -52,9 +50,6 @@ export default function ProductDetails() {
         { pid: id }
       );
 
-      console.log("🧩 Product ID (UUID):", id);
-      console.log("🖼️ Supabase RPC returned these product images:", imageData);
-
       if (imageError) {
         console.error("❌ Error fetching product images via RPC:", imageError);
       } else {
@@ -69,7 +64,7 @@ export default function ProductDetails() {
 
   if (loading) {
     return (
-      <div className="text-center py-20 text-gray-500">
+      <div className="flex flex-row justify-center py-20 text-gray-500">
         <Loader2 className="w-6 h-6 animate-spin mr-3" />
         Loading product details...
       </div>
