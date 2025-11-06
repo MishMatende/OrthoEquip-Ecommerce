@@ -3,6 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { UserAuth } from "../context/AuthContext";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
+import { Loader2 } from "lucide-react";
+import { supabase } from "../supabaseClient";
 
 export default function Signin() {
   const [email, setEmail] = useState("");
@@ -17,13 +19,33 @@ export default function Signin() {
   const handleSignIn = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
+
     try {
       const result = await signinUser(email, password);
+
       if (result.success) {
-        navigate(from, { replace: true });
+        const user = result.data.session?.user;
+        if (!user) throw new Error("No session user found");
+
+        // Fetch the profile again to confirm is_admin
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_admin")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.is_admin) {
+          navigate("/admin", { replace: true }); // 👈 admin route
+        } else {
+          navigate("/", { replace: true }); // normal user route
+        }
+      } else {
+        setError(result.error || "Invalid email or password");
       }
-    } catch (error) {
-      setError("An error occurred");
+    } catch (err) {
+      console.error("Sign-in error:", err);
+      setError("Something went wrong, please try again.");
     } finally {
       setLoading(false);
     }
@@ -33,14 +55,15 @@ export default function Signin() {
     <div>
       <form
         onSubmit={handleSignIn}
-        className="w-full py-5 md:py-14 px-2 md:px-8 shadow-lg rounded-md"
+        className="w-full py-5 md:py-14 px-2 md:px-8 shadow-lg rounded-md bg-white"
       >
         <img
           src={BalmOrthoLogo}
           className="h-[100px] mx-auto"
-          alt="Balm Ortho image"
+          alt="Balm Ortho logo"
         />
-        <h2 className="font-bold">Sign in</h2>
+        <h2 className="font-bold text-xl text-center mt-4">Sign in</h2>
+
         <div className="flex flex-col p-4">
           <input
             onChange={(e) => setEmail(e.target.value)}
@@ -59,9 +82,10 @@ export default function Signin() {
           <Button
             type="submit"
             disabled={loading}
-            className="mt-6 w-auto mx-auto bg-"
+            className="mt-6 w-auto mx-auto"
           >
-            Sign in
+            {loading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : ""}
+            {loading ? "Signing in..." : "Sign in"}
           </Button>
           {error && <p className="text-red-600 text-center pt-4">{error}</p>}
           <p className="mt-4">

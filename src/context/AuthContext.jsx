@@ -1,11 +1,15 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
+// ✅ Move this OUTSIDE the component — global scope
 const AuthContext = createContext();
 
 export const AuthContextProvider = ({ children }) => {
   const [session, setSession] = useState(undefined);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [userProfile, setUserProfile] = useState(null);
+  const navigate = useNavigate();
 
   // Sign up
   const signupNewUser = async (email, password) => {
@@ -28,33 +32,79 @@ export const AuthContextProvider = ({ children }) => {
         console.error("Sign-in error occurred:", error);
         return { success: false, error: error.message };
       }
+
+      // Fetch user profile after sign-in
+      await fetchUserProfile(data.session?.user?.id);
+
       return { success: true, data };
     } catch (error) {
       console.error("An unexpected error occurred:", error);
     }
   };
 
-  // Load session
+  // Fetch user profile
+  const fetchUserProfile = async (userId) => {
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, email, is_admin")
+      .eq("id", userId)
+      .single();
+
+    if (error) console.error("Error fetching profile:", error);
+    else setUserProfile(data);
+  };
+
+  // Listen for session changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function loadSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setSession(session);
+
+      if (session?.user) await fetchUserProfile(session.user.id);
+
       setLoadingAuth(false);
-    });
+    }
+
+    loadSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
+
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, email, is_admin")
+            .eq("id", session.user.id)
+            .single();
+
+          setUserProfile(profile);
+
+          // ✅ Redirect logic for sign-in
+          if (_event === "SIGNED_IN") {
+            if (profile?.is_admin) navigate("/admin");
+            else navigate("/");
+          }
+        } else {
+          setUserProfile(null);
+        }
+
         setLoadingAuth(false);
       }
     );
 
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   // Sign out
   const signoutUser = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) console.error("There was an error signing out:", error);
+    setUserProfile(null);
+    setSession(null);
   };
 
   return (
@@ -62,6 +112,7 @@ export const AuthContextProvider = ({ children }) => {
       value={{
         session,
         loadingAuth,
+        userProfile,
         signupNewUser,
         signinUser,
         signoutUser,
@@ -72,4 +123,5 @@ export const AuthContextProvider = ({ children }) => {
   );
 };
 
+// ✅ Export the hook AFTER the context is defined
 export const UserAuth = () => useContext(AuthContext);

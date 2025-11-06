@@ -66,7 +66,6 @@ export default function Navbar() {
   const userOptions = [
     { label: "Profile", path: "/profile" },
     { label: "Dashboard", path: "/dashboard" },
-    { label: "Settings", path: "/settings" },
     { label: "Logout", action: handleSingOut, isLogout: true },
   ];
 
@@ -208,7 +207,7 @@ export default function Navbar() {
               tabIndex={0}
             >
               {/* User Button  */}
-              <div className="relative group">
+              <div className="relative group cursor-pointer">
                 <button
                   onClick={() => {
                     if (!session) navigate("/signup");

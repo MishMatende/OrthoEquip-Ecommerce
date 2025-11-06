@@ -4,6 +4,7 @@ import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import { Minus, Plus, Trash2, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function Cart() {
   const { session } = UserAuth();
@@ -12,11 +13,11 @@ export default function Cart() {
 
   const handleCheckout = async () => {
     if (!session) {
-      alert("Please sign in to complete your purchase.");
+      toast.error("Please sign in to complete your purchase.");
       return;
     }
     if (!cart.length) {
-      alert("Your cart is empty.");
+      toast.error("Your cart is empty.");
       return;
     }
     navigate("/checkout");
@@ -39,7 +40,7 @@ export default function Cart() {
 
     if (orderError) {
       console.error("Error creating order:", orderError);
-      alert("Error placing order. Please try again.");
+      toast.error("Error placing order. Please try again.");
       return;
     }
 
@@ -56,12 +57,12 @@ export default function Cart() {
 
     if (itemsError) {
       console.error("Error adding order items:", itemsError);
-      alert("Error saving order items.");
+      toast.error("Error saving order items.");
       return;
     }
 
     await supabase.from("cart_items").delete().eq("cart_id", cart[0].cart_id);
-    alert("🎉 Order placed successfully!");
+    toast.success("🎉 Order placed successfully!");
   };
 
   const total = cart.reduce(

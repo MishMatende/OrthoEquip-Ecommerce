@@ -6,6 +6,7 @@ import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Checkout() {
   const { cart } = useCart();
@@ -47,7 +48,7 @@ export default function Checkout() {
     e.preventDefault();
 
     if (!session) {
-      alert("Please sign in to complete your purchase.");
+      toast.error("Please sign in to complete your purchase.");
       return;
     }
 
@@ -57,12 +58,12 @@ export default function Checkout() {
       !form.firstName.trim() ||
       !form.lastName.trim()
     ) {
-      alert("Please enter your full shipping details.");
+      toast.error("Please enter your full shipping details.");
       return;
     }
 
     if (!cart.length) {
-      alert("Your cart is empty.");
+      toast.error("Your cart is empty.");
       navigate("/cart");
       return;
     }
@@ -112,11 +113,11 @@ ${form.country}
           .eq("cart_id", cart[0].cart_id);
       }
 
-      alert("🎉 Order placed successfully!");
+      toast.success("🎉 Order placed successfully!");
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {
       console.error("Order error:", err);
-      alert("Error placing order. Please try again.");
+      toast.error("Error placing order. Please try again.");
     } finally {
       setLoading(false);
     }

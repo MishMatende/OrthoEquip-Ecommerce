@@ -19,12 +19,18 @@ import OrderConfirmation from "./components/pages/OrderConfirmation";
 import Orders from "./components/pages/Orders";
 import CheckoutLayout from "./components/CheckoutLayout";
 import OrderTracking from "./components/pages/OrderTracking";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminProducts from "./components/admin/AdminProducts";
+import AdminOrders from "./components/admin/AdminOrders";
+import AdminAnalytics from "./components/admin/AdminAnalytics";
+import AdminDashboard from "./components/admin/AdminDashboard";
+import AdminSettings from "./components/admin/AdminSettings";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <AuthContextProvider>
-      <CartProvider>
-        <BrowserRouter>
+    <BrowserRouter>
+      <AuthContextProvider>
+        <CartProvider>
           <Routes>
             <Route path="/" element={<App />}>
               <Route index element={<Home />} />
@@ -42,13 +48,20 @@ createRoot(document.getElementById("root")).render(
             <Route element={<CheckoutLayout />}>
               <Route path="checkout" element={<Checkout />} />
             </Route>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/products" element={<AdminProducts />} />
+              <Route path="/admin/orders" element={<AdminOrders />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+            </Route>
             <Route element={<AuthLayout />}>
               <Route path="signin" element={<Signin />} />
               <Route path="signup" element={<Signup />} />
             </Route>
           </Routes>
-        </BrowserRouter>
-      </CartProvider>
-    </AuthContextProvider>
+        </CartProvider>
+      </AuthContextProvider>
+    </BrowserRouter>
   </StrictMode>
 );

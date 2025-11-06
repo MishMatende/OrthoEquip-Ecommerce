@@ -1,37 +1,31 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { UserAuth } from "../context/AuthContext";
+import { toast } from "sonner";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const auth = UserAuth();
-
-  if (!auth) {
-    console.error("CartProvider: AuthContext not ready yet.");
-    return null; // prevent crash on initial render
-  }
-  const { session } = UserAuth();
+  const { session, loadingAuth } = UserAuth(); // 🆕 include loadingAuth
   const [cart, setCart] = useState([]);
   const [cartId, setCartId] = useState(null);
-  const [loadingItemId, setLoadingItemId] = useState(null); // 🆕 Track item being removed/updated
+  const [loadingItemId, setLoadingItemId] = useState(null);
 
-  // ---------------------------
-  // Load or create cart on login
-  // ---------------------------
   useEffect(() => {
+    // 🧠 Only run after AuthContext is done loading
+    if (loadingAuth) return;
+
     if (session) {
       fetchOrCreateCart();
     } else {
       const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
       setCart(localCart);
     }
-  }, [session]);
+  }, [session, loadingAuth]);
 
-  // ---------------------------
-  // Fetch or create user cart
-  // ---------------------------
   async function fetchOrCreateCart() {
+    if (!session?.user?.id) return; // 🧱 avoid early calls
+
     try {
       const { data: carts, error: fetchError } = await supabase
         .from("carts")
@@ -80,7 +74,7 @@ export function CartProvider({ children }) {
 
       localStorage.setItem("cart", JSON.stringify(localCart));
       setCart(localCart);
-      alert("Added to cart!");
+      toast.success("Added to cart!");
       return;
     }
 
@@ -114,7 +108,7 @@ export function CartProvider({ children }) {
     }
 
     await fetchOrCreateCart();
-    alert("Added to cart!");
+    toast.success("Added to cart!");
   }
 
   // ---------------------------
@@ -172,9 +166,10 @@ export function CartProvider({ children }) {
         cart,
         addToCart,
         removeFromCart,
-        updateQuantity, // 🆕 expose
+        updateQuantity,
         cartCount: cart.length,
-        loadingItemId, // 🆕 expose
+        loadingItemId,
+        cartId,
       }}
     >
       {children}
