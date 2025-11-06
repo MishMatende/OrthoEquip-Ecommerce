@@ -9,7 +9,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from "../../components/ui/tabs";
-import { Minus, Plus } from "lucide-react";
+import { Loader2, Minus, Plus } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 
 export default function ProductDetails() {
