@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { UserAuth } from "../context/AuthContext";
+import { UserAuth } from "./AuthContext";
 import { toast } from "sonner";
 
 const CartContext = createContext();

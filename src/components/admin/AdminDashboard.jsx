@@ -43,11 +43,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex">
-          <p className="text-sm text-gray-500">Admin /</p>
-          <h1 className="text-lg font-semibold text-gray-800">Dashboard</h1>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           onClick={fetchStats}
           className="bg-[#0680cd] text-white px-4 py-2 rounded-md hover:bg-[#056fb1] transition"

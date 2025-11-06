@@ -100,11 +100,19 @@ export const AuthContextProvider = ({ children }) => {
   }, [navigate]);
 
   // Sign out
+  // Sign out
   const signoutUser = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) console.error("There was an error signing out:", error);
+    if (error) {
+      console.error("There was an error signing out:", error);
+      return;
+    }
+
     setUserProfile(null);
     setSession(null);
+
+    // ✅ Redirect to home page
+    navigate("/");
   };
 
   return (

@@ -50,7 +50,7 @@ export default function OrderConfirmation() {
     return (
       <div className="text-center py-20">
         <p className="text-gray-600 mb-4">Order not found.</p>
-        <Link to="/" className="text-blue-600 underline hover:text-blue-800">
+        <Link to="/" className="text-[#0680cd] underline hover:text-blue-800">
           Back to Home
         </Link>
       </div>

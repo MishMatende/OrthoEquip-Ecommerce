@@ -186,7 +186,7 @@ export default function Navbar() {
           <div className="relative" onClick={() => navigate("/cart")}>
             <ShoppingCart
               size={22}
-              className="hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+              className="hover:text-[#0680cd] transition-colors duration-200 cursor-pointer"
             />
             {cartCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-[#0680cd] text-white text-s font-semibold rounded-full w-4 h-4 flex items-center justify-center">
@@ -207,20 +207,20 @@ export default function Navbar() {
               tabIndex={0}
             >
               {/* User Button  */}
-              <div className="relative group cursor-pointer">
+              <div className="relative group cursor-pointer hover:text-[#0680cd]">
                 <button
                   onClick={() => {
                     if (!session) navigate("/signup");
                     else setOpenUserManagement((prev) => !prev);
                   }}
-                  className="flex items-center hover:text-blue-600 transition-colors duration-200 focus:outline-none"
+                  className="flex items-center hover:text-[#0680cd] transition-colors duration-200 focus:outline-none cursor-pointer"
                 >
                   <UserRoundPen size={22} />
 
                   {!session && (
                     <span
                       className="absolute top-full left-1/2 -translate-x-1/2 mt-2
-                   bg-white text-blue-600 text-s font-medium
+                   bg-white text-[#0680cd] text-s font-medium
                    px-2 py-1 rounded shadow
                    opacity-0 group-hover:opacity-100
                    transition-all duration-200
@@ -261,7 +261,7 @@ export default function Navbar() {
 
             {/* <UserRoundPen
               size={22}
-              className="hover:text-blue-600 transition-colors duration-200"
+              className="hover:text-[#0680cd] transition-colors duration-200"
             />
             {openUserManagement && (
               <div className="absolute top-full right-0 w-50 bg-white shadow-xl rounded-md mt-2 z-50 text-black hidden md:block">

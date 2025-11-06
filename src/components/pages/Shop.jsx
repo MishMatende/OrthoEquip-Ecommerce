@@ -92,7 +92,7 @@ export default function Shop() {
     <div className="border-b border-gray-100 pb-4">
       <button
         onClick={() => toggle(name)}
-        className="w-full flex justify-between items-center mb-2 text-gray-800 font-semibold text-lg hover:text-blue-600 transition"
+        className="w-full flex justify-between items-center mb-2 text-gray-800 font-semibold text-lg hover:text-[#0680cd] transition"
       >
         {title}
         {open[name] ? (
@@ -179,11 +179,11 @@ export default function Shop() {
         {/* Availability */}
         <Section title="Availability" name="availability">
           <div className="flex flex-col gap-2 text-gray-700">
-            <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+            <label className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer">
               <Checkbox checked={inStock} onCheckedChange={setInStock} />
               <span>In Stock</span>
             </label>
-            <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+            <label className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer">
               <Checkbox checked={outStock} onCheckedChange={setOutStock} />
               <span>Out of Stock</span>
             </label>
@@ -217,11 +217,11 @@ export default function Shop() {
                 return (
                   <label
                     key={category}
-                    className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+                    className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer"
                   >
                     <input
                       type="checkbox"
-                      className="accent-blue-600"
+                      className="accent-[#0680cd]"
                       checked={isChecked}
                       onChange={() =>
                         setSelectedCategories((prev) =>
@@ -250,11 +250,11 @@ export default function Shop() {
                 return (
                   <label
                     key={brand}
-                    className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+                    className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer"
                   >
                     <input
                       type="checkbox"
-                      className="accent-blue-600"
+                      className="accent-[#0680cd]"
                       checked={isChecked}
                       onChange={() =>
                         setSelectedBrands((prev) =>
@@ -302,11 +302,11 @@ export default function Shop() {
               {/* Reuse the same filter sections from sidebar */}
               <Section title="Availability" name="availability">
                 <div className="flex flex-col gap-2 text-gray-700">
-                  <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+                  <label className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer">
                     <Checkbox checked={inStock} onCheckedChange={setInStock} />
                     <span>In Stock</span>
                   </label>
-                  <label className="flex items-center gap-2 hover:text-blue-600 cursor-pointer">
+                  <label className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer">
                     <Checkbox
                       checked={outStock}
                       onCheckedChange={setOutStock}
@@ -340,11 +340,11 @@ export default function Shop() {
                     return (
                       <label
                         key={category}
-                        className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+                        className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer"
                       >
                         <input
                           type="checkbox"
-                          className="accent-blue-600"
+                          className="accent-[#0680cd]"
                           checked={isChecked}
                           onChange={() =>
                             setSelectedCategories((prev) =>
@@ -368,11 +368,11 @@ export default function Shop() {
                     return (
                       <label
                         key={brand}
-                        className="flex items-center gap-2 hover:text-blue-600 cursor-pointer"
+                        className="flex items-center gap-2 hover:text-[#0680cd] cursor-pointer"
                       >
                         <input
                           type="checkbox"
-                          className="accent-blue-600"
+                          className="accent-[#0680cd]"
                           checked={isChecked}
                           onChange={() =>
                             setSelectedBrands((prev) =>

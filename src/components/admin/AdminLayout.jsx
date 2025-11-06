@@ -31,7 +31,7 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
       <AnimatePresence>
         {(sidebarOpen || window.innerWidth >= 768) && (
@@ -40,13 +40,13 @@ export default function AdminLayout() {
             animate={{ x: 0 }}
             exit={{ x: -300 }}
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
-            className={`fixed md:static z-30 top-0 left-0 h-full w-64 backdrop-blur-xl bg-[#0680cd]/90 text-white flex flex-col shadow-xl border-r border-white/10`}
+            className={`fixed md:static z-30 top-0 left-0 h-screen w-64 bg-white text-gray-800 flex flex-col shadow-lg border-r border-gray-200`}
           >
             {/* Header */}
-            <div className="px-6 py-4 text-2xl font-bold border-b border-white/20 flex justify-between items-center">
+            <div className="px-6 py-5 text-2xl font-bold border-b border-gray-100 flex justify-between items-center">
               Admin Panel
               <button
-                className="md:hidden text-white"
+                className="md:hidden text-gray-600 hover:text-[#0680cd]"
                 onClick={() => setSidebarOpen(false)}
               >
                 <X size={22} />
@@ -54,7 +54,7 @@ export default function AdminLayout() {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 mt-6 space-y-1">
+            <nav className="flex-1 space-y-1 min-h-[90vh]">
               {navItems.map((item) => (
                 <NavLink
                   key={item.path}
@@ -62,25 +62,25 @@ export default function AdminLayout() {
                   end={item.path === "/admin"}
                   onClick={() => setSidebarOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-6 py-2.5 rounded-r-full transition-all duration-200 ${
+                    `flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? "bg-white text-[#0680cd] shadow-md font-semibold"
-                        : "hover:bg-white/20 hover:translate-x-1"
+                        ? "bg-[#0680cd] text-white font-medium shadow-sm"
+                        : "hover:bg-gray-100 text-gray-700 hover:text-[#0680cd]"
                     }`
                   }
                 >
                   {item.icon}
-                  {item.name}
+                  <span>{item.name}</span>
                 </NavLink>
               ))}
             </nav>
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/20 flex items-center justify-between text-sm">
-              <span className="truncate opacity-80">{userProfile?.email}</span>
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
+              <span className="truncate">{userProfile?.email}</span>
               <button
                 onClick={signoutUser}
-                className="hover:text-red-200 transition-colors"
+                className="hover:text-red-500 transition-colors cursor-pointer"
                 title="Sign out"
               >
                 <LogOut size={18} />
@@ -91,7 +91,7 @@ export default function AdminLayout() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 md:mx-2 transition-all p-2">
+      <main className="flex-1 md:mx-2 p-3 transition-all">
         {/* Mobile Topbar */}
         <div className="md:hidden flex items-center justify-between mb-6">
           <button
@@ -100,22 +100,18 @@ export default function AdminLayout() {
           >
             <Menu size={24} />
           </button>
-          <span className="font-semibold text-lg">Admin Panel</span>
+          <span className="font-semibold text-lg text-gray-800">
+            Admin Panel
+          </span>
           <div className="w-6" /> {/* spacer */}
         </div>
 
-        {/* Breadcrumb */}
-        {/* <div className="text-sm text-gray-500 mb-4">
-          Admin /{" "}
-          {location.pathname.split("/").slice(2).join(" / ") || "Dashboard"}
-        </div> */}
-
-        {/* Outlet renders the nested admin pages */}
+        {/* Main outlet area */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="bg-white rounded-xl shadow-sm p-4 md:p-6 min-h-[90vh]"
+          className="bg-white rounded-2xl shadow-md p-4 md:p-6 min-h-[90vh]"
         >
           <Outlet />
         </motion.div>

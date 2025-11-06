@@ -143,7 +143,7 @@ export default function AdminCategories() {
                         setEditing(cat);
                         setEditName(cat);
                       }}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="text-[#0680cd] hover:text-blue-800"
                     >
                       <Pencil size={18} />
                     </button>

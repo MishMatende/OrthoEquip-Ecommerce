@@ -87,7 +87,7 @@ export default function Home() {
           {/* Right Text */}
           <div className="flex-1 flex flex-col pl-5 justify-center text-left space-y-6 text-gray-800">
             <div>
-              <h5 className="text-sm text-blue-600 font-semibold uppercase tracking-wide">
+              <h5 className="text-sm text-[#0680cd] font-semibold uppercase tracking-wide">
                 N95 Facial Covering Mask
               </h5>
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">
@@ -123,7 +123,7 @@ export default function Home() {
             </div>
 
             <div>
-              <p className="mt-6 font-semibold text-blue-600 hover:underline cursor-pointer">
+              <p className="mt-6 font-semibold text-[#0680cd] hover:underline cursor-pointer">
                 LEARN MORE
               </p>
             </div>
