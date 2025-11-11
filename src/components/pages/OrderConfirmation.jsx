@@ -50,7 +50,7 @@ export default function OrderConfirmation() {
     return (
       <div className="text-center py-20">
         <p className="text-gray-600 mb-4">Order not found.</p>
-        <Link to="/" className="text-[#0680cd] underline hover:text-blue-800">
+        <Link to="/" className="text-[#4eb0e3] underline hover:text-blue-800">
           Back to Home
         </Link>
       </div>
@@ -62,7 +62,7 @@ export default function OrderConfirmation() {
       <main className="max-w-4xl mx-auto py-16 px-6">
         <Confetti numberOfPieces={200} recycle={false} />
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-[#0680cd] mb-3">
+          <h1 className="text-3xl font-bold text-[#4eb0e3] mb-3">
             🎉 Thank you for your order!
           </h1>
           <p className="text-gray-700">
@@ -117,7 +117,7 @@ export default function OrderConfirmation() {
             </div>
             <div className="border-t pt-3 flex justify-between font-semibold text-lg">
               <span>Total</span>
-              <span className="text-[#0680cd]">
+              <span className="text-[#4eb0e3]">
                 KES {Number(order.total_amount).toLocaleString()}
               </span>
             </div>
@@ -140,7 +140,7 @@ export default function OrderConfirmation() {
         <div className="text-center">
           <Link
             to="/orders"
-            className="bg-[#0680cd] text-white px-6 py-3 rounded-xl hover:bg-[#0570b3]"
+            className="bg-[#4eb0e3] text-white px-6 py-3 rounded-xl hover:bg-[#0570b3]"
           >
             View My Orders
           </Link>

@@ -109,7 +109,7 @@ export default function AdminProducts() {
             setEditingProduct(null);
             setShowForm(true);
           }}
-          className="flex items-center gap-2 bg-[#0680cd] text-white px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition active:scale-95"
+          className="flex items-center gap-2 bg-[#4eb0e3] text-white px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition active:scale-95"
         >
           <Plus size={18} /> Add Product
         </button>
@@ -215,7 +215,7 @@ export default function AdminProducts() {
                         setEditingProduct(product);
                         setShowForm(true);
                       }}
-                      className="text-[#0680cd] hover:text-blue-800 transition"
+                      className="text-[#4eb0e3] hover:text-blue-800 transition"
                     >
                       <Pencil size={18} />
                     </button>

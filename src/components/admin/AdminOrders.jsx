@@ -189,7 +189,7 @@ export default function AdminOrders() {
                     <td className="p-3">
                       <button
                         onClick={() => toggleExpand(order.id)}
-                        className="flex items-center gap-1 text-[#0680cd] text-sm"
+                        className="flex items-center gap-1 text-[#4eb0e3] text-sm"
                       >
                         Details
                         <ChevronDown

@@ -52,45 +52,55 @@ export default function Signin() {
   };
 
   return (
-    <div>
+    <div className="w-full flex justify-center px-4 py-8">
       <form
         onSubmit={handleSignIn}
-        className="w-full py-5 md:py-14 px-2 md:px-8 shadow-lg rounded-md bg-white"
+        className="w-full max-w-[300px] px-5 py-6 rounded-2xl backdrop-blur-lg bg-white/70 border border-white/30 shadow-lg sm:px-6 sm:py-8"
       >
-        <img
-          src={BalmOrthoLogo}
-          className="h-[100px] mx-auto"
-          alt="Balm Ortho logo"
-        />
-        <h2 className="font-bold text-xl text-center mt-4">Sign in</h2>
+        <div className="flex flex-col items-center">
+          <img
+            src={BalmOrthoLogo}
+            className="h-[70px] mb-3"
+            alt="Balm Ortho logo"
+          />
+          <h2 className="font-bold text-xl text-gray-800 mb-5">Sign in</h2>
+        </div>
 
-        <div className="flex flex-col p-4">
+        <div className="flex flex-col space-y-4">
           <input
             onChange={(e) => setEmail(e.target.value)}
-            className="p-3 border rounded-md border-black"
+            className="p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#4eb0e3] focus:outline-none bg-white/80 placeholder-gray-500 text-gray-800 text-sm"
             placeholder="Email"
             type="email"
-            name=""
+            required
           />
           <input
             onChange={(e) => setPassword(e.target.value)}
-            className="p-3 mt-6 border rounded-md border-black"
+            className="p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#4eb0e3] focus:outline-none bg-white/80 placeholder-gray-500 text-gray-800 text-sm"
             placeholder="Password"
             type="password"
-            name=""
+            required
           />
+
           <Button
             type="submit"
             disabled={loading}
-            className="mt-6 w-auto mx-auto"
+            className="mt-3 w-full py-2.5 bg-[#4eb0e3] hover:bg-[#3ca0d4] text-white font-semibold rounded-lg transition-all text-sm"
           >
-            {loading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : ""}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : ""}
             {loading ? "Signing in..." : "Sign in"}
           </Button>
-          {error && <p className="text-red-600 text-center pt-4">{error}</p>}
-          <p className="mt-4 text-center">
-            Don't have an account?{" "}
-            <Link className="text-[#0680cd] font-bold" to="/signup">
+
+          {error && (
+            <p className="text-red-600 text-center pt-1 text-sm">{error}</p>
+          )}
+
+          <p className="text-center text-gray-700 text-sm">
+            Don’t have an account?{" "}
+            <Link
+              className="text-[#4eb0e3] font-semibold hover:underline"
+              to="/signup"
+            >
               Sign up
             </Link>
           </p>

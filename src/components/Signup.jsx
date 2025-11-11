@@ -37,12 +37,12 @@ export default function Signup() {
   };
 
   return (
-    <div className="relative">
-      {/* Persistent Banner */}
+    <div className="w-full flex flex-col items-center justify-center px-4 py-8">
+      {/* Success Banner */}
       {showBanner && (
         <div
           role="alert"
-          className="bg-[#0680cd] border border-[#0680cd] text-white px-4 py-3 rounded-md mb-6 text-center font-medium"
+          className="bg-[#4eb0e3]/90 text-white px-4 py-3 rounded-lg mb-5 text-center font-medium shadow-md w-full max-w-sm"
         >
           ✅ Please check your email for a link to confirm your account.
         </div>
@@ -51,16 +51,18 @@ export default function Signup() {
       <form
         onSubmit={handleSignUp}
         autoComplete="off"
-        className="w-full py-5 md:py-14 px-2 md:px-8 shadow-lg rounded-md bg-white"
+        className="w-full max-w-[300px] px-5 py-6 sm:px-6 sm:py-8 rounded-2xl backdrop-blur-lg bg-white/70 border border-white/30 shadow-lg"
       >
-        <img
-          src={BalmOrthoLogo}
-          className="h-[100px] mx-auto"
-          alt="Balm Ortho logo"
-        />
-        <h2 className="font-bold text-xl text-center mt-4">Sign up</h2>
+        <div className="flex flex-col items-center">
+          <img
+            src={BalmOrthoLogo}
+            className="h-[70px] mb-3"
+            alt="Balm Ortho logo"
+          />
+          <h2 className="font-bold text-xl text-gray-800 mb-5">Sign up</h2>
+        </div>
 
-        <div className="flex flex-col p-4">
+        <div className="flex flex-col space-y-4">
           {/* Hidden fake inputs to stop autofill */}
           <input
             type="text"
@@ -78,7 +80,7 @@ export default function Signup() {
           <input
             onChange={(e) => setEmail(e.target.value)}
             value={email}
-            className="p-3 border rounded-md border-black"
+            className="p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#4eb0e3] focus:outline-none bg-white/80 placeholder-gray-500 text-gray-800 text-sm"
             placeholder="Email"
             type="email"
             name="user_email"
@@ -89,7 +91,7 @@ export default function Signup() {
           <input
             onChange={(e) => setPassword(e.target.value)}
             value={password}
-            className="p-3 mt-6 border rounded-md border-black"
+            className="p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#4eb0e3] focus:outline-none bg-white/80 placeholder-gray-500 text-gray-800 text-sm"
             placeholder="Password"
             type="password"
             name="user_pass"
@@ -100,16 +102,22 @@ export default function Signup() {
           <Button
             type="submit"
             disabled={loading}
-            className="mt-6 w-auto mx-auto"
+            className="mt-3 w-full py-2.5 bg-[#4eb0e3] hover:bg-[#3ca0d4] text-white font-semibold rounded-lg transition-all text-sm"
           >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : ""}
             {loading ? "Signing up..." : "Sign up"}
           </Button>
 
-          {error && <p className="text-red-600 text-center pt-4">{error}</p>}
+          {error && (
+            <p className="text-red-600 text-center pt-1 text-sm">{error}</p>
+          )}
 
-          <p className="mt-4 text-center">
+          <p className="text-center text-gray-700 text-sm">
             Already have an account?{" "}
-            <Link className="text-[#0680cd] font-bold" to="/signin">
+            <Link
+              className="text-[#4eb0e3] font-semibold hover:underline"
+              to="/signin"
+            >
               Sign in
             </Link>
           </p>

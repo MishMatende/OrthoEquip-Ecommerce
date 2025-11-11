@@ -52,7 +52,7 @@ export default function OrderTracking() {
         <p className="text-gray-600 text-lg">Order not found.</p>
         <Link
           to="/orders"
-          className="mt-4 inline-block bg-[#0680cd] text-white px-6 py-3 rounded-lg hover:bg-[#0570b3]"
+          className="mt-4 inline-block bg-[#4eb0e3] text-white px-6 py-3 rounded-lg hover:bg-[#0570b3]"
         >
           Back to Orders
         </Link>
@@ -71,7 +71,7 @@ export default function OrderTracking() {
         <div className="max-w-6xl mx-auto py-6 px-4 flex items-center justify-between">
           <Link
             to="/orders"
-            className="text-lg text-black hover:text-[#0680cd]"
+            className="text-lg text-black hover:text-[#4eb0e3]"
           >
             ← My Orders
           </Link>
@@ -98,7 +98,7 @@ export default function OrderTracking() {
                   className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition
                     ${
                       isCompleted
-                        ? "bg-[#0680cd] border-[#0680cd] text-white"
+                        ? "bg-[#4eb0e3] border-[#4eb0e3] text-white"
                         : "bg-gray-100 border-gray-300 text-gray-400"
                     }`}
                 >
@@ -106,7 +106,7 @@ export default function OrderTracking() {
                 </div>
                 <p
                   className={`mt-2 text-sm font-medium ${
-                    isActive ? "text-[#0680cd]" : "text-gray-600"
+                    isActive ? "text-[#4eb0e3]" : "text-gray-600"
                   }`}
                 >
                   {step.label}
@@ -116,7 +116,7 @@ export default function OrderTracking() {
                 {index < steps.length - 1 && (
                   <div
                     className={`hidden sm:block absolute top-5 left-[calc(50%+20px)] w-full h-[2px] ${
-                      isCompleted ? "bg-[#0680cd]" : "bg-gray-300"
+                      isCompleted ? "bg-[#4eb0e3]" : "bg-gray-300"
                     }`}
                     style={{ transform: "translateX(50%)" }}
                   />
@@ -165,7 +165,7 @@ export default function OrderTracking() {
           <div className="border-t pt-4 mt-4 text-right">
             <p className="text-gray-700">
               Total:{" "}
-              <span className="font-semibold text-[#0680cd]">
+              <span className="font-semibold text-[#4eb0e3]">
                 KES {Number(order.total_amount).toLocaleString()}
               </span>
             </p>
@@ -175,7 +175,7 @@ export default function OrderTracking() {
         {order.status === "delivered" && (
           <div className="text-center mt-10">
             <button
-              className="bg-[#0680cd] text-white px-6 py-3 rounded-xl hover:bg-[#0570b3]"
+              className="bg-[#4eb0e3] text-white px-6 py-3 rounded-xl hover:bg-[#0570b3]"
               onClick={async () => {
                 await supabase
                   .from("orders")

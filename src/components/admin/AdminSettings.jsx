@@ -136,7 +136,7 @@ export default function AdminSettings() {
               <div className="flex justify-end pt-4">
                 <Button
                   type="submit"
-                  className="bg-[#0680cd] hover:bg-[#056fb1]"
+                  className="bg-[#4eb0e3] hover:bg-[#056fb1]"
                   disabled={saving}
                 >
                   {saving ? (

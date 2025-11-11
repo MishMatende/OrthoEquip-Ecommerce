@@ -23,17 +23,17 @@ export default function Header() {
       {/* Desktop Menu */}
       <ul className="hidden md:flex items-center gap-6 ml-6 text-lg md:text-md font-medium text-gray-800">
         <Link to="/">
-          <li className="hover:text-[#0680cd] cursor-pointer">Home</li>
+          <li className="hover:text-[#4eb0e3] cursor-pointer">Home</li>
         </Link>
         <Link to="/shop">
-          <li className="hover:text-[#0680cd] cursor-pointer">Shop</li>
+          <li className="hover:text-[#4eb0e3] cursor-pointer">Shop</li>
         </Link>
-        <li className="hover:text-[#0680cd] cursor-pointer">About</li>
-        {/* <li className="hover:text-[#0680cd] cursor-pointer">Product</li> */}
+        <li className="hover:text-[#4eb0e3] cursor-pointer">About</li>
+        {/* <li className="hover:text-[#4eb0e3] cursor-pointer">Product</li> */}
 
         {/* <li
             tabIndex={0}
-            className="hover:text-[#0680cd] cursor-pointer flex flex-row justify-center flex-wrap"
+            className="hover:text-[#4eb0e3] cursor-pointer flex flex-row justify-center flex-wrap"
             onClick={() => setPageOpen(!pageOpen)}
             onFocus={() => setPageOpen(true)}
             onBlur={() => setPageOpen(false)}
@@ -66,12 +66,12 @@ export default function Header() {
           </li> */}
 
         <Link to="/contact">
-          <li className="hover:text-[#0680cd] cursor-pointer">Contact</li>
+          <li className="hover:text-[#4eb0e3] cursor-pointer">Contact</li>
         </Link>
 
         {session && (
           <Link to="/orders">
-            <li className="hover:text-[#0680cd] cursor-pointer">My Orders</li>
+            <li className="hover:text-[#4eb0e3] cursor-pointer">My Orders</li>
           </Link>
         )}
       </ul>
@@ -94,7 +94,7 @@ export default function Header() {
       </div>
 
       {/* Contact (Desktop Only) */}
-      {/* <div className="hidden md:flex items-center gap-2 text-[#0680cd] font-medium">
+      {/* <div className="hidden md:flex items-center gap-2 text-[#4eb0e3] font-medium">
         <Phone size={18} />
         <span className="text-gray-800">(+254)100-219-639</span>
       </div> */}
@@ -103,13 +103,13 @@ export default function Header() {
           <FaFacebookF className="cursor-pointer" />
         </Link>
         <Link to="https://x.com/BalmOrtho?t=GC7gm5ojOPYqG3Agl85BmQ&s=09">
-          <FaXTwitter className="text-[#0680cd] cursor-pointer" />
+          <FaXTwitter className="text-[#4eb0e3] cursor-pointer" />
         </Link>
         <Link to="https://vm.tiktok.com/ZMHc5xsa9rJev-RGEZS/">
           <FaTiktok className="cursor-pointer" />
         </Link>
         <Link to="https://www.instagram.com/balm.ortho93/#">
-          <FaInstagram className="text-[#0680cd] cursor-pointer" />
+          <FaInstagram className="text-[#4eb0e3] cursor-pointer" />
         </Link>
       </div>
 
@@ -117,25 +117,25 @@ export default function Header() {
       {isOpen && (
         <div className="absolute top-full left-0 w-full bg-white flex flex-col items-center gap-4 py-6 shadow-md text-lg font-medium text-gray-800 z-50 md:hidden">
           <Link to="/" onClick={() => setIsOpen(false)}>
-            <span className="hover:text-[#0680cd] cursor-pointer">Home</span>
+            <span className="hover:text-[#4eb0e3] cursor-pointer">Home</span>
           </Link>
           <Link to="/shop" onClick={() => setIsOpen(false)}>
-            <span className="hover:text-[#0680cd] cursor-pointer">Shop</span>
+            <span className="hover:text-[#4eb0e3] cursor-pointer">Shop</span>
           </Link>
-          <span className="hover:text-[#0680cd] cursor-pointer">About</span>
+          <span className="hover:text-[#4eb0e3] cursor-pointer">About</span>
           <Link to="/contact" onClick={() => setIsOpen(false)}>
-            <span className="hover:text-[#0680cd] cursor-pointer">Contact</span>
+            <span className="hover:text-[#4eb0e3] cursor-pointer">Contact</span>
           </Link>
           {session && (
             <Link to="/orders" onClick={() => setIsOpen(false)}>
-              <span className="hover:text-[#0680cd] cursor-pointer">
+              <span className="hover:text-[#4eb0e3] cursor-pointer">
                 My Orders
               </span>
             </Link>
           )}
 
           {/* Contact section for mobile */}
-          {/* <div className="flex items-center gap-2 text-[#0680cd] font-medium pt-4 border-t border-gray-200">
+          {/* <div className="flex items-center gap-2 text-[#4eb0e3] font-medium pt-4 border-t border-gray-200">
             <Phone size={18} />
             <span className="text-gray-800">(+254) 740-375-473</span>
           </div> */}

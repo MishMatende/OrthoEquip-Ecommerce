@@ -106,7 +106,7 @@ export default function AdminCategories() {
         />
         <Button
           onClick={handleAddCategory}
-          className="bg-[#0680cd] hover:bg-[#056fb1]"
+          className="bg-[#4eb0e3] hover:bg-[#056fb1]"
         >
           <Plus size={16} className="mr-1" /> Add
         </Button>
@@ -152,7 +152,7 @@ export default function AdminCategories() {
                         setEditing(cat);
                         setEditName(cat);
                       }}
-                      className="text-[#0680cd] hover:text-blue-800"
+                      className="text-[#4eb0e3] hover:text-blue-800"
                     >
                       <Pencil size={18} />
                     </button>

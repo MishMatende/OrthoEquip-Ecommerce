@@ -46,7 +46,7 @@ export default function AdminLayout() {
             <div className="px-6 py-5 text-2xl font-bold border-b border-gray-100 flex justify-between items-center">
               Admin Panel
               <button
-                className="md:hidden text-gray-600 hover:text-[#0680cd]"
+                className="md:hidden text-gray-600 hover:text-[#4eb0e3]"
                 onClick={() => setSidebarOpen(false)}
               >
                 <X size={22} />
@@ -64,8 +64,8 @@ export default function AdminLayout() {
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? "bg-[#0680cd] text-white font-medium shadow-sm"
-                        : "hover:bg-gray-100 text-gray-700 hover:text-[#0680cd]"
+                        ? "bg-[#4eb0e3] text-white font-medium shadow-sm"
+                        : "hover:bg-gray-100 text-gray-700 hover:text-[#4eb0e3]"
                     }`
                   }
                 >
@@ -95,7 +95,7 @@ export default function AdminLayout() {
         {/* Mobile Topbar */}
         <div className="md:hidden flex items-center justify-between mb-6">
           <button
-            className="text-gray-700 hover:text-[#0680cd]"
+            className="text-gray-700 hover:text-[#4eb0e3]"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu size={24} />

@@ -22,7 +22,7 @@ export default function TopBar() {
             <img src={mailIcon} alt="Mail icon" className="w-4 h-4" />
             <a
               href="mailto:balmortho93@gmail.com"
-              className="hover:text-[#0680cd] break-all"
+              className="hover:text-[#4eb0e3] break-all"
             >
               balmortho93@gmail.com
             </a>
@@ -44,18 +44,18 @@ export default function TopBar() {
         {/* Language + Social icons */}
         {/* <div className="hidden md:flex items-center gap-6"> */}
         {/* Language selector */}
-        {/* <div className="flex items-center gap-1 cursor-pointer hover:text-[#0680cd]"> */}
+        {/* <div className="flex items-center gap-1 cursor-pointer hover:text-[#4eb0e3]"> */}
         {/* <span>English</span> */}
         {/* <ChevronDown size={14} /> */}
         {/* </div> */}
 
         {/* Social icons */}
         {/* <div className="flex items-center gap-4"> */}
-        {/* <FaFacebookF className="hover:text-[#0680cd] cursor-pointer" /> */}
-        {/* <FaTwitter className="hover:text-[#0680cd] cursor-pointer" /> */}
-        {/* <FaYoutube className="hover:text-[#0680cd] cursor-pointer" /> */}
-        {/* <FaVimeoV className="hover:text-[#0680cd] cursor-pointer" /> */}
-        {/* <FaTiktok className="hover:text-[#0680cd] cursor-pointer" /> */}
+        {/* <FaFacebookF className="hover:text-[#4eb0e3] cursor-pointer" /> */}
+        {/* <FaTwitter className="hover:text-[#4eb0e3] cursor-pointer" /> */}
+        {/* <FaYoutube className="hover:text-[#4eb0e3] cursor-pointer" /> */}
+        {/* <FaVimeoV className="hover:text-[#4eb0e3] cursor-pointer" /> */}
+        {/* <FaTiktok className="hover:text-[#4eb0e3] cursor-pointer" /> */}
         {/* </div> */}
         {/* </div> */}
       </div>

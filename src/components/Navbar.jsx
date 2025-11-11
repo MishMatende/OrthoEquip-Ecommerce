@@ -158,7 +158,7 @@ export default function Navbar() {
         <div className="flex items-center">
           {/* Mobile Hamburger */}
           <button
-            className="md:hidden flex items-center justify-center p-2 text-white bg-[#0680cd] border rounded-md"
+            className="md:hidden flex items-center justify-center p-2 text-white bg-[#4eb0e3] border rounded-md"
             onClick={() => setOpenMobileMenu(!openMobileMenu)}
           >
             Categories
@@ -176,7 +176,7 @@ export default function Navbar() {
                 e.stopPropagation();
                 setOpenCategories((prev) => !prev);
               }}
-              className="categories-button hidden md:flex items-center gap-2 border text-white bg-[#0680cd] px-4 py-2 rounded-md hover:bg-white hover:text-black hover:border hover:border-black transition-all duration-200"
+              className="categories-button hidden md:flex items-center gap-2 border text-white bg-[#4eb0e3] px-4 py-2 rounded-md hover:bg-white hover:text-black hover:border hover:border-black transition-all duration-200"
             >
               <Menu size={18} />
               <span className="font-semibold uppercase">Categories</span>
@@ -224,7 +224,7 @@ export default function Navbar() {
             placeholder="Search for product"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-2 pl-[20px] rounded-full focus:outline-none focus:ring-2 focus:ring-[#0680cd] shadow-md hover:scale-[1.02] transition-transform duration-200"
+            className="w-full p-2 pl-[20px] rounded-full focus:outline-none focus:ring-2 focus:ring-[#4eb0e3] shadow-md hover:scale-[1.02] transition-transform duration-200"
           />
 
           {/* Search dropdown */}
@@ -261,7 +261,7 @@ export default function Navbar() {
                         <p className="text-xs text-gray-500 line-clamp-1">
                           {item.brand} • {item.category}
                         </p>
-                        <p className="text-xs text-[#0680cd] font-semibold">
+                        <p className="text-xs text-[#4eb0e3] font-semibold">
                           KES {item.price?.toLocaleString()}
                         </p>
                       </div>
@@ -277,7 +277,7 @@ export default function Navbar() {
                         setSearchTerm("");
                         setSearchResults([]);
                       }}
-                      className="px-4 py-2 text-center text-[#0680cd] font-medium text-sm cursor-pointer hover:bg-gray-50"
+                      className="px-4 py-2 text-center text-[#4eb0e3] font-medium text-sm cursor-pointer hover:bg-gray-50"
                     >
                       View all {searchResults.length} results →
                     </div>
@@ -297,10 +297,10 @@ export default function Navbar() {
           <div className="relative" onClick={() => navigate("/cart")}>
             <ShoppingCart
               size={22}
-              className="hover:text-[#0680cd] transition-colors duration-200 cursor-pointer"
+              className="hover:text-[#4eb0e3] transition-colors duration-200 cursor-pointer"
             />
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-[#0680cd] text-white text-s font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 bg-[#4eb0e3] text-white text-s font-semibold rounded-full w-4 h-4 flex items-center justify-center">
                 {cartCount}
               </span>
             )}
@@ -318,20 +318,20 @@ export default function Navbar() {
               tabIndex={0}
             >
               {/* User Button  */}
-              <div className="relative group cursor-pointer hover:text-[#0680cd]">
+              <div className="relative group cursor-pointer hover:text-[#4eb0e3]">
                 <button
                   onClick={() => {
                     if (!session) navigate("/signup");
                     else setOpenUserManagement((prev) => !prev);
                   }}
-                  className="flex items-center hover:text-[#0680cd] transition-colors duration-200 focus:outline-none cursor-pointer"
+                  className="flex items-center hover:text-[#4eb0e3] transition-colors duration-200 focus:outline-none cursor-pointer"
                 >
                   <UserRoundPen size={22} />
 
                   {!session && (
                     <span
                       className="absolute top-full left-1/2 -translate-x-1/2 mt-2
-                   bg-white text-[#0680cd] text-s font-medium
+                   bg-white text-[#4eb0e3] text-s font-medium
                    px-2 py-1 rounded shadow
                    opacity-0 group-hover:opacity-100
                    transition-all duration-200
@@ -372,7 +372,7 @@ export default function Navbar() {
 
             {/* <UserRoundPen
               size={22}
-              className="hover:text-[#0680cd] transition-colors duration-200"
+              className="hover:text-[#4eb0e3] transition-colors duration-200"
             />
             {openUserManagement && (
               <div className="absolute top-full right-0 w-50 bg-white shadow-xl rounded-md mt-2 z-50 text-black hidden md:block">
@@ -396,7 +396,7 @@ export default function Navbar() {
                 placeholder="Search for product"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 pl-[15px] rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0680cd]"
+                className="w-full p-2 pl-[15px] rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4eb0e3]"
               />
 
               {/* Dropdown results */}
@@ -435,7 +435,7 @@ export default function Navbar() {
                             <p className="text-xs text-gray-500 line-clamp-1">
                               {item.brand} • {item.category}
                             </p>
-                            <p className="text-xs text-[#0680cd] font-semibold">
+                            <p className="text-xs text-[#4eb0e3] font-semibold">
                               KES {item.price?.toLocaleString()}
                             </p>
                           </div>
@@ -451,7 +451,7 @@ export default function Navbar() {
                             setSearchResults([]);
                             setOpenMobileMenu(false);
                           }}
-                          className="px-4 py-2 text-center text-[#0680cd] font-medium text-sm cursor-pointer hover:bg-gray-50"
+                          className="px-4 py-2 text-center text-[#4eb0e3] font-medium text-sm cursor-pointer hover:bg-gray-50"
                         >
                           View all {searchResults.length} results →
                         </div>

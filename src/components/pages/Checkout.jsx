@@ -1,33 +1,51 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { useCart } from "../../context/CartContext";
 import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Checkout() {
   const { cart } = useCart();
   const { session } = UserAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const buyNowData = location.state?.buyNow ? location.state : null;
 
   const [form, setForm] = useState({
     email: "",
+    phone: "",
     firstName: "",
     lastName: "",
     address: "",
-    apartment: "",
     city: "",
     postalCode: "",
-    country: "Kenya",
-    shippingMethod: "Standard",
+    shippingMethod: "Pick up (CBD)",
   });
 
   const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("Mpesa");
+  const [mpesaNumber, setMpesaNumber] = useState("");
+  const [cardDetails, setCardDetails] = useState({
+    cardNumber: "",
+    expiry: "",
+    cvv: "",
+  });
 
-  // Autofill user email if logged in
+  const activeCart = buyNowData
+    ? [
+        {
+          product_id: buyNowData.product.id,
+          products: buyNowData.product,
+          quantity: buyNowData.quantity,
+        },
+      ]
+    : cart;
+
+  // Autofill user email
   useEffect(() => {
     if (session?.user?.email) {
       setForm((prev) => ({ ...prev, email: session.user.email }));
@@ -38,39 +56,58 @@ export default function Checkout() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const total = cart.reduce(
+  // Mpesa auto-format
+  const handleMpesaChange = (e) => {
+    let input = e.target.value.replace(/\D/g, ""); // remove non-numeric
+    if (input.startsWith("0")) input = "254" + input.slice(1);
+    if (!input.startsWith("254")) input = "254" + input;
+    if (input.length > 12) input = input.slice(0, 12);
+    setMpesaNumber("+" + input);
+  };
+
+  const total = activeCart.reduce(
     (sum, item) =>
       sum + (item.products?.price || item.price_at_add) * item.quantity,
     0
   );
 
+  const validateFields = () => {
+    const requiredBase = [
+      form.email,
+      form.phone,
+      form.firstName,
+      form.lastName,
+      form.shippingMethod,
+    ];
+
+    if (form.shippingMethod === "Delivery") {
+      requiredBase.push(form.address, form.city, form.postalCode);
+    }
+
+    if (paymentMethod === "Mpesa") {
+      requiredBase.push(mpesaNumber);
+      if (!/^(\+2547\d{8})$/.test(mpesaNumber)) return false;
+    } else {
+      requiredBase.push(
+        cardDetails.cardNumber,
+        cardDetails.expiry,
+        cardDetails.cvv
+      );
+    }
+
+    return requiredBase.every((field) => field.trim() !== "");
+  };
+
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
     if (!session) {
-      toast.error("Please sign in to complete your purchase.", {
-        position: "top-right",
-      });
+      toast.error("Please sign in to complete your purchase.");
       return;
     }
 
-    if (
-      !form.address.trim() ||
-      !form.city.trim() ||
-      !form.firstName.trim() ||
-      !form.lastName.trim()
-    ) {
-      toast.error("Please enter your full shipping details.", {
-        position: "top-right",
-      });
-      return;
-    }
-
-    if (!cart.length) {
-      toast.error("Your cart is empty.", {
-        position: "top-right",
-      });
-      navigate("/cart");
+    if (!validateFields()) {
+      toast.error("Please fill in all fields correctly.");
       return;
     }
 
@@ -79,172 +116,94 @@ export default function Checkout() {
     try {
       const shippingAddress = `
 ${form.firstName} ${form.lastName}
-${form.address}, ${form.apartment || ""}
-${form.city}, ${form.postalCode || ""}
-${form.country}
+${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
+${form.city}
+Postal code: ${form.postalCode}
+Phone: ${form.phone}
 `;
 
-      const { data: order, error: orderError } = await supabase
+      const { data: order, error } = await supabase
         .from("orders")
         .insert({
           user_id: session.user.id,
           total_amount: total,
-          status: "pending", // for business flow
-          tracking_stage: "placed", // for progress tracker
+          status: "pending",
+          tracking_stage: "placed",
           shipping_address: shippingAddress,
-          payment_method: "None",
+          payment_method: paymentMethod,
         })
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (error) throw error;
 
-      const orderItems = cart.map((item) => ({
-        order_id: order.id,
-        product_id: item.products?.id || item.product_id,
-        quantity: item.quantity,
-        price: item.products?.price || item.price_at_add,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      if (cart[0]?.cart_id) {
-        await supabase
-          .from("cart_items")
-          .delete()
-          .eq("cart_id", cart[0].cart_id);
-      }
-
-      toast.success("🎉 Order placed successfully!", {
-        position: "top-right",
-      });
+      toast.success("🎉 Order placed successfully!");
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {
-      console.error("Order error:", err);
-      toast.error("Error placing order. Please try again.", {
-        position: "top-right",
-      });
+      console.error(err);
+      toast.error("Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Redirect if cart empty
   useEffect(() => {
-    if (!cart.length) {
-      navigate("/cart");
-    }
+    if (!activeCart.length) navigate("/cart");
   }, [cart]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex flex-col">
       {/* Header */}
-      <header className="border-b bg-white">
-        <div className="max-w-6xl mx-auto py-6 px-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <img
-              src={BalmOrthoLogo}
-              className="h-[50px]"
-              alt="Balm Ortho image"
-            />
-            <h1 className="text-2xl font-semibold text-gray-800">
-              Balm Ortho medical
+      <header className="border-b bg-white/70 backdrop-blur-md sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto py-5 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src={BalmOrthoLogo} className="h-[45px]" alt="Balm Ortho" />
+            <h1 className="text-2xl font-bold text-gray-800 tracking-tight">
+              Balm Ortho Medical
             </h1>
           </div>
-          {!session && (
-            <a href="/login" className="text-sm text-[#0680cd] hover:underline">
-              Sign in
-            </a>
-          )}
+          <button
+            onClick={() => navigate("/shop")}
+            className="flex items-center text-[#4eb0e3] hover:text-[#0570b3] transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" /> Go back
+          </button>
         </div>
       </header>
 
       {/* Main */}
-      <main className="max-w-6xl mx-auto py-10 px-4 grid md:grid-cols-2 gap-10">
-        {/* LEFT SIDE — Form */}
-        <form onSubmit={handlePlaceOrder} className="space-y-8">
+      <main className="flex-grow max-w-5xl mx-auto py-12 px-4 grid lg:grid-cols-2 gap-10">
+        {/* LEFT SIDE */}
+        <form
+          onSubmit={handlePlaceOrder}
+          className="space-y-8 bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-gray-100"
+        >
           {/* Contact */}
           <section>
             <h2 className="text-lg font-semibold text-gray-800 mb-3">
               Contact
             </h2>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="Email or mobile phone number"
-              className="w-full border rounded-xl p-3 text-gray-700 mb-2 focus:ring-2 focus:ring-[#0680cd]"
-            />
-          </section>
-
-          {/* Delivery */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              Delivery
-            </h2>
-            <select
-              name="country"
-              value={form.country}
-              onChange={handleChange}
-              className="w-full border rounded-xl p-3 text-gray-700 mb-3 focus:ring-2 focus:ring-[#0680cd]"
-            >
-              <option>Kenya</option>
-              <option>Tanzania</option>
-              <option>Uganda</option>
-              <option>Rwanda</option>
-            </select>
-
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="space-y-3">
               <input
-                name="firstName"
-                value={form.firstName}
+                type="email"
+                name="email"
+                value={form.email}
                 onChange={handleChange}
-                placeholder="First name"
-                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
+                placeholder="Email"
+                required
+                className={`w-full border rounded-xl p-3 transition focus:ring-2 focus:ring-[#4eb0e3] ${
+                  session ? "bg-gray-100" : "bg-white"
+                }`}
+                readOnly={!!session}
               />
               <input
-                name="lastName"
-                value={form.lastName}
+                type="tel"
+                name="phone"
+                value={form.phone}
                 onChange={handleChange}
-                placeholder="Last name"
-                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
-              />
-            </div>
-
-            <input
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              placeholder="Address"
-              className="border rounded-xl p-3 w-full mb-3 text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
-            />
-            <input
-              name="apartment"
-              value={form.apartment}
-              onChange={handleChange}
-              placeholder="Apartment, suite, etc. (optional)"
-              className="border rounded-xl p-3 w-full mb-3 text-gray-700 focus:ring-2 focus:ring-[#0680cd]"
-            />
-
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <input
-                name="city"
-                value={form.city}
-                onChange={handleChange}
-                placeholder="City"
-                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd] required"
-              />
-              <input
-                name="postalCode"
-                value={form.postalCode}
-                onChange={handleChange}
-                placeholder="Postal code (optional)"
-                className="border rounded-xl p-3 w-full text-gray-700 focus:ring-2 focus:ring-[#0680cd]"
+                placeholder="Phone number"
+                required
+                className="w-full border rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#4eb0e3]"
               />
             </div>
           </section>
@@ -252,48 +211,173 @@ ${form.country}
           {/* Shipping Method */}
           <section>
             <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              Shipping method
+              Shipping Method
             </h2>
-            <div className="border rounded-xl flex justify-between items-center p-4">
-              <span>Standard</span>
-              <span className="font-medium text-gray-800">Free</span>
+            <select
+              name="shippingMethod"
+              value={form.shippingMethod}
+              onChange={handleChange}
+              required
+              className="w-full border rounded-xl p-3 mb-3 bg-white focus:ring-2 focus:ring-[#4eb0e3] cursor-pointer"
+            >
+              <option value="Pick up (CBD)">Pick up (CBD)</option>
+              <option value="Delivery">Delivery</option>
+            </select>
+
+            {form.shippingMethod === "Delivery" && (
+              <div className="space-y-3">
+                <input
+                  name="address"
+                  value={form.address}
+                  onChange={handleChange}
+                  placeholder="Address"
+                  required
+                  className="border rounded-xl p-3 w-full bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    name="city"
+                    value={form.city}
+                    onChange={handleChange}
+                    placeholder="City"
+                    required
+                    className="border rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                  />
+                  <input
+                    name="postalCode"
+                    value={form.postalCode}
+                    onChange={handleChange}
+                    placeholder="Postal code"
+                    required
+                    className="border rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Recipient */}
+          <section>
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+              Recipient
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                placeholder="First name"
+                required
+                className="border rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+              />
+              <input
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                placeholder="Last name"
+                required
+                className="border rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+              />
             </div>
           </section>
 
-          {/* Submit Button */}
-          <div className="pt-4 border-t">
+          {/* Payment */}
+          <section>
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+              Payment
+            </h2>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              required
+              className="w-full border rounded-xl p-3 mb-3 bg-white focus:ring-2 focus:ring-[#4eb0e3] cursor-pointer"
+            >
+              <option value="Mpesa">Mpesa</option>
+              <option value="Card">Card</option>
+            </select>
+
+            {paymentMethod === "Mpesa" ? (
+              <input
+                type="tel"
+                value={mpesaNumber}
+                onChange={handleMpesaChange}
+                placeholder="+2547XXXXXXXX"
+                required
+                className="border rounded-xl p-3 w-full bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+              />
+            ) : (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Card number"
+                  value={cardDetails.cardNumber}
+                  onChange={(e) =>
+                    setCardDetails({
+                      ...cardDetails,
+                      cardNumber: e.target.value,
+                    })
+                  }
+                  required
+                  className="border rounded-xl p-3 w-full bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="MM/YY"
+                    value={cardDetails.expiry}
+                    onChange={(e) =>
+                      setCardDetails({ ...cardDetails, expiry: e.target.value })
+                    }
+                    required
+                    className="border rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="CVV"
+                    value={cardDetails.cvv}
+                    onChange={(e) =>
+                      setCardDetails({ ...cardDetails, cvv: e.target.value })
+                    }
+                    required
+                    className="border rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                  />
+                </div>
+                <div className="flex gap-3 mt-2">
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/0/04/Mastercard-logo.png"
+                    alt="Mastercard"
+                    className="h-6"
+                  />
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png"
+                    alt="Visa"
+                    className="h-6"
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Button */}
+          <div className="flex justify-end pt-4 border-t">
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#0680cd] hover:bg-[#0570b3] w-full py-3 rounded-xl text-white text-lg"
+              className="bg-gradient-to-r from-[#4eb0e3] to-[#0570b3] hover:opacity-90 transition-all duration-300 px-8 py-3 rounded-xl text-white font-medium flex items-center cursor-pointer"
             >
-              {loading ? <Loader2 className="w-6 h-6 animate-spin mr-3" /> : ""}
-              {loading ? "Placing order..." : "Place Order"}
+              {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {loading ? "Processing..." : "Place Order"}
             </Button>
           </div>
-
-          {/* Footer Links */}
-          <footer className="text-xs text-gray-500 flex space-x-4 pt-4 border-t">
-            <a href="#" className="hover:text-[#0680cd]">
-              Refund policy
-            </a>
-            <a href="#" className="hover:text-[#0680cd]">
-              Privacy policy
-            </a>
-            <a href="#" className="hover:text-[#0680cd]">
-              Terms of service
-            </a>
-            <a href="#" className="hover:text-[#0680cd]">
-              Contact
-            </a>
-          </footer>
         </form>
 
-        {/* RIGHT SIDE — Summary */}
-        <aside className="bg-white border rounded-xl p-6 h-fit">
-          <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-          <div className="divide-y">
-            {cart.map((item) => {
+        {/* RIGHT SIDE */}
+        <aside className="bg-white/90 backdrop-blur-sm border rounded-2xl shadow-lg p-6 h-fit">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Order Summary
+          </h2>
+          <div className="divide-y divide-gray-200">
+            {activeCart.map((item) => {
               const product = item.products || item.product;
               return (
                 <div
@@ -339,7 +423,7 @@ ${form.country}
             </div>
             <div className="border-t pt-3 flex justify-between font-semibold text-lg">
               <span>Total</span>
-              <span className="text-[#0680cd]">
+              <span className="text-[#0570b3]">
                 KES {total.toLocaleString()}
               </span>
             </div>

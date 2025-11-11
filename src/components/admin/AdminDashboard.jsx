@@ -46,7 +46,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-end">
         <button
           onClick={fetchStats}
-          className="bg-[#0680cd] text-white px-4 py-2 rounded-md hover:bg-[#056fb1] transition"
+          className="bg-[#4eb0e3] text-white px-4 py-2 rounded-md hover:bg-[#056fb1] transition"
         >
           Refresh
         </button>
@@ -130,7 +130,7 @@ function LinkButton({ to, label }) {
   return (
     <Link
       to={to}
-      className="bg-[#0680cd] hover:bg-[#056fb1] text-white text-center py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition"
+      className="bg-[#4eb0e3] hover:bg-[#056fb1] text-white text-center py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition"
     >
       {label}
     </Link>

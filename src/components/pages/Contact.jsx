@@ -89,7 +89,7 @@ const Contact = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 w-full max-w-6xl px-4">
         <Link to="mailto:balmortho93@gmail.com">
           <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
-            <Mail className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
+            <Mail className="mx-auto mb-4 text-[#4eb0e3] w-10 h-10" />
             <h3 className="font-semibold text-lg mb-2">Email Address</h3>
             <p className="text-gray-600">balmortho93@gmail.com</p>
           </div>
@@ -97,7 +97,7 @@ const Contact = () => {
 
         <Link to="https://wa.me/254100219639">
           <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
-            <Phone className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
+            <Phone className="mx-auto mb-4 text-[#4eb0e3] w-10 h-10" />
             <h3 className="font-semibold text-lg mb-2">Call or WhatsApp</h3>
 
             <p className="text-gray-600">(+254)100-219-639</p>
@@ -115,7 +115,7 @@ const Contact = () => {
 
       {/* Contact Form */}
       <div className="bg-white shadow-md rounded-2xl my-10 p-8 w-full max-w-5xl border">
-        <h2 className="text-xl font-semibold mb-6 border-l-4 border-[#0680cd] pl-3">
+        <h2 className="text-xl font-semibold mb-6 border-l-4 border-[#4eb0e3] pl-3">
           Get a Queue
         </h2>
 
@@ -141,7 +141,7 @@ const Contact = () => {
                 placeholder="Enter your name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                className={`border rounded-lg p-3 w-full focus:outline-[#4eb0e3] ${
                   errors.name ? "border-red-500" : ""
                 }`}
               />
@@ -157,7 +157,7 @@ const Contact = () => {
                 placeholder="Enter email address"
                 value={formData.email}
                 onChange={handleChange}
-                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                className={`border rounded-lg p-3 w-full focus:outline-[#4eb0e3] ${
                   errors.email ? "border-red-500" : ""
                 }`}
               />
@@ -174,7 +174,7 @@ const Contact = () => {
                 name="service"
                 value={formData.service}
                 onChange={handleChange}
-                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                className={`border rounded-lg p-3 w-full focus:outline-[#4eb0e3] ${
                   errors.service ? "border-red-500" : ""
                 }`}
               >
@@ -196,7 +196,7 @@ const Contact = () => {
                 placeholder="Enter phone number"
                 value={formData.phone}
                 onChange={handleChange}
-                className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+                className={`border rounded-lg p-3 w-full focus:outline-[#4eb0e3] ${
                   errors.phone ? "border-red-500" : ""
                 }`}
               />
@@ -214,7 +214,7 @@ const Contact = () => {
               placeholder="Enter message"
               value={formData.message}
               onChange={handleChange}
-              className={`border rounded-lg p-3 w-full focus:outline-[#0680cd] ${
+              className={`border rounded-lg p-3 w-full focus:outline-[#4eb0e3] ${
                 errors.message ? "border-red-500" : ""
               }`}
             ></textarea>
@@ -229,9 +229,9 @@ const Contact = () => {
             disabled={loading}
             className={`${
               loading
-                ? "bg-[#0680cd] cursor-not-allowed"
-                : "bg-white text-[#0680cd] cursor-pointer hover:bg-[#0680cd] hover:text-white"
-            } font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 border border-[#0680cd]`}
+                ? "bg-[#4eb0e3] cursor-not-allowed"
+                : "bg-white text-[#4eb0e3] cursor-pointer hover:bg-[#4eb0e3] hover:text-white"
+            } font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 border border-[#4eb0e3]`}
           >
             {loading ? (
               <>

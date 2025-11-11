@@ -68,7 +68,7 @@ export default function Orders() {
         <p className="text-gray-600 text-lg">You have no orders yet.</p>
         <Link
           to="/shop"
-          className="mt-4 inline-block bg-[#0680cd] text-white px-6 py-3 rounded-lg hover:bg-[#0570b3]"
+          className="mt-4 inline-block bg-[#4eb0e3] text-white px-6 py-3 rounded-lg hover:bg-[#0570b3]"
         >
           Go to Shop
         </Link>
@@ -101,7 +101,7 @@ export default function Orders() {
                   className={`relative px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition
               ${
                 selectedStatus === status
-                  ? "bg-[#0680cd] text-white shadow-sm"
+                  ? "bg-[#4eb0e3] text-white shadow-sm"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
                 >
@@ -113,7 +113,7 @@ export default function Orders() {
                 ${
                   selectedStatus === status
                     ? "bg-white/20 text-white"
-                    : "bg-[#0680cd]/10 text-[#0680cd]"
+                    : "bg-[#4eb0e3]/10 text-[#4eb0e3]"
                 }`}
                   >
                     {count}
@@ -126,7 +126,7 @@ export default function Orders() {
           {/* Continue Shopping Link */}
           <Link
             to="/"
-            className="text-md text-black hover:text-[#0680cd] whitespace-nowrap"
+            className="text-md text-black hover:text-[#4eb0e3] whitespace-nowrap"
           >
             Continue Shopping →
           </Link>
@@ -148,7 +148,7 @@ export default function Orders() {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
                 <div>
                   <p className="font-semibold text-gray-800">
-                    Order ID: <span className="text-[#0680cd]">{order.id}</span>
+                    Order ID: <span className="text-[#4eb0e3]">{order.id}</span>
                   </p>
                   <p className="text-sm text-gray-500">
                     Placed on{" "}
@@ -160,7 +160,7 @@ export default function Orders() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-[#0680cd]">
+                  <p className="font-semibold text-[#4eb0e3]">
                     Total: KES {Number(order.total_amount).toLocaleString()}
                   </p>
                   <p
@@ -215,7 +215,7 @@ export default function Orders() {
               <div className="flex flex-col justify-between sm:flex-row gap-3 mt-4">
                 <Link
                   to={`/order-confirmation/${order.id}`}
-                  className="text-sm text-[#0680cd] hover:underline"
+                  className="text-sm text-[#4eb0e3] hover:underline"
                 >
                   View Details →
                 </Link>
@@ -227,7 +227,7 @@ export default function Orders() {
       order.tracking_stage === "delivered" ||
       order.tracking_stage === "reviewed"
         ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-        : "bg-[#0680cd] text-white hover:bg-[#0570b3]"
+        : "bg-[#4eb0e3] text-white hover:bg-[#0570b3]"
     }`}
                 >
                   Track Order

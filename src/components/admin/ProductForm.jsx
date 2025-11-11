@@ -215,7 +215,7 @@ export default function ProductForm({ onClose, onSaved, editingProduct }) {
             </Button>
             <Button
               type="submit"
-              className="bg-[#0680cd] hover:bg-[#056fb1]"
+              className="bg-[#4eb0e3] hover:bg-[#056fb1]"
               disabled={saving}
             >
               {saving ? (

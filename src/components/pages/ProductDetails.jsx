@@ -11,6 +11,7 @@ import {
 } from "../../components/ui/tabs";
 import { Loader2, Minus, Plus } from "lucide-react";
 import { useCart } from "../../context/CartContext";
+import { useNavigate } from "react-router-dom";
 
 export default function ProductDetails() {
   const { addToCart } = useCart();
@@ -23,6 +24,7 @@ export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [zoom, setZoom] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
+  const navigate = useNavigate();
 
   // Fetch product from Supabase
   useEffect(() => {
@@ -134,7 +136,7 @@ export default function ProductDetails() {
                   onClick={() => setSelectedImage(url)}
                   className={`w-20 h-20 object-cover rounded-xl border-2 cursor-pointer transition-transform hover:scale-105 ${
                     selectedImage === url
-                      ? "border-[#0680cd]"
+                      ? "border-[#4eb0e3]"
                       : "border-transparent hover:border-gray-300"
                   }`}
                   alt={`Product ${idx + 1}`}
@@ -150,7 +152,7 @@ export default function ProductDetails() {
           </h1>
 
           <div className="flex items-center gap-3 mt-3">
-            <p className="text-2xl sm:text-3xl font-bold text-[#0680cd]">
+            <p className="text-2xl sm:text-3xl font-bold text-[#4eb0e3]">
               KES {Number(product.price).toLocaleString()}
             </p>
             {/* {product.old_price && (
@@ -159,7 +161,7 @@ export default function ProductDetails() {
               </p>
             )}
             {product.discount && (
-              <span className="text-sm bg-[#0680cd] text-green-600 font-semibold px-2 py-1 rounded">
+              <span className="text-sm bg-[#4eb0e3] text-green-600 font-semibold px-2 py-1 rounded">
                 Save -{product.discount}%
               </span>
             )} */}
@@ -193,37 +195,69 @@ export default function ProductDetails() {
           </div>
 
           {/* Quantity + Buttons */}
-          <div className="flex items-center gap-4 mt-6">
-            <div className="flex items-center border rounded-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-6 w-full">
+            {/* Quantity Selector */}
+            <div className="flex items-center justify-between sm:justify-start border rounded-xl w-full sm:w-auto">
               <button
                 className="p-2 hover:bg-gray-100 cursor-pointer"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
               >
                 <Minus size={16} />
               </button>
               <span className="px-4 text-gray-700">{quantity}</span>
               <button
-                className="p-2 hover:bg-gray-100 cursor-pointer"
-                onClick={() => setQuantity(quantity + 1)}
+                className={`p-2 hover:bg-gray-100 cursor-pointer ${
+                  quantity >= product.stock
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+                onClick={() =>
+                  setQuantity((prev) =>
+                    prev < product.stock ? prev + 1 : prev
+                  )
+                }
+                disabled={quantity >= product.stock}
               >
                 <Plus size={16} />
               </button>
             </div>
+
+            {/* Add to Cart */}
             <Button
-              onClick={() => addToCart(product, quantity)}
-              className="bg-[#0680cd] hover:bg-[#0680cd] rounded-xl px-6 cursor-pointer text-white"
+              onClick={() => {
+                const safeQuantity = Math.min(quantity, product.stock);
+                addToCart(product, safeQuantity);
+              }}
+              className="bg-[#4eb0e3] hover:bg-[#3ca0d4] rounded-xl w-full sm:w-auto px-6 py-3 text-white font-semibold"
               disabled={product.stock <= 0}
             >
               {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
+
+            {/* Buy it now */}
             <Button
               variant="outline"
-              className={`rounded-xl px-6 ${
+              className={`rounded-xl w-full sm:w-auto px-6 py-3 font-semibold ${
                 product.stock <= 0
                   ? "opacity-50 cursor-not-allowed"
                   : "cursor-pointer hover:bg-gray-100"
               }`}
-              disabled={product.stock <= 0} // ✅ disables the button
+              disabled={product.stock <= 0}
+              onClick={() =>
+                navigate("/checkout", {
+                  state: {
+                    buyNow: true,
+                    product: {
+                      id: product.id,
+                      name: product.name,
+                      price: product.price,
+                      image_url: product.image_url,
+                    },
+                    quantity,
+                  },
+                })
+              }
             >
               {product.stock <= 0 ? "Out of Stock" : "Buy it now"}
             </Button>

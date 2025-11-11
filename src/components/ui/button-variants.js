@@ -6,11 +6,11 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border border-gray-300 bg-white text-black hover:bg-[#0680cd] hover:text-white hover:border-[#0680cd]",
-        filled: "bg-[#0680cd] text-white hover:bg-[#056eb1]",
-        ghost: "text-black hover:bg-[#0680cd]/10 hover:text-[#0680cd]",
+          "border border-gray-300 bg-white text-black hover:bg-[#4eb0e3] hover:text-white hover:border-[#4eb0e3]",
+        filled: "bg-[#4eb0e3] text-white hover:bg-[#056eb1]",
+        ghost: "text-black hover:bg-[#4eb0e3]/10 hover:text-[#4eb0e3]",
         outline:
-          "border border-gray-300 bg-transparent text-black hover:bg-[#0680cd] hover:text-white",
+          "border border-gray-300 bg-transparent text-black hover:bg-[#4eb0e3] hover:text-white",
       },
       size: {
         default: "h-9 px-4 py-2",

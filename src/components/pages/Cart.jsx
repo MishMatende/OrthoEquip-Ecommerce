@@ -213,13 +213,13 @@ export default function Cart() {
       <div className="mt-10 flex flex-col sm:flex-row justify-between items-center border-t pt-6">
         <p className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 sm:mb-0">
           Total:{" "}
-          <span className="text-[#0680cd]">KES {total.toLocaleString()}</span>
+          <span className="text-[#4eb0e3]">KES {total.toLocaleString()}</span>
         </p>
 
         <Button
           onClick={handleCheckout}
           className="
-            bg-[#0680cd] hover:bg-[#0570b3]
+            bg-[#4eb0e3] hover:bg-[#0570b3]
             px-8 py-3 rounded-xl text-white text-lg w-full sm:w-auto
           "
         >
