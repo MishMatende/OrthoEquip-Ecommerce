@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Phone, Menu, X, ChevronDown } from "lucide-react";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
 import { UserAuth } from "../context/AuthContext";
+import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 
 export default function Header() {
   const [pageOpen, setPageOpen] = useState(false);
@@ -15,7 +17,7 @@ export default function Header() {
       <div className="flex items-center space-x-2">
         <img src={BalmOrthoLogo} className="h-[50px]" alt="Balm Ortho image" />
 
-        <span className="text-2xl font-semibold">Balm Ortho Medical</span>
+        <span className="text-2xl font-semibold">Balm Ortho</span>
       </div>
 
       {/* Desktop Menu */}
@@ -92,9 +94,23 @@ export default function Header() {
       </div>
 
       {/* Contact (Desktop Only) */}
-      <div className="hidden md:flex items-center gap-2 text-[#0680cd] font-medium">
+      {/* <div className="hidden md:flex items-center gap-2 text-[#0680cd] font-medium">
         <Phone size={18} />
         <span className="text-gray-800">(+254)100-219-639</span>
+      </div> */}
+      <div className="hidden md:flex space-x-4 mt-5 text-xl">
+        <Link to="https://www.facebook.com/profile.php?id=61580544819951">
+          <FaFacebookF className="cursor-pointer" />
+        </Link>
+        <Link to="https://x.com/BalmOrtho?t=GC7gm5ojOPYqG3Agl85BmQ&s=09">
+          <FaXTwitter className="text-[#0680cd] cursor-pointer" />
+        </Link>
+        <Link to="https://vm.tiktok.com/ZMHc5xsa9rJev-RGEZS/">
+          <FaTiktok className="cursor-pointer" />
+        </Link>
+        <Link to="https://www.instagram.com/balm.ortho93/#">
+          <FaInstagram className="text-[#0680cd] cursor-pointer" />
+        </Link>
       </div>
 
       {/* Mobile Menu Dropdown */}
@@ -119,10 +135,10 @@ export default function Header() {
           )}
 
           {/* Contact section for mobile */}
-          <div className="flex items-center gap-2 text-[#0680cd] font-medium pt-4 border-t border-gray-200">
+          {/* <div className="flex items-center gap-2 text-[#0680cd] font-medium pt-4 border-t border-gray-200">
             <Phone size={18} />
             <span className="text-gray-800">(+254) 740-375-473</span>
-          </div>
+          </div> */}
         </div>
       )}
     </nav>

@@ -74,7 +74,9 @@ export function CartProvider({ children }) {
 
       localStorage.setItem("cart", JSON.stringify(localCart));
       setCart(localCart);
-      toast.success("Added to cart!");
+      toast.success("Added to cart!", {
+        position: "top-right",
+      });
       return;
     }
 
@@ -108,7 +110,9 @@ export function CartProvider({ children }) {
     }
 
     await fetchOrCreateCart();
-    toast.success("Added to cart!");
+    toast.success("Added to cart!", {
+      position: "top-right",
+    });
   }
 
   // ---------------------------

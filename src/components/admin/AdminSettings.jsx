@@ -67,10 +67,14 @@ export default function AdminSettings() {
       };
       const { error } = await supabase.from("profiles").upsert(updates);
       if (error) throw error;
-      toast.success("Profile updated!");
+      toast.success("Profile updated!", {
+        position: "top-right",
+      });
     } catch (error) {
       console.error("Error saving profile:", error);
-      toast.error("Failed to update profile");
+      toast.error("Failed to update profile", {
+        position: "top-right",
+      });
     } finally {
       setSaving(false);
     }

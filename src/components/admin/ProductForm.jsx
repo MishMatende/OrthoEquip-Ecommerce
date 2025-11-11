@@ -80,7 +80,9 @@ export default function ProductForm({ onClose, onSaved, editingProduct }) {
       onClose(); // close modal
     } catch (error) {
       console.error("Error saving product:", error);
-      toast.error("Failed to save product");
+      toast.error("Failed to save product", {
+        position: "top-right",
+      });
     } finally {
       setSaving(false);
     }

@@ -211,7 +211,7 @@ export default function ProductDetails() {
             </div>
             <Button
               onClick={() => addToCart(product, quantity)}
-              className="bg-[#0680cd] hover:bg-[#0680cd] rounded-xl px-6 cursor-pointer"
+              className="bg-[#0680cd] hover:bg-[#0680cd] rounded-xl px-6 cursor-pointer text-white"
               disabled={product.stock <= 0}
             >
               {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
@@ -252,7 +252,7 @@ export default function ProductDetails() {
           </TabsContent>
 
           <TabsContent value="shipping" className="pt-6 text-gray-600 text-sm">
-            Fast delivery. Orders are processed within 1–2 business days.
+            Fast delivery. Orders are processed within the same day.
           </TabsContent>
         </Tabs>
       </div>

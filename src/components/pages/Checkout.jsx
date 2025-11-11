@@ -48,7 +48,9 @@ export default function Checkout() {
     e.preventDefault();
 
     if (!session) {
-      toast.error("Please sign in to complete your purchase.");
+      toast.error("Please sign in to complete your purchase.", {
+        position: "top-right",
+      });
       return;
     }
 
@@ -58,12 +60,16 @@ export default function Checkout() {
       !form.firstName.trim() ||
       !form.lastName.trim()
     ) {
-      toast.error("Please enter your full shipping details.");
+      toast.error("Please enter your full shipping details.", {
+        position: "top-right",
+      });
       return;
     }
 
     if (!cart.length) {
-      toast.error("Your cart is empty.");
+      toast.error("Your cart is empty.", {
+        position: "top-right",
+      });
       navigate("/cart");
       return;
     }
@@ -113,11 +119,15 @@ ${form.country}
           .eq("cart_id", cart[0].cart_id);
       }
 
-      toast.success("🎉 Order placed successfully!");
+      toast.success("🎉 Order placed successfully!", {
+        position: "top-right",
+      });
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {
       console.error("Order error:", err);
-      toast.error("Error placing order. Please try again.");
+      toast.error("Error placing order. Please try again.", {
+        position: "top-right",
+      });
     } finally {
       setLoading(false);
     }

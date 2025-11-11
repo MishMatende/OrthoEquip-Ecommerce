@@ -13,18 +13,22 @@ export default function Cart() {
 
   const handleCheckout = async () => {
     if (!session) {
-      toast.error("Please sign in to complete your purchase.");
+      toast.error("Please sign in to complete your purchase.", {
+        position: "top-right",
+      });
       return;
     }
     if (!cart.length) {
-      toast.error("Your cart is empty.");
+      toast.error("Your cart is empty.", {
+        position: "top-right",
+      });
       return;
     }
     navigate("/checkout");
 
     const totalAmount = cart.reduce(
       (sum, item) =>
-        sum + (item.products?.price || item.price_at_add) * item.quantity,
+        sum + (item.product?.price || item.price_at_add) * item.quantity,
       0
     );
 
@@ -40,15 +44,17 @@ export default function Cart() {
 
     if (orderError) {
       console.error("Error creating order:", orderError);
-      toast.error("Error placing order. Please try again.");
+      toast.error("Error placing order. Please try again.", {
+        position: "top-right",
+      });
       return;
     }
 
     const orderItems = cart.map((item) => ({
       order_id: order.id,
-      product_id: item.products?.id || item.product_id,
+      product_id: item.product?.id || item.product_id,
       quantity: item.quantity,
-      price: item.products?.price || item.price_at_add,
+      price: item.product?.price || item.price_at_add,
     }));
 
     const { error: itemsError } = await supabase
@@ -57,17 +63,21 @@ export default function Cart() {
 
     if (itemsError) {
       console.error("Error adding order items:", itemsError);
-      toast.error("Error saving order items.");
+      toast.error("Error saving order items.", {
+        position: "top-right",
+      });
       return;
     }
 
     await supabase.from("cart_items").delete().eq("cart_id", cart[0].cart_id);
-    toast.success("🎉 Order placed successfully!");
+    toast.success("🎉 Order placed successfully!", {
+      position: "top-right",
+    });
   };
 
   const total = cart.reduce(
     (sum, item) =>
-      sum + (item.products?.price || item.price_at_add) * item.quantity,
+      sum + (item.product?.price || item.price_at_add) * item.quantity,
     0
   );
 
@@ -78,6 +88,8 @@ export default function Cart() {
       </div>
     );
   }
+
+  console.log(cart);
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8">

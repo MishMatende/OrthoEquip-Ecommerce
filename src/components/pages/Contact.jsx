@@ -87,11 +87,11 @@ const Contact = () => {
     <div className="flex flex-col items-center mx-[0%] md:mx-[2%] lg:mx-[20%] text-center">
       {/* Contact Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 w-full max-w-6xl px-4">
-        <Link to="mailto:hnyambura1997@gmail.com">
+        <Link to="mailto:balmortho93@gmail.com">
           <div className="bg-white shadow-md rounded-2xl p-6 text-center border">
             <Mail className="mx-auto mb-4 text-[#0680cd] w-10 h-10" />
             <h3 className="font-semibold text-lg mb-2">Email Address</h3>
-            <p className="text-gray-600">hnyambura1997@gmail.com</p>
+            <p className="text-gray-600">balmortho93@gmail.com</p>
           </div>
         </Link>
 
@@ -114,7 +114,7 @@ const Contact = () => {
       </div>
 
       {/* Contact Form */}
-      <div className="bg-white shadow-md rounded-2xl mt-10 p-8 w-full max-w-5xl border">
+      <div className="bg-white shadow-md rounded-2xl my-10 p-8 w-full max-w-5xl border">
         <h2 className="text-xl font-semibold mb-6 border-l-4 border-[#0680cd] pl-3">
           Get a Queue
         </h2>
@@ -181,6 +181,8 @@ const Contact = () => {
                 <option value="">Select Service Type</option>
                 <option value="Support">Support</option>
                 <option value="Feedback">Feedback</option>
+                <option value="Feedback">Complaint</option>
+                <option value="Feedback">Item Availability</option>
               </select>
               {errors.service && (
                 <p className="text-red-500 text-sm mt-1">{errors.service}</p>

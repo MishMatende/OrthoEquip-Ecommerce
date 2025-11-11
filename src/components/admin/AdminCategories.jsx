@@ -39,7 +39,10 @@ export default function AdminCategories() {
     if (!newCategory.trim()) return;
     // optional: create a "dummy" category placeholder by updating existing product
     toast.success(
-      `Category "${newCategory}" added! You can now assign products to it.`
+      `Category "${newCategory}" added! You can now assign products to it.`,
+      {
+        position: "top-right",
+      }
     );
     setCategories([...categories, newCategory.trim()]);
     setNewCategory("");
@@ -53,10 +56,14 @@ export default function AdminCategories() {
       .update({ category: newName })
       .eq("category", oldName);
     if (error) {
-      toast.error("Error renaming category");
+      toast.error("Error renaming category", {
+        position: "top-right",
+      });
       console.error(error);
     } else {
-      toast.success(`Renamed "${oldName}" → "${newName}"`);
+      toast.success(`Renamed "${oldName}" → "${newName}"`, {
+        position: "top-right",
+      });
       fetchCategories();
     }
     setEditing(null);
@@ -80,7 +87,9 @@ export default function AdminCategories() {
       toast.error("Error deleting category");
       console.error(error);
     } else {
-      toast.success(`Category "${cat}" deleted.`);
+      toast.success(`Category "${cat}" deleted.`, {
+        position: "top-right",
+      });
       fetchCategories();
     }
   };

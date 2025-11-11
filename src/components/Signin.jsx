@@ -88,7 +88,7 @@ export default function Signin() {
             {loading ? "Signing in..." : "Sign in"}
           </Button>
           {error && <p className="text-red-600 text-center pt-4">{error}</p>}
-          <p className="mt-4">
+          <p className="mt-4 text-center">
             Don't have an account?{" "}
             <Link className="text-[#0680cd] font-bold" to="/signup">
               Sign up

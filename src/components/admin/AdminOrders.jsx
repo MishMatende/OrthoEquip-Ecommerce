@@ -18,7 +18,10 @@ export default function AdminOrders() {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) toast.error("Failed to fetch orders");
+    if (error)
+      toast.error("Failed to fetch orders", {
+        position: "top-right",
+      });
     else setOrders(data || []);
 
     setLoading(false);
@@ -36,7 +39,9 @@ export default function AdminOrders() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
         (payload) => {
-          toast.success(`🆕 New order received! ID: ${payload.new.id}`);
+          toast.success(`🆕 New order received! ID: ${payload.new.id}`, {
+            position: "top-right",
+          });
           fetchOrders();
         }
       )
@@ -54,9 +59,14 @@ export default function AdminOrders() {
       .update({ ...updates })
       .eq("id", id);
 
-    if (error) toast.error("Failed to update order");
+    if (error)
+      toast.error("Failed to update order", {
+        position: "top-right",
+      });
     else {
-      toast.success("Order updated");
+      toast.success("Order updated", {
+        position: "top-right",
+      });
       fetchOrders();
     }
   };
@@ -81,7 +91,9 @@ export default function AdminOrders() {
     if (!error) {
       setOrderItems((prev) => ({ ...prev, [orderId]: data }));
     } else {
-      toast.error("Failed to load order details");
+      toast.error("Failed to load order details", {
+        position: "top-right",
+      });
     }
   };
 

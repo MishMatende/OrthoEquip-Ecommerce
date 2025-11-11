@@ -15,6 +15,7 @@ import {
 import React from "react";
 import { Link } from "react-router-dom";
 import { UserAuth } from "../context/AuthContext";
+import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
 
 export default function Footer() {
   const { session } = UserAuth();
@@ -25,9 +26,12 @@ export default function Footer() {
         {/* Left section */}
         <div className="md:col-span-2">
           <div className="flex items-center mb-4 space-x-2">
-            <h2 className="text-2xl font-semibold text-white">
-              Balm Ortho medical
-            </h2>
+            <img
+              src={BalmOrthoLogo}
+              className="h-[50px]"
+              alt="Balm Ortho image"
+            />
+            <h2 className="text-2xl font-semibold text-white">Balm Ortho</h2>
           </div>
           <p className="text-sm text-left leading-6 mb-4">
             Lorem Ipsum is simply dummy text of the and typesetting industry.
@@ -41,11 +45,11 @@ export default function Footer() {
             </li> */}
             <li className="flex items-center space-x-2">
               <FaPhone className="text-teal-500" />
-              <span>(+254) 740-375-473</span>
+              <span>(+254)100-219-639</span>
             </li>
             <li className="flex items-center space-x-2">
               <FaEnvelope className="text-teal-500" />
-              <span>hnyambura1997@gmail.com</span>
+              <span>balmortho93@gmail.com</span>
             </li>
           </ul>
 
@@ -70,10 +74,10 @@ export default function Footer() {
         <div>
           <h3 className="text-lg font-semibold text-white mb-4">Company</h3>
           <ul className="space-y-2 text-sm">
-            <Link to="/about">
+            <Link to="/">
               <li>Home</li>
             </Link>
-            <Link to="/about">
+            <Link to="/">
               <li>About</li>
             </Link>
             <Link to="/shop">

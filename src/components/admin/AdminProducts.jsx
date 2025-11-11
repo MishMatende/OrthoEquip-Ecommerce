@@ -22,7 +22,10 @@ export default function AdminProducts() {
       .from("products")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error) toast.error("Error fetching products");
+    if (error)
+      toast.error("Error fetching products", {
+        position: "top-right",
+      });
     else setProducts(data || []);
     setLoading(false);
   };
@@ -34,9 +37,14 @@ export default function AdminProducts() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this product?")) return;
     const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) toast.error("Error deleting product");
+    if (error)
+      toast.error("Error deleting product", {
+        position: "top-right",
+      });
     else {
-      toast.success("Product deleted");
+      toast.success("Product deleted", {
+        position: "top-right",
+      });
       fetchProducts();
     }
   };
