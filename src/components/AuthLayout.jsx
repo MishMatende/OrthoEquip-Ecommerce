@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import BarmOrthoBackground from "../assets/BarmOrthoBackground.png";
+import BarmOrthoBackground from "../assets/BarmOrthoBackground.webp";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
 
 function AuthLayout() {

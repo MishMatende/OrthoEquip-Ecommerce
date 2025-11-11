@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Phone, Menu, X, ChevronDown } from "lucide-react";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
@@ -6,17 +6,64 @@ import { UserAuth } from "../context/AuthContext";
 import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 
+// ⭐ Prefetch helper hook (with hover + delay)
+function usePrefetchRoute(path, importFunc, delay = 150) {
+  React.useEffect(() => {
+    const link = document.querySelector(`a[href='${path}']`);
+    if (!link) return;
+
+    let timer;
+
+    const handleMouseEnter = () => {
+      timer = setTimeout(() => importFunc(), delay);
+    };
+
+    const handleMouseLeave = () => {
+      clearTimeout(timer);
+    };
+
+    link.addEventListener("mouseenter", handleMouseEnter);
+    link.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      link.removeEventListener("mouseenter", handleMouseEnter);
+      link.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, [path, importFunc, delay]);
+}
+
 export default function Header() {
   const [pageOpen, setPageOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const { session } = UserAuth();
 
+  // 🧠 Prefetch key pages on hover
+  usePrefetchRoute("/shop", () => import("./pages/Shop"));
+  usePrefetchRoute("/cart", () => import("./pages/Cart"));
+  usePrefetchRoute("/checkout", () => import("./pages/Checkout"));
+  usePrefetchRoute("/orders", () => import("./pages/Orders"));
+
+  // 📱 Prefetch on mobile menu open (runs once each time menu is toggled open)
+  useEffect(() => {
+    if (isOpen) {
+      // Slight delay so it doesn’t compete with animations
+      const timeout = setTimeout(() => {
+        Promise.allSettled([
+          import("./pages/Shop"),
+          import("./pages/Cart"),
+          import("./pages/Checkout"),
+          import("./pages/Orders"),
+        ]);
+      }, 200);
+      return () => clearTimeout(timeout);
+    }
+  }, [isOpen]);
+
   return (
     <nav className="relative flex justify-between items-center py-6 px-[4%] bg-white shadow-sm mx-[0%] md:mx-[5%] lg:mx-[10%] text-center">
       <div className="flex items-center space-x-2">
         <img src={BalmOrthoLogo} className="h-[50px]" alt="Balm Ortho image" />
-
         <span className="text-2xl font-semibold">Balm Ortho</span>
       </div>
 
@@ -31,7 +78,8 @@ export default function Header() {
         <li className="hover:text-[#4eb0e3] cursor-pointer">About</li>
         {/* <li className="hover:text-[#4eb0e3] cursor-pointer">Product</li> */}
 
-        {/* <li
+        {/* 
+          <li
             tabIndex={0}
             className="hover:text-[#4eb0e3] cursor-pointer flex flex-row justify-center flex-wrap"
             onClick={() => setPageOpen(!pageOpen)}
@@ -63,7 +111,8 @@ export default function Header() {
                 </ul>
               </div>
             )}
-          </li> */}
+          </li>
+        */}
 
         <Link to="/contact">
           <li className="hover:text-[#4eb0e3] cursor-pointer">Contact</li>
@@ -94,10 +143,12 @@ export default function Header() {
       </div>
 
       {/* Contact (Desktop Only) */}
-      {/* <div className="hidden md:flex items-center gap-2 text-[#4eb0e3] font-medium">
-        <Phone size={18} />
-        <span className="text-gray-800">(+254)100-219-639</span>
-      </div> */}
+      {/* 
+        <div className="hidden md:flex items-center gap-2 text-[#4eb0e3] font-medium">
+          <Phone size={18} />
+          <span className="text-gray-800">(+254)100-219-639</span>
+        </div>
+      */}
       <div className="hidden md:flex space-x-4 mt-5 text-xl">
         <Link to="https://www.facebook.com/profile.php?id=61580544819951">
           <FaFacebookF className="cursor-pointer" />
@@ -135,10 +186,12 @@ export default function Header() {
           )}
 
           {/* Contact section for mobile */}
-          {/* <div className="flex items-center gap-2 text-[#4eb0e3] font-medium pt-4 border-t border-gray-200">
-            <Phone size={18} />
-            <span className="text-gray-800">(+254) 740-375-473</span>
-          </div> */}
+          {/* 
+            <div className="flex items-center gap-2 text-[#4eb0e3] font-medium pt-4 border-t border-gray-200">
+              <Phone size={18} />
+              <span className="text-gray-800">(+254) 740-375-473</span>
+            </div>
+          */}
         </div>
       )}
     </nav>
