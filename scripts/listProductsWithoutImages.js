@@ -27,9 +27,7 @@ async function listProductsWithoutImages() {
   console.log(`Found ${data.length} products without image_url:\n`);
 
   data.forEach((p) => {
-    console.log(
-      `ID: ${p.id} | Code: ${p.product_code} | Name: ${p.name || "(no name)"}`
-    );
+    console.log(`Code: ${p.product_code} | Name: ${p.name || "(no name)"}`);
   });
 
   console.log("\n===============================");
