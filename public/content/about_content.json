@@ -1,0 +1,84 @@
+{
+  "hero": {
+    "title": "Balm Ortho Medical Supplies",
+    "subtitle": "Kenya’s dedicated e-commerce platform for orthopedic and general medical supplies — supporting hospitals, clinics and healthcare professionals with reliable access to certified products, competitive pricing and dependable delivery nationwide.",
+    "primaryCta": { "label": "Shop products", "href": "/shop" },
+    "secondaryCta": {
+      "label": "Company policies",
+      "href": "/mnt/data/BALM ORTHO MEDICAL SUPPLIES - POLICIES.docx"
+    }
+  },
+  "stats": [
+    { "title": "Nationwide delivery", "value": "Across Kenya" },
+    { "title": "Trusted partners", "value": "Hospitals & Clinics" },
+    { "title": "Product categories", "value": "Orthopedics & Consumables" },
+    { "title": "Support", "value": "Phone & Email" }
+  ],
+  "features": [
+    {
+      "title": "Our Vision",
+      "text": "To be Kenya's most trusted ecommerce platform in orthopedic and medical supply solutions, empowering healthcare providers to deliver exceptional patient care through reliable access to quality medical products.",
+      "accent": "#F0FAFF"
+    },
+    {
+      "title": "Our Mission",
+      "text": "Provide healthcare facilities, clinics, and practitioners across Kenya with high quality orthopedic and medical supplies — ensuring timely delivery, competitive pricing and exceptional service while maintaining strict regulatory compliance.",
+      "accent": "#F7FFF6"
+    },
+    {
+      "title": "Core Values",
+      "text": [
+        {
+          "label": "Quality Assurance",
+          "body": "Only certified, reliable products."
+        },
+        { "label": "Reliability", "body": "Timely delivery you can trust." },
+        {
+          "label": "Integrity",
+          "body": "Transparent pricing and honest practices."
+        },
+        { "label": "Customer Focus", "body": "Building lasting partnerships." },
+        {
+          "label": "Accessibility",
+          "body": "Making supplies available across Kenya."
+        }
+      ],
+      "accent": "#fff7f0"
+    }
+  ],
+  "policies": {
+    "text": "Read our refund, privacy and terms of service to understand your rights and our commitments. Downloads available below."
+  },
+  "contact": {
+    "email": "balmortho93@gmail.com",
+    "phone": "+2540100219639",
+    "location": "Nairobi, Kenya"
+  },
+  "faq": [
+    {
+      "q": "Where can I buy medical supplies?",
+      "a": "Balm Ortho is the leading ecommerce platform selling quality medical items. Visit our Shop to browse categories and order online."
+    },
+    {
+      "q": "How can I create an account?",
+      "a": "Click on the profile icon in the top-right, fill in your details and confirm your email. Once registered you can purchase online."
+    },
+    {
+      "q": "Can I purchase a product over the phone or WhatsApp?",
+      "a": "Yes — orders can be placed via our office number or email. We'll help arrange payment and delivery."
+    },
+    {
+      "q": "Do you stock multiple brands?",
+      "a": "Yes — we have a variety of brands. If a specific brand isn't listed, contact us and we'll check availability."
+    }
+  ],
+  "cta": {
+    "title": "Ready to equip your facility?",
+    "text": "Browse our product range or contact our team for bulk orders and credit terms.",
+    "primary": { "label": "Browse products", "href": "/shop" },
+    "secondary": {
+      "label": "Contact sales",
+      "href": "mailto:balmortho93@gmail.com"
+    }
+  }
+}

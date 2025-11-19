@@ -75,8 +75,9 @@ export default function Header() {
         <Link to="/shop">
           <li className="hover:text-[#4eb0e3] cursor-pointer">Shop</li>
         </Link>
-        <li className="hover:text-[#4eb0e3] cursor-pointer">About</li>
-        {/* <li className="hover:text-[#4eb0e3] cursor-pointer">Product</li> */}
+        <Link to="/about">
+          <li className="hover:text-[#4eb0e3] cursor-pointer">About</li>
+        </Link>
 
         {/* 
           <li

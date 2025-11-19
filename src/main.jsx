@@ -6,6 +6,7 @@ import { CartProvider } from "./context/CartContext";
 import "./index.css";
 import App from "./App.jsx";
 import { Loader2 } from "lucide-react";
+import About from "./components/pages/About";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
@@ -54,6 +55,7 @@ createRoot(document.getElementById("root")).render(
                 <Route path="cart" element={<Cart />} />
                 <Route path="track/:orderId" element={<OrderTracking />} />
                 <Route path="orders" element={<Orders />} />
+                <Route path="about" element={<About />} />
                 <Route
                   path="order-confirmation/:orderId"
                   element={<OrderConfirmation />}
