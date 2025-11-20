@@ -7,6 +7,14 @@ import "./index.css";
 import App from "./App.jsx";
 import { Loader2 } from "lucide-react";
 import About from "./components/pages/About";
+import RequestReset from "./components/RequestReset";
+import ResetPassword from "./components/ResetPassword";
+import CheckEmail from "./components/checkEmail";
+
+// React Query
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { queryClient } from "./lib/queryClient";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
@@ -41,50 +49,59 @@ const LoadingScreen = () => (
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthContextProvider>
-        <CartProvider>
-          <Suspense fallback={<LoadingScreen />}>
-            <Routes>
-              {/* 🌐 Public Site Layout */}
-              <Route path="/" element={<App />}>
-                <Route index element={<Home />} />
-                <Route path="shop" element={<Shop />} />
-                <Route path="shop/:id" element={<ProductDetails />} />
-                <Route path="contact" element={<Contact />} />
-                <Route path="cart" element={<Cart />} />
-                <Route path="track/:orderId" element={<OrderTracking />} />
-                <Route path="orders" element={<Orders />} />
-                <Route path="about" element={<About />} />
-                <Route
-                  path="order-confirmation/:orderId"
-                  element={<OrderConfirmation />}
-                />
-              </Route>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthContextProvider>
+          <CartProvider>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
+                {/* 🌐 Public Site Layout */}
+                <Route path="/" element={<App />}>
+                  <Route index element={<Home />} />
+                  <Route path="shop" element={<Shop />} />
+                  <Route path="shop/:id" element={<ProductDetails />} />
+                  <Route path="contact" element={<Contact />} />
+                  <Route path="cart" element={<Cart />} />
+                  <Route path="track/:orderId" element={<OrderTracking />} />
+                  <Route path="orders" element={<Orders />} />
+                  <Route path="about" element={<About />} />
+                  <Route
+                    path="order-confirmation/:orderId"
+                    element={<OrderConfirmation />}
+                  />
+                </Route>
 
-              {/* 🛒 Checkout Flow */}
-              <Route element={<CheckoutLayout />}>
-                <Route path="checkout" element={<Checkout />} />
-              </Route>
+                {/* 🛒 Checkout Flow */}
+                <Route element={<CheckoutLayout />}>
+                  <Route path="checkout" element={<Checkout />} />
+                </Route>
 
-              {/* 🔐 Auth Pages */}
-              <Route element={<AuthLayout />}>
-                <Route path="signin" element={<Signin />} />
-                <Route path="signup" element={<Signup />} />
-              </Route>
+                {/* 🔐 Auth Pages */}
+                <Route element={<AuthLayout />}>
+                  <Route path="signin" element={<Signin />} />
+                  <Route path="signup" element={<Signup />} />
+                  <Route
+                    path="auth/reset-password"
+                    element={<ResetPassword />}
+                  />
+                  <Route path="/auth/reset" element={<RequestReset />} />
+                  <Route path="/auth/check-email" element={<CheckEmail />} />
+                </Route>
 
-              {/* ⚙️ Admin Section */}
-              <Route element={<AdminLayout />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/products" element={<AdminProducts />} />
-                <Route path="/admin/orders" element={<AdminOrders />} />
-                <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
-              </Route>
-            </Routes>
-          </Suspense>
-        </CartProvider>
-      </AuthContextProvider>
-    </BrowserRouter>
+                {/* ⚙️ Admin Section */}
+                <Route element={<AdminLayout />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/products" element={<AdminProducts />} />
+                  <Route path="/admin/orders" element={<AdminOrders />} />
+                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
+                </Route>
+              </Routes>
+            </Suspense>
+          </CartProvider>
+        </AuthContextProvider>
+      </BrowserRouter>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   </StrictMode>
 );

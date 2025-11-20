@@ -70,47 +70,49 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Company */}
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-4">Company</h3>
-          <ul className="space-y-2 text-sm">
-            <Link to="/">
-              <li>Home</li>
-            </Link>
-            <Link to="/">
-              <li>About</li>
-            </Link>
-            <Link to="/shop">
-              <li>Products</li>
-            </Link>
-            <Link to="/">
-              <li>FAQ</li>
-            </Link>
-            <Link to="/contact">
-              <li>Contact us</li>
-            </Link>
-            {session && (
-              <Link to="/orders">
-                <li>My Orders</li>
+        <div className="flex flex-row justify-around">
+          {/* Company */}
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Company</h3>
+            <ul className="space-y-2 text-sm">
+              <Link to="/">
+                <li>Home</li>
               </Link>
-            )}
-          </ul>
-        </div>
+              <Link to="/">
+                <li>About</li>
+              </Link>
+              <Link to="/shop">
+                <li>Products</li>
+              </Link>
+              <Link to="/contact">
+                <li>Contact us</li>
+              </Link>
+              {session && (
+                <Link to="/orders">
+                  <li>My Orders</li>
+                </Link>
+              )}
+            </ul>
+          </div>
 
-        {/* Services */}
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
-          <ul className="space-y-2 text-sm">
-            <Link to="/signin">
-              <li>Login</li>
-            </Link>
-            <Link to="/">
-              <li>My account</li>
-            </Link>
-            <Link to="/">
-              <li>Terms & Conditions</li>
-            </Link>
-          </ul>
+          {/* Services */}
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
+            <ul className="space-y-2 text-sm">
+              <Link to="/signin">
+                <li>Login</li>
+              </Link>
+              <Link to="/">
+                <li>My account</li>
+              </Link>
+              <Link to="/">
+                <li>Terms & Conditions</li>
+              </Link>
+              <Link to="/">
+                <li>FAQ</li>
+              </Link>
+            </ul>
+          </div>
         </div>
 
         <div className="mt-6 flex flex-col content-center justify-start">

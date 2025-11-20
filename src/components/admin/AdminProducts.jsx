@@ -12,7 +12,7 @@ export default function AdminProducts() {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
   const [sortAsc, setSortAsc] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 10;
 
@@ -63,7 +63,7 @@ export default function AdminProducts() {
         );
       });
 
-    if (categoryFilter !== "All")
+    if (categoryFilter !== "All Categories")
       result = result.filter((p) => p.category === categoryFilter);
 
     result.sort((a, b) => {
@@ -93,7 +93,7 @@ export default function AdminProducts() {
   };
 
   const uniqueCategories = [
-    "All",
+    "All Categories",
     ...new Set(products.map((p) => p.category).filter(Boolean)),
   ];
 
@@ -206,7 +206,7 @@ export default function AdminProducts() {
                   <td className="px-4 py-3 font-medium">{product.name}</td>
                   <td className="px-4 py-3">{product.brand}</td>
                   <td className="px-4 py-3">{product.category}</td>
-                  <td className="px-4 py-3">${product.price}</td>
+                  <td className="px-4 py-3">KES {product.price}</td>
                   <td className="px-4 py-3">{product.stock}</td>
                   <td className="px-4 py-3">{product.sales_count}</td>
                   <td className="px-4 py-3 flex items-center gap-3">

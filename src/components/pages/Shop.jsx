@@ -1,7 +1,7 @@
 // src/pages/Shop.jsx
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient"; // import Supabase client
+import { supabase } from "../../supabaseClient"; // keep your existing client
 import Card from "../../components/Card";
 import { Button } from "../../components/ui/button";
 import { Slider } from "../../components/ui/slider";
@@ -15,8 +15,9 @@ import {
 } from "../../components/ui/select";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 
+import { useProducts } from "../../hooks/useProducts"; // new hook (note path)
+
 export default function Shop() {
-  // ---- STATE ----
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -30,8 +31,7 @@ export default function Shop() {
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // local UI filters
   const [priceRange, setPriceRange] = useState([0, 100000]);
   const [inStock, setInStock] = useState(true);
   const [outStock, setOutStock] = useState(true);
@@ -48,7 +48,17 @@ export default function Shop() {
 
   const toggle = (key) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  // ---- FILTERING ----
+  // ---------- useProducts hook ----------
+  // set perPage high so we fetch full catalog once and then do client-side filtering
+  const {
+    data: products = [],
+    isLoading,
+    isFetching,
+    error,
+    prefetchProductById,
+  } = useProducts({ perPage: 1000 });
+
+  // derived filtered/sorted/paginated data (mostly unchanged)
   const filteredProducts = products.filter((p) => {
     const inRange = p.price >= priceRange[0] && p.price <= priceRange[1];
     const stockFilter = (inStock && p.stock > 0) || (outStock && p.stock <= 0);
@@ -68,7 +78,6 @@ export default function Shop() {
     return inRange && stockFilter && categoryFilter && brandFilter;
   });
 
-  // ---- SORTING ----
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     if (sort === "A-Z") return a.name.localeCompare(b.name);
     if (sort === "Z-A") return b.name.localeCompare(a.name);
@@ -77,7 +86,6 @@ export default function Shop() {
     return 0;
   });
 
-  // Pagination logic
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = sortedProducts.slice(
@@ -87,7 +95,50 @@ export default function Shop() {
 
   const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
 
-  // ---- COLLAPSIBLE SECTION ----
+  // ---------- fetch categories & brands (optimized: select only fields) ----------
+  useEffect(() => {
+    let mounted = true;
+    async function fetchFilters() {
+      // categories
+      const { data: categoryData, error: categoryError } = await supabase
+        .from("products")
+        .select("category");
+
+      if (!categoryError && mounted) {
+        const uniqueCategories = [
+          ...new Set(categoryData.map((item) => item.category).filter(Boolean)),
+        ];
+        setCategories(uniqueCategories);
+      }
+
+      // brands
+      const { data: brandData, error: brandError } = await supabase
+        .from("products")
+        .select("brand");
+
+      if (!brandError && mounted) {
+        const uniqueBrands = [
+          ...new Set(brandData.map((item) => item.brand).filter(Boolean)),
+        ];
+        setBrands(uniqueBrands);
+      }
+    }
+
+    fetchFilters();
+    return () => (mounted = false);
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (initialCategory) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [initialCategory]);
+
+  // ---------- UI pieces ----------
   const Section = ({ title, name, children }) => (
     <div className="border-b border-gray-100 pb-4">
       <button
@@ -112,71 +163,19 @@ export default function Shop() {
     </div>
   );
 
-  useEffect(() => {
-    async function fetchProductsAndFilters() {
-      setLoading(true);
+  // ---------- Render ----------
+  if (error) {
+    return (
+      <div className="text-red-600">
+        Failed to load products: {error.message}
+      </div>
+    );
+  }
 
-      // Fetch all products
-      const { data: productData, error: productError } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (productError) {
-        console.error("Error fetching products:", productError);
-      } else {
-        setProducts(productData || []);
-      }
-
-      // Fetch unique categories
-      const { data: categoryData, error: categoryError } = await supabase
-        .from("products")
-        .select("category");
-
-      if (categoryError)
-        console.error("Error fetching categories:", categoryError);
-      else {
-        const uniqueCategories = [
-          ...new Set(categoryData.map((item) => item.category).filter(Boolean)),
-        ];
-        setCategories(uniqueCategories);
-      }
-
-      // Fetch unique brands
-      const { data: brandData, error: brandError } = await supabase
-        .from("products")
-        .select("brand");
-
-      if (brandError) console.error("Error fetching brands:", brandError);
-      else {
-        const uniqueBrands = [
-          ...new Set(brandData.map((item) => item.brand).filter(Boolean)),
-        ];
-        setBrands(uniqueBrands);
-      }
-
-      setLoading(false);
-    }
-
-    fetchProductsAndFilters();
-  }, []);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
-
-  useEffect(() => {
-    if (initialCategory) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, [initialCategory]);
-
-  // ---- RENDER ----
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-8 mx-[4%] md:mx-[6%] lg:mx-[12%] pb-10">
-      {/* ====================== Sidebar ====================== */}
+      {/* Sidebar (unchanged) */}
       <aside className="hidden md:block col-span-3 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-        {/* Availability */}
         <Section title="Availability" name="availability">
           <div className="flex flex-col gap-2 text-gray-700">
             <label className="flex items-center gap-2 hover:text-[#4eb0e3] cursor-pointer">
@@ -190,12 +189,11 @@ export default function Shop() {
           </div>
         </Section>
 
-        {/* Price */}
         <Section title="Price" name="price">
           <div className="px-2 mt-2">
             <Slider
               min={0}
-              max={100000} // adjust depending on your product prices
+              max={100000}
               step={100}
               value={priceRange}
               onValueChange={setPriceRange}
@@ -208,7 +206,6 @@ export default function Shop() {
           </div>
         </Section>
 
-        {/* Category */}
         <Section title="Category" name="category">
           <div className="flex flex-col gap-1 text-sm text-gray-700 mt-1">
             {categories.length > 0 ? (
@@ -241,7 +238,6 @@ export default function Shop() {
           </div>
         </Section>
 
-        {/* Brand */}
         <Section title="Brand" name="brand">
           <div className="flex flex-col gap-1 text-sm text-gray-700 mt-1">
             {brands.length > 0 ? (
@@ -275,9 +271,9 @@ export default function Shop() {
         </Section>
       </aside>
 
-      {/* ====================== Product Section ====================== */}
+      {/* Product Section */}
       <section className="col-span-12 md:col-span-9">
-        {/* ====================== Mobile Filters Drawer ====================== */}
+        {/* Mobile filters drawer (unchanged) */}
         {open.mobileFilters && (
           <div
             className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-end md:hidden animate-fade-in"
@@ -299,7 +295,6 @@ export default function Shop() {
                 </Button>
               </div>
 
-              {/* Reuse the same filter sections from sidebar */}
               <Section title="Availability" name="availability">
                 <div className="flex flex-col gap-2 text-gray-700">
                   <label className="flex items-center gap-2 hover:text-[#4eb0e3] cursor-pointer">
@@ -407,7 +402,6 @@ export default function Shop() {
               </SelectContent>
             </Select>
 
-            {/* Mobile Filter Button beside sorting */}
             <Button
               onClick={() =>
                 setOpen((prev) => ({ ...prev, mobileFilters: true }))
@@ -418,7 +412,6 @@ export default function Shop() {
             </Button>
           </div>
 
-          {/* Product count (hidden on mobile) */}
           <p className="hidden md:block text-sm text-gray-500">
             Showing {sortedProducts.length}{" "}
             {sortedProducts.length === 1 ? "product" : "products"}{" "}
@@ -429,24 +422,31 @@ export default function Shop() {
         </div>
 
         {/* Product Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center py-10 text-gray-500">
-            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            <span>Loading products...</span>
+        {isLoading ? (
+          <div className="grid gap-6 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 place-items-stretch">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="animate-pulse p-4 border rounded">
+                <div className="bg-gray-300 h-44 w-full mb-2" />
+                <div className="h-4 bg-gray-300 mb-2 w-3/4" />
+                <div className="h-4 bg-gray-300 w-1/4" />
+              </div>
+            ))}
           </div>
         ) : (
           <div
             className="
-    grid gap-6
-    grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4
-    place-items-stretch
-  "
+              grid gap-6
+              grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4
+              place-items-stretch
+            "
           >
             {currentProducts.map((product) => (
               <div
                 key={product.id}
                 onClick={() => navigate(`/shop/${product.id}`)}
                 className="cursor-pointer flex flex-col"
+                onMouseEnter={() => prefetchProductById(product.id)}
+                onFocus={() => prefetchProductById(product.id)}
               >
                 <Card product={product} />
               </div>
@@ -454,10 +454,14 @@ export default function Shop() {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* subtle non-blocking fetching indicator */}
+        {isFetching && products.length > 0 && (
+          <div className="mt-2 text-xs text-gray-500">Refreshing products…</div>
+        )}
+
+        {/* Pagination (unchanged) */}
         {totalPages > 1 && (
           <div className="flex flex-wrap justify-center mt-8 gap-2 items-center px-2">
-            {/* Prev Button */}
             <Button
               variant="ghost"
               disabled={currentPage === 1}
@@ -466,7 +470,6 @@ export default function Shop() {
               Prev
             </Button>
 
-            {/* Page Numbers with "..." logic */}
             {(() => {
               const pageButtons = [];
               const pagesPerGroup = 5;
@@ -479,7 +482,6 @@ export default function Shop() {
                 totalPages
               );
 
-              // If not on the first group, show "..." before
               if (currentGroup > 0) {
                 pageButtons.push(
                   <Button
@@ -498,7 +500,6 @@ export default function Shop() {
                 );
               }
 
-              // Actual numbered pages
               for (let page = startPage; page <= endPage; page++) {
                 pageButtons.push(
                   <Button
@@ -511,7 +512,6 @@ export default function Shop() {
                 );
               }
 
-              // If there are more pages ahead, show "..." after
               if (endPage < totalPages) {
                 pageButtons.push(
                   <Button
@@ -531,7 +531,6 @@ export default function Shop() {
               return pageButtons;
             })()}
 
-            {/* Next Button */}
             <Button
               variant="ghost"
               disabled={currentPage === totalPages}
@@ -542,7 +541,6 @@ export default function Shop() {
               Next
             </Button>
 
-            {/* Last Button */}
             <Button
               variant="ghost"
               disabled={currentPage === totalPages}
@@ -556,5 +554,3 @@ export default function Shop() {
     </div>
   );
 }
-
-// TODO: Make the filters selectable
