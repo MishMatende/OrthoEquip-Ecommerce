@@ -1,38 +1,26 @@
-import React, { useEffect, useState } from "react";
+// src/pages/Home.jsx
+import React from "react";
 import ProductShowCase from "../ProductShowCase";
 import Card from "../Card";
 import MaskThermometer from "../../assets/MaskThermometer.webp";
 import { Check, Loader2 } from "lucide-react";
-import { fetchProductStats } from "../../data/FetchProductStats";
 import { useNavigate } from "react-router-dom";
 
+import { useProductStats } from "../../hooks/useProductStats";
+import { useProducts } from "../../hooks/useProducts"; // for prefetchProductById
+
 export default function Home() {
-  // Logic for featured Products
-  // const { data: topProducts } = await supabase
-  // .from("products")
-  // .select("*")
-  // .order("sales_count", { ascending: false })
-  // .limit(5);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState({ most_sold: [], trending: [] });
+  // react-query hook for stats
+  const {
+    data: stats = { most_sold: [], trending: [] },
+    isLoading,
+    isFetching,
+  } = useProductStats();
 
-  useEffect(() => {
-    async function loadStats() {
-      setLoading(true); // make sure it starts in loading mode
-      try {
-        const data = await fetchProductStats();
-        setStats(data);
-      } catch (error) {
-        console.error("Error fetching product stats:", error);
-      } finally {
-        setLoading(false); // only stop loading *after* data is fetched
-      }
-    }
-
-    loadStats();
-  }, []);
+  // useProducts only for prefetch helper (we don't consume list data here)
+  const { prefetchProductById } = useProducts({ perPage: 0 }); // perPage 0 => we won't accidentally fetch list
 
   return (
     <>
@@ -47,7 +35,7 @@ export default function Home() {
           Shop our best-selling and trending medical equipment.
         </p>
 
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-10 text-gray-500">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
             <span>Loading products...</span>
@@ -65,12 +53,22 @@ export default function Home() {
                 key={product.id}
                 onClick={() => navigate(`/shop/${product.id}`)}
                 className="cursor-pointer flex flex-col"
+                onMouseEnter={() => prefetchProductById(product.id)}
+                onFocus={() => prefetchProductById(product.id)}
               >
                 <Card product={product} />
               </div>
             ))}
           </div>
         )}
+
+        {/* subtle global refreshing indicator */}
+        {isFetching && !isLoading && (
+          <div className="mt-3 text-xs text-gray-500">
+            Refreshing featured products…
+          </div>
+        )}
+
         {/* View More link for Featured Products */}
         <div className="flex justify-end mt-4">
           <p
@@ -145,7 +143,8 @@ export default function Home() {
         <h1 className="text-2xl sm:text-3xl font-semibold text-black py-8">
           Best Selling
         </h1>
-        {loading ? (
+
+        {isLoading ? (
           <div className="flex items-center justify-center py-10 text-gray-500">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
             <span>Loading products...</span>
@@ -163,12 +162,15 @@ export default function Home() {
                 key={product.id}
                 onClick={() => navigate(`/shop/${product.id}`)}
                 className="cursor-pointer flex flex-col"
+                onMouseEnter={() => prefetchProductById(product.id)}
+                onFocus={() => prefetchProductById(product.id)}
               >
                 <Card product={product} />
               </div>
             ))}
           </div>
         )}
+
         <div className="flex justify-end mt-4">
           <p
             onClick={() => navigate("/shop")}
@@ -181,15 +183,3 @@ export default function Home() {
     </>
   );
 }
-
-// Return JSON
-// {
-//   "most_sold": [
-//     { "id": "...", "name": "Wheelchair", "total_sold": 45 },
-//     { "id": "...", "name": "Stethoscope", "total_sold": 30 }
-//   ],
-//   "trending": [
-//     { "id": "...", "name": "Crutches", "total_sold_recently": 12 },
-//     { "id": "...", "name": "Surgical Mask", "total_sold_recently": 10 }
-//   ]
-// }

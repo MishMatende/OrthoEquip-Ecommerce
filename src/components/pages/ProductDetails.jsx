@@ -12,63 +12,36 @@ import {
 import { Loader2, Minus, Plus } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useNavigate } from "react-router-dom";
+import { useProduct } from "../../hooks/useProduct";
 
 export default function ProductDetails() {
   const { addToCart } = useCart();
 
   const { id } = useParams(); // product id from URL
-  const [product, setProduct] = useState(null);
-  const [images, setImages] = useState([]); // for extra images
   const [quantity, setQuantity] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
   const [zoom, setZoom] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
   const navigate = useNavigate();
 
-  // Fetch product from Supabase
-  useEffect(() => {
-    async function fetchProduct() {
-      setLoading(true);
+  const { data, isLoading, isError, error, isFetching } = useProduct(id);
 
-      // Fetch main product
-      const { data: productData, error: productError } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .single();
+  const product = data?.product;
+  const images = data?.images || [];
 
-      if (productError) {
-        console.error("Error fetching product:", productError);
-        setLoading(false);
-        return;
-      }
-
-      setProduct(productData);
-
-      // ✅ Fetch related images via Supabase RPC (works reliably with UUIDs)
-      const { data: imageData, error: imageError } = await supabase.rpc(
-        "get_product_images",
-        { pid: id }
-      );
-
-      if (imageError) {
-        console.error("❌ Error fetching product images via RPC:", imageError);
-      } else {
-        setImages(imageData?.map((img) => img.image_url) || []);
-      }
-
-      setLoading(false);
-    }
-
-    fetchProduct();
-  }, [id]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-row justify-center py-20 text-gray-500">
         <Loader2 className="w-6 h-6 animate-spin mr-3" />
         Loading product details...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-20 text-red-600">
+        Failed to load product: {error?.message}
       </div>
     );
   }

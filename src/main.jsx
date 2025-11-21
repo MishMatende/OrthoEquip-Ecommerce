@@ -9,12 +9,12 @@ import { Loader2 } from "lucide-react";
 import About from "./components/pages/About";
 import RequestReset from "./components/RequestReset";
 import ResetPassword from "./components/ResetPassword";
-import CheckEmail from "./components/checkEmail";
 
 // React Query
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "./lib/queryClient";
+import CheckEmail from "./components/CheckEmail";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
