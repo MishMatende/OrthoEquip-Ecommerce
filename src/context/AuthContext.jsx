@@ -56,6 +56,8 @@ export const AuthContextProvider = ({ children }) => {
   };
 
   // Listen for session changes
+  // inside AuthContextProvider (replace the existing listener code + signoutUser)
+
   useEffect(() => {
     async function loadSession() {
       const {
@@ -70,7 +72,8 @@ export const AuthContextProvider = ({ children }) => {
 
     loadSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
+    // updated listener shape (works with supabase-js v2)
+    const { data } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
 
@@ -83,7 +86,6 @@ export const AuthContextProvider = ({ children }) => {
 
           setUserProfile(profile);
 
-          // ✅ Redirect logic for sign-in
           if (_event === "SIGNED_IN") {
             if (profile?.is_admin) navigate("/admin");
             else navigate("/");
@@ -96,23 +98,27 @@ export const AuthContextProvider = ({ children }) => {
       }
     );
 
-    return () => listener.subscription.unsubscribe();
+    // unsubscribe safely
+    return () => {
+      try {
+        if (data?.subscription?.unsubscribe) data.subscription.unsubscribe();
+        else if (data?.unsubscribe) data.unsubscribe();
+      } catch (e) {
+        // ignore
+      }
+    };
   }, [navigate]);
 
-  // Sign out
-  // Sign out
+  // sign out — DO NOT navigate here; let callers decide
   const signoutUser = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("There was an error signing out:", error);
-      return;
+      throw error;
     }
-
     setUserProfile(null);
     setSession(null);
-
-    // ✅ Redirect to home page
-    navigate("/");
+    // do NOT call navigate here — caller should redirect after successful sign out
   };
 
   return (

@@ -1,5 +1,5 @@
 // src/pages/ProductDetails.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../supabaseClient"; // import your Supabase client
 import { Button } from "../../components/ui/button";
@@ -9,7 +9,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from "../../components/ui/tabs";
-import { Loader2, Minus, Plus } from "lucide-react";
+import { Loader2, Minus, Plus, X } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useProduct } from "../../hooks/useProduct";
@@ -22,12 +22,47 @@ export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [zoom, setZoom] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
+  const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
+  const [displayWidth, setDisplayWidth] = useState(0);
+
+  // modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalImageSrc, setModalImageSrc] = useState(null);
+  const modalRef = useRef(null);
+
+  const imageRef = useRef(null);
   const navigate = useNavigate();
 
   const { data, isLoading, isError, error, isFetching } = useProduct(id);
 
   const product = data?.product;
   const images = data?.images || [];
+
+  useEffect(() => {
+    // reset selected image when product changes
+    setSelectedImage(null);
+  }, [id]);
+
+  // prevent background scroll when modal is open
+  useEffect(() => {
+    if (modalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [modalOpen]);
+
+  // close modal on Escape
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   if (isLoading) {
     return (
@@ -54,6 +89,53 @@ export default function ProductDetails() {
     );
   }
 
+  // helper to decide if zooming makes sense (source must be larger than display)
+  const canZoom = () => {
+    if (!naturalSize.w || !displayWidth) return false;
+    return naturalSize.w / displayWidth > 1.15; // at least ~15% bigger than displayed
+  };
+
+  const handleImgLoad = (e) => {
+    const img = e.target;
+    setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+    // measure displayed width
+    const rect = img.getBoundingClientRect();
+    setDisplayWidth(rect.width || 0);
+  };
+
+  const openModal = (src) => {
+    setModalImageSrc(src);
+    setModalOpen(true);
+  };
+
+  const handleClickImage = () => {
+    const src =
+      selectedImage ||
+      product.image_url ||
+      "https://images.unsplash.com/photo-1584367360396-25b0d7c4b9a0?auto=format&fit=crop&w=600&q=80";
+
+    if (canZoom()) {
+      setZoom((z) => !z);
+    } else {
+      // open modal with full-size image instead of new tab
+      openModal(src);
+    }
+  };
+
+  // computed zoom scale based on natural / displayed width, capped
+  const getZoomScale = () => {
+    if (!naturalSize.w || !displayWidth) return 1.5;
+    const raw = naturalSize.w / (displayWidth || 1);
+    return Math.min(Math.max(raw, 1.1), 2.5); // between 1.1x and 2.5x
+  };
+
+  // close modal when clicking the backdrop (outside modal content)
+  const handleBackdropClick = (e) => {
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      setModalOpen(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-24 py-8 text-center">
       {/* Top Section */}
@@ -64,38 +146,52 @@ export default function ProductDetails() {
           <div className="relative border rounded-2xl overflow-hidden mb-2 bg-gray-50">
             {/* Zoomable image */}
             <div
-              onClick={() => setZoom((z) => !z)}
+              onClick={handleClickImage}
               onMouseMove={(e) => {
                 const { left, top, width, height } =
                   e.currentTarget.getBoundingClientRect();
                 const x = ((e.pageX - left) / width) * 100;
                 const y = ((e.pageY - top) / height) * 100;
                 setMousePosition({ x, y });
+
+                // keep displayWidth updated if container resizes while hovering
+                setDisplayWidth(width);
               }}
               className={`relative overflow-hidden transition-all duration-300 ${
                 zoom ? "cursor-zoom-out" : "cursor-zoom-in"
               }`}
             >
               <img
+                ref={imageRef}
                 src={
                   selectedImage ||
                   product.image_url ||
                   "https://images.unsplash.com/photo-1584367360396-25b0d7c4b9a0?auto=format&fit=crop&w=600&q=80"
                 }
                 alt={product.name}
-                className={`w-full h-[400px] object-contain transition-transform duration-300 ease-in-out ${
-                  zoom ? "scale-150" : "scale-100"
-                }`}
-                style={{
-                  transformOrigin: `${mousePosition.x}% ${mousePosition.y}%`,
-                }}
+                onLoad={handleImgLoad}
+                loading="lazy"
+                decoding="async"
+                className={`w-full h-auto max-h-[60vh] object-contain transition-transform duration-300 ease-in-out`}
+                style={
+                  zoom
+                    ? {
+                        transformOrigin: `${mousePosition.x}% ${mousePosition.y}%`,
+                        transform: `scale(${getZoomScale()})`,
+                      }
+                    : {}
+                }
               />
             </div>
           </div>
 
           {/* Click instruction text */}
           <p className="text-md text-gray-500 mt-2 italic pb-2">
-            {zoom ? "Click image to zoom out" : "Click image to zoom in"}
+            {canZoom()
+              ? zoom
+                ? "Click image to zoom out"
+                : "Click image to zoom in"
+              : "Tap to open full-size image"}
           </p>
 
           {/* Thumbnail Gallery */}
@@ -106,7 +202,13 @@ export default function ProductDetails() {
                 <img
                   key={idx}
                   src={url}
-                  onClick={() => setSelectedImage(url)}
+                  onClick={() => {
+                    setSelectedImage(url);
+                    // reset zoom state when changing image
+                    setZoom(false);
+                  }}
+                  loading="lazy"
+                  decoding="async"
                   className={`w-20 h-20 object-cover rounded-xl border-2 cursor-pointer transition-transform hover:scale-105 ${
                     selectedImage === url
                       ? "border-[#4eb0e3]"
@@ -128,16 +230,6 @@ export default function ProductDetails() {
             <p className="text-2xl sm:text-3xl font-bold text-[#4eb0e3]">
               KES {Number(product.price).toLocaleString()}
             </p>
-            {/* {product.old_price && (
-              <p className="text-xl text-gray-400 line-through">
-                KES {Number(product.old_price).toLocaleString()}
-              </p>
-            )}
-            {product.discount && (
-              <span className="text-sm bg-[#4eb0e3] text-green-600 font-semibold px-2 py-1 rounded">
-                Save -{product.discount}%
-              </span>
-            )} */}
           </div>
 
           <p className="text-sm text-gray-600 mt-4 leading-relaxed">
@@ -263,6 +355,39 @@ export default function ProductDetails() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Image Modal */}
+      {modalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onMouseDown={handleBackdropClick}
+          onTouchStart={handleBackdropClick}
+        >
+          <div
+            ref={modalRef}
+            className="relative max-w-4xl w-full max-h-[90vh] overflow-auto rounded-lg bg-white p-3"
+            role="dialog"
+            aria-modal="true"
+          >
+            <button
+              onClick={() => setModalOpen(false)}
+              className="absolute top-2 right-2 p-2 rounded-md bg-white hover:bg-gray-100"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex items-center justify-center">
+              <img
+                src={modalImageSrc}
+                alt={product.name}
+                className="max-w-full max-h-[80vh] object-contain"
+                loading="eager"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

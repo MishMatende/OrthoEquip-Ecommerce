@@ -91,7 +91,8 @@ export default function AdminLayout() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 md:mx-2 p-3 transition-all">
+      {/* Note: added overflow-x-auto on main so content can be scrolled horizontally on small screens */}
+      <main className="flex-1 md:mx-2 p-3 transition-all overflow-x-auto">
         {/* Mobile Topbar */}
         <div className="md:hidden flex items-center justify-between mb-6">
           <button
@@ -113,7 +114,13 @@ export default function AdminLayout() {
           transition={{ duration: 0.3 }}
           className="bg-white rounded-2xl shadow-md p-4 md:p-6 min-h-[90vh]"
         >
-          <Outlet />
+          {/* This inner wrapper allows the content inside Outlet to define its width.
+              If the page content (eg a wide table) is wider than the screen, it will produce a horizontal scrollbar. */}
+          <div className="overflow-x-auto">
+            <div className="min-w-max">
+              <Outlet />
+            </div>
+          </div>
         </motion.div>
       </main>
     </div>

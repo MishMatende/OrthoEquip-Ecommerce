@@ -38,7 +38,8 @@ export default function Navbar() {
 
   const categoryRef = useRef(null);
   const userMenuRef = useRef(null);
-  const searchRef = useRef(null);
+  const searchRef = useRef(null); // desktop search container
+  const mobileSearchRef = useRef(null); // mobile search container
 
   // --- Logout ---
   const handleSignOut = async () => {
@@ -64,25 +65,41 @@ export default function Navbar() {
     fetchCategories();
   }, []);
 
-  // --- Click outside for menus and search ---
+  // --- Click / touch outside for menus and search ---
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (categoryRef.current && !categoryRef.current.contains(e.target))
+      const target = e.target;
+      if (categoryRef.current && !categoryRef.current.contains(target))
         setOpenCategories(false);
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target))
+      if (userMenuRef.current && !userMenuRef.current.contains(target))
         setOpenUserMenu(false);
-      if (searchRef.current && !searchRef.current.contains(e.target))
-        setShowSearchDropdown(false);
+
+      // check both desktop and mobile search refs
+      const clickedInsideSearch =
+        (searchRef.current && searchRef.current.contains(target)) ||
+        (mobileSearchRef.current && mobileSearchRef.current.contains(target));
+
+      if (!clickedInsideSearch) setShowSearchDropdown(false);
     };
+
+    // Listen to mousedown + touchstart (mobile)
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   // --- Debounced search ---
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (searchTerm.trim()) handleSearch(searchTerm);
-      else setSearchResults([]);
+      else {
+        setSearchResults([]);
+        setShowSearchDropdown(false);
+      }
     }, 400);
     return () => clearTimeout(timeout);
   }, [searchTerm]);
@@ -200,7 +217,7 @@ export default function Navbar() {
           </AnimatePresence>
         </div>
 
-        {/* Search */}
+        {/* Search (Desktop) */}
         <div
           className="hidden md:flex flex-1 max-w-lg mx-4 text-black font-bold relative"
           ref={searchRef}
@@ -291,7 +308,7 @@ export default function Navbar() {
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => {
-                if (!session) navigate("/signup");
+                if (!session) navigate("/signin");
                 else setOpenUserMenu((prev) => !prev);
               }}
               className="flex items-center hover:text-[#4eb0e3] transition"
@@ -309,20 +326,49 @@ export default function Navbar() {
                   className="absolute top-full right-0 w-48 bg-white shadow-xl rounded-md mt-2 z-50 text-black origin-top"
                 >
                   <ul className="flex flex-col divide-y divide-gray-100">
-                    {userOptions.map((option, i) => (
-                      <li
-                        key={i}
-                        onClick={() => {
-                          if (option.action) option.action();
-                          else if (option.path) navigate(option.path);
-                        }}
-                        className={`px-4 py-2 hover:bg-gray-100 cursor-pointer ${
-                          option.isLogout ? "text-red-500" : ""
-                        }`}
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/profile")}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
                       >
-                        {option.label}
-                      </li>
-                    ))}
+                        Profile
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/dashboard")}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      >
+                        Dashboard
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!signoutUser) {
+                            console.error(
+                              "signoutUser is not available from AuthContext"
+                            );
+                            return;
+                          }
+                          try {
+                            await signoutUser();
+                            setOpenUserMenu(false);
+                            navigate("/");
+                          } catch (err) {
+                            console.error("Sign out failed:", err);
+                          }
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-500"
+                      >
+                        Logout
+                      </button>
+                    </li>
                   </ul>
                 </motion.div>
               )}
@@ -341,14 +387,76 @@ export default function Navbar() {
               className="absolute top-full left-0 w-full bg-white shadow-md z-40 py-4 md:hidden"
             >
               {/* Search (Mobile) */}
-              <div className="relative px-4 pb-3">
+              <div className="relative px-4 pb-3" ref={mobileSearchRef}>
                 <input
                   type="text"
                   placeholder="Search for product"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() =>
+                    searchResults.length && setShowSearchDropdown(true)
+                  }
                   className="w-full p-2 pl-[15px] rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4eb0e3]"
                 />
+
+                {/* Mobile search dropdown (re-uses same UI as desktop but constrained for mobile) */}
+                <AnimatePresence>
+                  {showSearchDropdown && searchTerm && (
+                    <motion.div
+                      variants={searchDropdownVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      className="absolute top-full left-0 w-full bg-white rounded-md shadow-lg mt-2 z-50 text-left overflow-hidden"
+                    >
+                      {searching ? (
+                        <p className="px-4 py-3 text-gray-500 flex items-center">
+                          <Loader2 className="animate-spin mr-2 w-4 h-4" />{" "}
+                          Searching...
+                        </p>
+                      ) : searchResults.length > 0 ? (
+                        <div className="max-h-[300px] overflow-y-auto">
+                          {searchResults.slice(0, 7).map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={() => {
+                                navigate(`/shop/${item.id}`);
+                                setSearchTerm("");
+                                setShowSearchDropdown(false);
+                                setOpenMobileMenu(false);
+                              }}
+                              className="px-4 py-2 flex items-center gap-3 hover:bg-gray-100 cursor-pointer transition-all duration-150"
+                            >
+                              <img
+                                src={
+                                  item.image_url ||
+                                  "https://via.placeholder.com/40"
+                                }
+                                alt={item.name}
+                                className="w-10 h-10 object-contain rounded-md border border-gray-100"
+                              />
+                              <div className="flex flex-col">
+                                <p className="font-medium text-gray-800 text-sm">
+                                  {item.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {item.brand} • {item.category}
+                                </p>
+                                <p className="text-xs text-[#4eb0e3] font-semibold">
+                                  KES {item.price?.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="px-4 py-3 text-gray-500 text-sm">
+                          No products found.
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Dynamic Categories from Supabase */}
@@ -365,7 +473,6 @@ export default function Navbar() {
                       }}
                       className="flex items-center gap-3 px-6 py-2 hover:bg-gray-100 cursor-pointer text-gray-700 transition-all duration-150"
                     >
-                      {/* Optional icon — you can map these dynamically later if needed */}
                       <span className="w-2 h-2 bg-[#4eb0e3] rounded-full"></span>
                       {category}
                     </span>

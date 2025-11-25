@@ -1,234 +1,521 @@
-import { useState } from "react";
+// src/components/admin/ProductForm.jsx
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../../components/ui/dialog";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
-import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Trash2 } from "lucide-react";
+
+/**
+ * ProductForm with added console.log traces for troubleshooting slow uploads/saves.
+ * Developer preview path points to the uploaded file so preview shows during dev.
+ *
+ * DEV PREVIEW PATH:
+ * /mnt/data/3492e6e9-4365-461d-bd5a-dda0ebd9e7e8.png
+ */
+
+const DEV_PREVIEW_PATH = "/mnt/data/3492e6e9-4365-461d-bd5a-dda0ebd9e7e8.png";
 
 export default function ProductForm({ onClose, onSaved, editingProduct }) {
-  const isEditing = Boolean(editingProduct);
+  const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState({
-    product_code: editingProduct?.product_code || "",
-    name: editingProduct?.name || "",
-    description: editingProduct?.description || "",
-    category: editingProduct?.category || "",
-    brand: editingProduct?.brand || "",
-    price: editingProduct?.price || "",
-    stock: editingProduct?.stock || "",
-    image_url: editingProduct?.image_url || "",
-  });
+  // form fields
+  const [productCode, setProductCode] = useState("");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [category, setCategory] = useState("");
+  const [brand, setBrand] = useState("");
+  const [stock, setStock] = useState(0);
+  const [description, setDescription] = useState("");
 
-  const [imageFile, setImageFile] = useState(null);
-  const [saving, setSaving] = useState(false);
+  // file + preview states
+  const [file, setFile] = useState(null); // File object
+  const [preview, setPreview] = useState(null); // object URL or uploaded path/url
+  const [uploading, setUploading] = useState(false);
 
-  // 🖼️ Handle image upload to Supabase Storage
-  const uploadImage = async () => {
-    if (!imageFile) return formData.image_url; // keep existing image
+  useEffect(() => {
+    if (editingProduct) {
+      setProductCode(editingProduct.product_code || "");
+      setName(editingProduct.name || "");
+      setPrice(editingProduct.price ?? "");
+      setImageUrl(editingProduct.image_url || "");
+      setCategory(editingProduct.category || "");
+      setBrand(editingProduct.brand || "");
+      setStock(editingProduct.stock ?? 0);
+      setDescription(editingProduct.description || "");
+      setFile(null);
+      setPreview(editingProduct.image_url || null);
+    } else {
+      setProductCode("");
+      setName("");
+      setPrice("");
+      setImageUrl("");
+      setCategory("");
+      setBrand("");
+      setStock(0);
+      setDescription("");
+      setFile(null);
+      // dev preview path to help layout testing
+      setPreview(DEV_PREVIEW_PATH);
+    }
+  }, [editingProduct]);
 
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `product-images/${fileName}`;
+  // when file selected, create object URL for preview
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
-    const { error: uploadError } = await supabase.storage
-      .from("product-images")
-      .upload(filePath, imageFile);
+  // upload helper — uploads file to bucket and returns public URL + path
+  async function uploadFileToStorage(file) {
+    if (!file) {
+      console.log(
+        "[ProductForm] uploadFileToStorage called with no file -> returning null"
+      );
+      return null;
+    }
+    setUploading(true);
 
-    if (uploadError) throw uploadError;
-
-    const { data: publicUrl } = supabase.storage
-      .from("product-images")
-      .getPublicUrl(filePath);
-
-    return publicUrl.publicUrl;
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSaving(true);
+    const start = Date.now();
+    console.log("[ProductForm] uploadFileToStorage START", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      time: new Date(start).toISOString(),
+    });
 
     try {
-      const image_url = await uploadImage();
-      const payload = {
-        ...formData,
-        image_url,
-        price: Number(formData.price),
-        stock: Number(formData.stock),
-        updated_at: new Date(),
-      };
+      const filename = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+      const filePath = `products/${filename}`;
 
-      if (isEditing) {
-        const { error } = await supabase
-          .from("products")
-          .update(payload)
-          .eq("id", editingProduct.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("products").insert([payload]);
-        if (error) throw error;
+      const uploadStart = Date.now();
+      console.log("[ProductForm] calling supabase.storage.upload", {
+        filePath,
+        uploadStart: new Date(uploadStart).toISOString(),
+      });
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file, { cacheControl: "3600", upsert: false });
+
+      const uploadEnd = Date.now();
+      console.log("[ProductForm] upload result", {
+        uploadData,
+        uploadError,
+        durationMs: uploadEnd - uploadStart,
+      });
+
+      if (uploadError) {
+        console.error("[ProductForm] Upload error", uploadError);
+        setUploading(false);
+        throw uploadError;
       }
 
-      onSaved(); // refresh table
-      onClose(); // close modal
-    } catch (error) {
-      console.error("Error saving product:", error);
-      toast.error("Failed to save product", {
+      const publicUrlStart = Date.now();
+      const { data: publicUrlData, error: publicUrlError } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(uploadData.path);
+      const publicUrlEnd = Date.now();
+
+      console.log("[ProductForm] getPublicUrl result", {
+        publicUrlData,
+        publicUrlError,
+        durationMs: publicUrlEnd - publicUrlStart,
+      });
+
+      if (publicUrlError) {
+        console.error("[ProductForm] getPublicUrl error", publicUrlError);
+        setUploading(false);
+        throw publicUrlError;
+      }
+
+      setUploading(false);
+      const end = Date.now();
+      console.log("[ProductForm] uploadFileToStorage END", {
+        totalDurationMs: end - start,
+        time: new Date(end).toISOString(),
+      });
+
+      return { publicUrl: publicUrlData.publicUrl, path: uploadData.path };
+    } catch (err) {
+      setUploading(false);
+      console.error("[ProductForm] uploadFileToStorage error:", err);
+      throw err;
+    }
+  }
+
+  // create or update mutation
+  const upsertMutation = useMutation({
+    mutationFn: async (payload) => {
+      const mutationStart = Date.now();
+      console.log("[ProductForm] mutationFn START", {
+        payloadSummary: {
+          id: payload.id,
+          name: payload.name,
+          hasImageUrl: !!payload.image_url,
+        },
+        time: new Date(mutationStart).toISOString(),
+      });
+
+      const {
+        id,
+        product_code,
+        name,
+        price,
+        image_url,
+        category,
+        brand,
+        stock,
+        description,
+      } = payload;
+
+      if (id) {
+        const { error } = await supabase
+          .from("products")
+          .update({
+            product_code,
+            name,
+            price,
+            image_url,
+            category,
+            brand,
+            stock,
+            description,
+          })
+          .eq("id", id);
+
+        const mutationEnd = Date.now();
+        console.log("[ProductForm] update finished", {
+          mutationDurationMs: mutationEnd - mutationStart,
+          error,
+        });
+        if (error) throw error;
+        return { id };
+      } else {
+        const { data, error } = await supabase.from("products").insert([
+          {
+            product_code,
+            name,
+            price,
+            image_url,
+            category,
+            brand,
+            stock,
+            description,
+          },
+        ]);
+        const mutationEnd = Date.now();
+        console.log("[ProductForm] insert finished", {
+          mutationDurationMs: mutationEnd - mutationStart,
+          error,
+          inserted: data?.length,
+        });
+        if (error) throw error;
+        return { id: data?.[0]?.id, data };
+      }
+    },
+    onMutate: (variables) => {
+      console.log("[ProductForm] onMutate", {
+        variables,
+        time: new Date().toISOString(),
+      });
+    },
+    onSuccess: (data, variables, context) => {
+      console.log("[ProductForm] onSuccess", {
+        data,
+        variables,
+        context,
+        time: new Date().toISOString(),
+      });
+      toast.success(editingProduct ? "Product updated" : "Product created", {
         position: "top-right",
       });
-    } finally {
-      setSaving(false);
+      queryClient.invalidateQueries({ queryKey: ["products-server"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      if (onSaved) onSaved();
+    },
+    onError: (err, variables, context) => {
+      console.error("[ProductForm] mutation onError", {
+        err,
+        variables,
+        context,
+      });
+      toast.error("Failed to save product", { position: "top-right" });
+    },
+    onSettled: (data, error, variables, context) => {
+      console.log("[ProductForm] mutation onSettled", {
+        error,
+        variables,
+        time: new Date().toISOString(),
+      });
+    },
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const submitStart = Date.now();
+    console.log("[ProductForm] handleSubmit START", {
+      time: new Date(submitStart).toISOString(),
+      hasFile: !!file,
+      fileSize: file?.size,
+    });
+
+    try {
+      let finalImageUrl = imageUrl || null;
+
+      if (file) {
+        console.log("[ProductForm] will upload file", {
+          name: file.name,
+          size: file.size,
+        });
+        const uploadBefore = Date.now();
+        const result = await uploadFileToStorage(file);
+        const uploadAfter = Date.now();
+        console.log("[ProductForm] uploadFileToStorage returned", {
+          result,
+          uploadDurationMs: uploadAfter - uploadBefore,
+        });
+        finalImageUrl = result?.publicUrl || finalImageUrl;
+      }
+
+      const payload = {
+        id: editingProduct?.id,
+        product_code: productCode,
+        name,
+        price: price === "" ? null : Number(price),
+        image_url: finalImageUrl,
+        category,
+        brand,
+        stock: Number(stock || 0),
+        description,
+      };
+
+      console.log("[ProductForm] calling upsertMutation.mutate", {
+        payloadSummary: {
+          id: payload.id,
+          name: payload.name,
+          hasImageUrl: !!payload.image_url,
+        },
+        time: new Date().toISOString(),
+      });
+
+      // call mutation (React Query). mutation callbacks will log durations.
+      upsertMutation.mutate(payload);
+
+      const submitEnd = Date.now();
+      console.log("[ProductForm] handleSubmit END (mutation triggered)", {
+        durationMs: submitEnd - submitStart,
+      });
+    } catch (err) {
+      console.error("[ProductForm] Failed to upload or save:", err);
+      toast.error("Upload or save failed", { position: "top-right" });
     }
   };
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const saving = upsertMutation.isLoading || uploading;
+
+  // UI helpers
+  const onFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      console.log("[ProductForm] file selected", {
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        time: new Date().toISOString(),
+      });
+      setFile(f);
+    }
+  };
+
+  const clearSelectedImage = () => {
+    console.log("[ProductForm] clearSelectedImage called", {
+      time: new Date().toISOString(),
+    });
+    setFile(null);
+    setPreview(null);
+    setImageUrl("");
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit Product" : "Add New Product"}
-          </DialogTitle>
-        </DialogHeader>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* TEXT FIELDS - same order as before, image section moved to bottom */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Product code
+          </label>
+          <input
+            className="mt-1 w-full border rounded px-3 py-2"
+            value={productCode}
+            onChange={(e) => setProductCode(e.target.value)}
+          />
+        </div>
 
-        <form onSubmit={handleSave} className="space-y-4 mt-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Product Code</Label>
-              <Input
-                name="product_code"
-                value={formData.product_code}
-                onChange={handleChange}
-                required
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Name
+          </label>
+          <input
+            className="mt-1 w-full border rounded px-3 py-2"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Price
+          </label>
+          <input
+            type="number"
+            className="mt-1 w-full border rounded px-3 py-2"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Stock
+          </label>
+          <input
+            type="number"
+            className="mt-1 w-full border rounded px-3 py-2"
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Category
+          </label>
+          <input
+            className="mt-1 w-full border rounded px-3 py-2"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Brand
+          </label>
+          <input
+            className="mt-1 w-full border rounded px-3 py-2"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Description
+        </label>
+        <textarea
+          className="mt-1 w-full border rounded px-3 py-2"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+
+      {/* -------------------------
+          IMAGE UPLOAD SECTION (bottom)
+         ------------------------- */}
+      <div className="pt-4 border-t border-gray-100 mb-0">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Product image
+        </label>
+
+        <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-start">
+          {/* Preview box */}
+          <div className="w-full md:w-28 h-28 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border">
+            {preview ? (
+              <img
+                src={preview}
+                alt="preview"
+                className="w-full h-full object-cover"
               />
-            </div>
-            <div>
-              <Label>Name</Label>
-              <Input
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            ) : (
+              <div className="text-xs text-gray-400 text-center px-2">
+                No image selected
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Category</Label>
-              <Input
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <Label>Brand</Label>
-              <Input
-                name="brand"
-                value={formData.brand}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Price</Label>
-              <Input
-                name="price"
-                type="number"
-                value={formData.price}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <Label>Stock</Label>
-              <Input
-                name="stock"
-                type="number"
-                value={formData.stock}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Description</Label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="w-full border rounded-md p-2 text-sm"
-              rows="3"
-            />
-          </div>
-
-          <div>
-            <Label>Product Image</Label>
-            <div className="flex items-center gap-3 mt-1">
-              <label className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200">
-                <Upload size={16} />
-                <span>Select Image</span>
+          {/* Controls */}
+          <div className="flex flex-col gap-2 justify-center h-full">
+            <div className="grid grid-cols-2 gap-4">
+              <label
+                htmlFor="product-image"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white border rounded-lg cursor-pointer hover:bg-gray-50"
+              >
                 <input
+                  id="product-image"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files[0])}
+                  onChange={onFileChange}
                   className="hidden"
                 />
+                <span className="text-sm font-medium text-gray-700">
+                  Choose image
+                </span>
               </label>
-              {imageFile ? (
-                <span className="text-sm text-gray-600">{imageFile.name}</span>
-              ) : (
-                formData.image_url && (
-                  <img
-                    src={formData.image_url}
-                    alt="preview"
-                    className="w-12 h-12 rounded object-cover"
-                  />
-                )
-              )}
-            </div>
-          </div>
 
-          <DialogFooter className="pt-4 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="bg-[#4eb0e3] hover:bg-[#056fb1]"
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...
-                </>
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+              <button
+                type="button"
+                onClick={clearSelectedImage}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white border cursor-pointer rounded-lg hover:bg-gray-50"
+              >
+                <Trash2 size={14} />
+                <span className="text-sm text-gray-700">Remove image</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Upload an image for this product.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ACTIONS */}
+      <div className="flex gap-3 justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onClose}
+          disabled={saving}
+          className="cursor-pointer"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="bg-[#4eb0e3] text-white cursor-pointer"
+          disabled={saving}
+        >
+          {saving ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+            </span>
+          ) : editingProduct ? (
+            "Save changes"
+          ) : (
+            "Create product"
+          )}
+        </Button>
+      </div>
+    </form>
   );
 }

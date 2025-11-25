@@ -1,12 +1,24 @@
+// src/components/admin/AdminProducts.jsx
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../supabaseClient";
 import { Plus, Pencil, Trash2, Loader2, ArrowUpDown } from "lucide-react";
 import ProductForm from "../../components/admin/ProductForm";
 import { toast } from "sonner";
 
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useProductsServer } from "../../hooks/useProductsServer";
+
+function useDebouncedValue(value, delay = 400) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function AdminProducts() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // UI state
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [search, setSearch] = useState("");
@@ -16,86 +28,90 @@ export default function AdminProducts() {
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 10;
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error)
-      toast.error("Error fetching products", {
-        position: "top-right",
-      });
-    else setProducts(data || []);
-    setLoading(false);
-  };
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  // Debounced search so we don't refetch on every keystroke
+  const debouncedSearch = useDebouncedValue(search, 400);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this product?")) return;
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error)
-      toast.error("Error deleting product", {
-        position: "top-right",
-      });
-    else {
-      toast.success("Product deleted", {
-        position: "top-right",
-      });
-      fetchProducts();
+  const {
+    data: resp = { data: [], total: 0 },
+    isLoading,
+    isError,
+    error,
+    isFetching,
+  } = useProductsServer({
+    page: currentPage,
+    perPage,
+    search: debouncedSearch,
+    category: categoryFilter,
+    sortField,
+    sortAsc,
+  });
+
+  const products = resp.data || [];
+  const total = resp.total || 0;
+
+  // derive unique categories from a cached large list, or fallback to current page
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set();
+    try {
+      const allCache = queryClient.getQueryData([
+        "products",
+        { perPage: 1000 },
+      ]);
+      if (Array.isArray(allCache)) {
+        allCache.forEach((p) => p.category && cats.add(p.category));
+      }
+    } catch (e) {
+      // ignore
     }
+    products.forEach((p) => p.category && cats.add(p.category));
+    return ["All Categories", ...Array.from(cats)];
+  }, [products, queryClient]);
+
+  // delete mutation (per-row loading handled by deletingId state)
+  const [deletingId, setDeletingId] = useState(null);
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from("products").delete().eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: (id) => {
+      toast.success("Product deleted", { position: "top-right" });
+      queryClient.invalidateQueries({ queryKey: ["products-server"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+    onError: (err) => {
+      console.error("Delete error", err);
+      toast.error("Error deleting product", { position: "top-right" });
+    },
+    onSettled: () => {
+      setDeletingId(null);
+    },
+  });
+
+  const handleDelete = (id) => {
+    if (!window.confirm("Delete this product?")) return;
+    setDeletingId(id);
+    deleteMutation.mutate(id);
   };
 
-  // Filter + Sort
-  const filteredProducts = useMemo(() => {
-    let result = [...products];
-
-    if (search)
-      result = result.filter((p) => {
-        const name = p.name?.toLowerCase() || "";
-        const code = p.product_code?.toLowerCase() || "";
-        return (
-          name.includes(search.toLowerCase()) ||
-          code.includes(search.toLowerCase())
-        );
-      });
-
-    if (categoryFilter !== "All Categories")
-      result = result.filter((p) => p.category === categoryFilter);
-
-    result.sort((a, b) => {
-      const valA = a[sortField];
-      const valB = b[sortField];
-      if (typeof valA === "string")
-        return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      return sortAsc ? valA - valB : valB - valA;
-    });
-
-    return result;
-  }, [products, search, categoryFilter, sortField, sortAsc]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredProducts.length / perPage);
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * perPage,
-    currentPage * perPage
-  );
-
+  // Sorting handler
   const handleSort = (field) => {
-    if (sortField === field) setSortAsc(!sortAsc);
+    if (sortField === field) setSortAsc((s) => !s);
     else {
       setSortField(field);
       setSortAsc(true);
     }
+    setCurrentPage(1);
   };
 
-  const uniqueCategories = [
-    "All Categories",
-    ...new Set(products.map((p) => p.category).filter(Boolean)),
-  ];
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, categoryFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
     <div className="p-6">
@@ -109,7 +125,7 @@ export default function AdminProducts() {
             setEditingProduct(null);
             setShowForm(true);
           }}
-          className="flex items-center gap-2 bg-[#4eb0e3] text-white px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition active:scale-95"
+          className="flex items-center gap-2 bg-[#4eb0e3] text-white px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition active:scale-95 cursor-pointer"
         >
           <Plus size={18} /> Add Product
         </button>
@@ -136,12 +152,16 @@ export default function AdminProducts() {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center items-center text-gray-500 h-40">
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
           Loading products...
         </div>
-      ) : filteredProducts.length === 0 ? (
+      ) : isError ? (
+        <div className="text-center text-red-600 py-10">
+          Failed to load products: {error?.message}
+        </div>
+      ) : products.length === 0 ? (
         <div className="text-center text-gray-500 py-10">
           No matching products.
         </div>
@@ -184,7 +204,7 @@ export default function AdminProducts() {
               </tr>
             </thead>
             <tbody>
-              {paginatedProducts.map((product) => (
+              {products.map((product) => (
                 <tr
                   key={product.id}
                   className="border-b border-gray-100 hover:bg-blue-50/50 transition duration-150 ease-in-out"
@@ -215,15 +235,23 @@ export default function AdminProducts() {
                         setEditingProduct(product);
                         setShowForm(true);
                       }}
-                      className="text-[#4eb0e3] hover:text-blue-800 transition"
+                      className="text-[#4eb0e3] hover:text-blue-800 transition cursor-pointer"
                     >
                       <Pencil size={18} />
                     </button>
                     <button
                       onClick={() => handleDelete(product.id)}
-                      className="text-red-600 hover:text-red-800 transition"
+                      className="text-red-600 hover:text-red-800 transition flex items-center cursor-pointer"
+                      disabled={deletingId === product.id}
                     >
-                      <Trash2 size={18} />
+                      {deletingId === product.id ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Deleting
+                        </span>
+                      ) : (
+                        <Trash2 size={18} />
+                      )}
                     </button>
                   </td>
                 </tr>
@@ -234,20 +262,25 @@ export default function AdminProducts() {
           {/* Pagination */}
           <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-t border-gray-100">
             <p className="text-sm text-gray-500">
-              Showing {paginatedProducts.length} of {filteredProducts.length}
+              Showing {products.length} of {total}
             </p>
             <div className="flex gap-2">
               <button
                 disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-                className="px-3 py-1 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 cursor-pointer"
               >
                 Prev
               </button>
+              <span className="px-3 py-1 text-sm text-gray-600">
+                Page {currentPage} / {totalPages}
+              </span>
               <button
                 disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-                className="px-3 py-1 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                className="px-3 py-1 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 cursor-pointer"
               >
                 Next
               </button>
@@ -262,13 +295,18 @@ export default function AdminProducts() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative">
             <button
               onClick={() => setShowForm(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
             >
               ✕
             </button>
             <ProductForm
               onClose={() => setShowForm(false)}
-              onSaved={fetchProducts}
+              onSaved={() => {
+                queryClient.invalidateQueries({
+                  queryKey: ["products-server"],
+                });
+                setShowForm(false);
+              }}
               editingProduct={editingProduct}
             />
           </div>

@@ -102,7 +102,7 @@ export default function Signup() {
           <Button
             type="submit"
             disabled={loading}
-            className="mt-3 w-full py-2.5 bg-[#4eb0e3] hover:bg-[#3ca0d4] text-white font-semibold rounded-lg transition-all text-sm"
+            className="mt-3 w-full py-2.5 bg-[#4eb0e3] hover:bg-[#3ca0d4] text-white font-semibold rounded-lg transition-all text-sm cursor-pointer"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : ""}
             {loading ? "Signing up..." : "Sign up"}
