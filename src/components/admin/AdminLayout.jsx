@@ -3,7 +3,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/cartContext"; // <-- make sure path matches your project
+import { useCart } from "../../context/CartContext"; // <-- make sure path matches your project
 import {
   LogOut,
   Menu,
