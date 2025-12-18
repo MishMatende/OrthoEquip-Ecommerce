@@ -17,7 +17,9 @@ import { useProduct } from "../../hooks/useProduct";
 export default function ProductDetails() {
   const { addToCart } = useCart();
 
-  const { id } = useParams(); // product id from URL
+  const { id } = useParams();
+  // console.log("ProductDetails param id:", id);
+
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(null);
   const [zoom, setZoom] = useState(false);
@@ -33,10 +35,13 @@ export default function ProductDetails() {
   const imageRef = useRef(null);
   const navigate = useNavigate();
 
-  const { data, isLoading, isError, error, isFetching } = useProduct(id);
+  const hook = useProduct(id);
+  const { data, isLoading, isError, error, isFetching } = hook;
 
-  const product = data?.product;
-  const images = data?.images || [];
+  // defensive extraction: support both shapes, but prefer { product, images }
+  const product =
+    (data && data.product) ?? (data && (data.id ? data : null)) ?? null;
+  const images = (data && data.images) ?? [];
 
   useEffect(() => {
     // reset selected image when product changes

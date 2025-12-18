@@ -127,7 +127,8 @@ Phone: ${form.phone}
         .insert({
           user_id: session.user.id,
           total_amount: total,
-          status: "pending",
+          status: "pending_payment",
+          payment_provider: "pesapal",
           tracking_stage: "placed",
           shipping_address: shippingAddress,
           payment_method: paymentMethod,
@@ -137,8 +138,23 @@ Phone: ${form.phone}
 
       if (error) throw error;
 
-      toast.success("🎉 Order placed successfully!");
-      navigate(`/order-confirmation/${order.id}`);
+      // Call Edge Function to initiate Pesapal payment
+      const { data: paymentRes, error: paymentErr } =
+        await supabase.functions.invoke("create-pesapal-payment", {
+          body: {
+            order_id: order.id,
+            amount: total,
+            email: form.email,
+            phone: form.phone,
+            first_name: form.firstName,
+            last_name: form.lastName,
+          },
+        });
+
+      if (paymentErr) throw paymentErr;
+
+      // Redirect user to Pesapal checkout
+      window.location.href = paymentRes.payment_url;
     } catch (err) {
       console.error(err);
       toast.error("Something went wrong. Try again.");

@@ -50,7 +50,7 @@ export function useProducts({
           .from("products")
           // 🧹 Removed slug — only request existing columns
           .select(
-            "id, name, price, image_url, description, variants, brand, stock, created_at"
+            "id, name, price, image_url, description, brand, stock, created_at"
           )
           .eq("id", id)
           .single();

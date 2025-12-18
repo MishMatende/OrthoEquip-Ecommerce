@@ -1,8 +1,8 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 
-// ✅ Move this OUTSIDE the component — global scope
 const AuthContext = createContext();
 
 export const AuthContextProvider = ({ children }) => {
@@ -33,92 +33,117 @@ export const AuthContextProvider = ({ children }) => {
         return { success: false, error: error.message };
       }
 
-      // Fetch user profile after sign-in
-      await fetchUserProfile(data.session?.user?.id);
+      // Attempt to fetch profile after sign in
+      if (data?.session?.user?.id) {
+        await fetchUserProfile(data.session.user.id);
+      }
 
       return { success: true, data };
     } catch (error) {
-      console.error("An unexpected error occurred:", error);
+      console.error("An unexpected error occurred during signin:", error);
+      return { success: false, error };
     }
   };
 
   // Fetch user profile
   const fetchUserProfile = async (userId) => {
-    if (!userId) return;
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, email, is_admin")
-      .eq("id", userId)
-      .single();
+    if (!userId) return null;
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, email, is_admin")
+        .eq("id", userId)
+        .single();
 
-    if (error) console.error("Error fetching profile:", error);
-    else setUserProfile(data);
+      if (error) {
+        console.error("Error fetching profile:", error);
+        return null;
+      } else {
+        setUserProfile(data);
+        return data;
+      }
+    } catch (err) {
+      console.error("fetchUserProfile failed:", err);
+      return null;
+    }
   };
 
-  // Listen for session changes
-  // inside AuthContextProvider (replace the existing listener code + signoutUser)
-
+  // Load initial session + subscribe to changes
   useEffect(() => {
+    let mounted = true;
     async function loadSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
+      try {
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession();
 
-      if (session?.user) await fetchUserProfile(session.user.id);
+        if (!mounted) return;
+        setSession(initialSession);
 
-      setLoadingAuth(false);
+        if (initialSession?.user) {
+          await fetchUserProfile(initialSession.user.id);
+        }
+      } catch (e) {
+        console.error("Error getting session:", e);
+      } finally {
+        if (mounted) setLoadingAuth(false);
+      }
     }
 
     loadSession();
 
-    // updated listener shape (works with supabase-js v2)
+    // Subscribe to auth changes (works with supabase-js v2 shapes)
     const { data } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
+      async (_event, newSession) => {
+        try {
+          setSession(newSession);
 
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id, email, is_admin")
-            .eq("id", session.user.id)
-            .single();
-
-          setUserProfile(profile);
-
-          if (_event === "SIGNED_IN") {
-            if (profile?.is_admin) navigate("/admin");
-            else navigate("/");
+          if (newSession?.user) {
+            const profile = await fetchUserProfile(newSession.user.id);
+            // optional redirect on sign-in if admin
+            if (_event === "SIGNED_IN" && profile?.is_admin) {
+              navigate("/admin");
+            }
+          } else {
+            // signed out
+            setUserProfile(null);
           }
-        } else {
-          setUserProfile(null);
+        } catch (err) {
+          console.error("onAuthStateChange handler error:", err);
+        } finally {
+          setLoadingAuth(false);
         }
-
-        setLoadingAuth(false);
       }
     );
 
-    // unsubscribe safely
     return () => {
+      mounted = false;
+      // unsubscribe guard for both possible shapes
       try {
         if (data?.subscription?.unsubscribe) data.subscription.unsubscribe();
-        else if (data?.unsubscribe) data.unsubscribe();
-      } catch (e) {
-        // ignore
+        else if (typeof data?.unsubscribe === "function") data.unsubscribe();
+      } catch (err) {
+        // swallow unsubscribe errors
       }
     };
   }, [navigate]);
 
-  // sign out — DO NOT navigate here; let callers decide
+  // sign out — returns { ok: true } or { ok: false, error }
   const signoutUser = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("There was an error signing out:", error);
-      throw error;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("There was an error signing out:", error);
+        return { ok: false, error };
+      }
+      // local clear
+      setUserProfile(null);
+      setSession(null);
+      return { ok: true };
+    } catch (err) {
+      console.error("signoutUser unexpected error:", err);
+      return { ok: false, error: err };
     }
-    setUserProfile(null);
-    setSession(null);
-    // do NOT call navigate here — caller should redirect after successful sign out
   };
 
   return (
@@ -137,5 +162,4 @@ export const AuthContextProvider = ({ children }) => {
   );
 };
 
-// ✅ Export the hook AFTER the context is defined
 export const UserAuth = () => useContext(AuthContext);

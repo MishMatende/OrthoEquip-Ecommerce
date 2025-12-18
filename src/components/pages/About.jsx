@@ -5,7 +5,7 @@ import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
 
 export default function About() {
   const policiesUrl = encodeURI(
-    "/mnt/data/BALM ORTHO MEDICAL SUPPLIES - POLICIES.docx"
+    "/public/content/BALM ORTHO MEDICAL SUPPLIES - POLICIES.pdf"
   );
 
   const fadeUp = {
@@ -267,7 +267,7 @@ export default function About() {
                   strokeLinejoin="round"
                 />
               </svg>
-              Download policies (DOCX)
+              Download policies (PDF)
             </a>
           </div>
 

@@ -1,6 +1,11 @@
 // src/pages/Shop.jsx
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 import { supabase } from "../../supabaseClient"; // keep your existing client
 import Card from "../../components/Card";
 import { Button } from "../../components/ui/button";
@@ -20,22 +25,52 @@ import { useProducts } from "../../hooks/useProducts"; // new hook (note path)
 export default function Shop() {
   const navigate = useNavigate();
   const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const initialCategory = queryParams.get("category");
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [currentPage, setCurrentPage] = useState(1);
+  // read initial values from query params (fallbacks)
+  const paramPage = parseInt(searchParams.get("page") || "1", 10);
+  const paramCategory = searchParams.get("category"); // comma-separated or single
+  const paramSort = searchParams.get("sort") || "A-Z";
+  const paramBrands = searchParams.get("brands"); // comma-separated
+  const paramPriceMin = parseInt(searchParams.get("min") || "0", 10);
+  const paramPriceMax = parseInt(searchParams.get("max") || "100000", 10);
+  const paramInStock = searchParams.get("inStock");
+  const paramOutStock = searchParams.get("outStock");
+
+  const [currentPage, setCurrentPage] = useState(paramPage);
   const productsPerPage = 12;
+
   const [selectedCategories, setSelectedCategories] = useState(
-    initialCategory ? [initialCategory] : []
+    paramCategory ? paramCategory.split(",").filter(Boolean) : []
   );
-  const [selectedBrands, setSelectedBrands] = useState([]);
+  const [selectedBrands, setSelectedBrands] = useState(
+    paramBrands ? paramBrands.split(",").filter(Boolean) : []
+  );
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   // local UI filters
-  const [priceRange, setPriceRange] = useState([0, 100000]);
-  const [inStock, setInStock] = useState(true);
-  const [outStock, setOutStock] = useState(true);
-  const [sort, setSort] = useState("A-Z");
+  const [priceRange, setPriceRange] = useState([paramPriceMin, paramPriceMax]);
+  // local transient slider state for smooth dragging
+  const [tempPrice, setTempPrice] = useState([paramPriceMin, paramPriceMax]);
+
+  // add alongside other handlers (near toggle etc.)
+  const handlePriceCommit = (val) => {
+    // val is expected to be an array [min, max]
+    setPriceRange(val);
+  };
+
+  // make sure tempPrice follows priceRange when priceRange changes (e.g. back/forward)
+  useEffect(() => {
+    setTempPrice(priceRange);
+  }, [priceRange]);
+
+  const [inStock, setInStock] = useState(
+    paramInStock === null ? true : paramInStock === "true"
+  );
+  const [outStock, setOutStock] = useState(
+    paramOutStock === null ? true : paramOutStock === "true"
+  );
+  const [sort, setSort] = useState(paramSort);
   const [open, setOpen] = useState({
     availability: false,
     price: false,
@@ -44,9 +79,28 @@ export default function Shop() {
     color: false,
     material: false,
     size: false,
+    mobileFilters: false,
   });
 
   const toggle = (key) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // --- rAF batching for slider updates (stable) ---
+  const tempRef = React.useRef(priceRange); // start with the committed value
+  const rafRef = React.useRef(null);
+
+  // keep ref in sync when priceRange (committed) changes externally
+  useEffect(() => {
+    tempRef.current = priceRange;
+    setTempPrice(priceRange); // update visible values when commit happens elsewhere
+  }, [priceRange]);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+  // --- end rAF batching block ---
 
   // ---------- useProducts hook ----------
   // set perPage high so we fetch full catalog once and then do client-side filtering
@@ -58,7 +112,7 @@ export default function Shop() {
     prefetchProductById,
   } = useProducts({ perPage: 1000 });
 
-  // derived filtered/sorted/paginated data (mostly unchanged)
+  // derived filtered/sorted/paginated data
   const filteredProducts = products.filter((p) => {
     const inRange = p.price >= priceRange[0] && p.price <= priceRange[1];
     const stockFilter = (inStock && p.stock > 0) || (outStock && p.stock <= 0);
@@ -93,7 +147,10 @@ export default function Shop() {
     indexOfLastProduct
   );
 
-  const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedProducts.length / productsPerPage)
+  );
 
   // ---------- fetch categories & brands (optimized: select only fields) ----------
   useEffect(() => {
@@ -128,15 +185,106 @@ export default function Shop() {
     return () => (mounted = false);
   }, []);
 
+  // keep scroll on page change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
-  useEffect(() => {
-    if (initialCategory) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  // ---------- Keep URL in sync with state ----------
+  // helper to build a params object from current state
+  const buildParamsFromState = () => {
+    const params = {};
+    if (currentPage && currentPage > 1) params.page = String(currentPage);
+    if (selectedCategories.length > 0)
+      params.category = selectedCategories.join(",");
+    if (selectedBrands.length > 0) params.brands = selectedBrands.join(",");
+    if (priceRange && (priceRange[0] !== 0 || priceRange[1] !== 100000)) {
+      params.min = String(priceRange[0]);
+      params.max = String(priceRange[1]);
     }
-  }, [initialCategory]);
+    // persist availability flags only when they differ from defaults
+    if (inStock !== true) params.inStock = String(inStock);
+    if (outStock !== true) params.outStock = String(outStock);
+    if (sort && sort !== "A-Z") params.sort = sort;
+    return params;
+  };
+
+  // compare current searchParams to state-derived params
+  const paramsDiffer = (paramsA, paramsB) => {
+    const aKeys = Object.keys(paramsA).sort();
+    const bKeys = Object.keys(paramsB).sort();
+    if (aKeys.length !== bKeys.length) return true;
+    for (let k of aKeys) {
+      if (paramsA[k] !== paramsB[k]) return true;
+    }
+    return false;
+  };
+
+  // whenever the state changes, push a new search param entry (so Back/Forward works)
+  useEffect(() => {
+    const params = buildParamsFromState();
+    // build a plain object from searchParams for comparison
+    const current = {};
+    for (const [key, value] of searchParams.entries()) current[key] = value;
+
+    if (paramsDiffer(current, params)) {
+      setSearchParams(params, { replace: false }); // push a new history entry
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    currentPage,
+    selectedCategories,
+    selectedBrands,
+    priceRange,
+    inStock,
+    outStock,
+    sort,
+  ]);
+
+  // when query string changes (back/forward/bookmark), sync local state
+  useEffect(() => {
+    const qpPage = parseInt(searchParams.get("page") || "1", 10);
+    const qpCategory = searchParams.get("category");
+    const qpBrands = searchParams.get("brands");
+    const qpMin = parseInt(searchParams.get("min") || "0", 10);
+    const qpMax = parseInt(searchParams.get("max") || "100000", 10);
+    const qpInStock = searchParams.get("inStock");
+    const qpOutStock = searchParams.get("outStock");
+    const qpSort = searchParams.get("sort") || "A-Z";
+
+    if (!Number.isNaN(qpPage) && qpPage !== currentPage) setCurrentPage(qpPage);
+
+    const qpCategories = qpCategory
+      ? qpCategory.split(",").filter(Boolean)
+      : [];
+    if (
+      qpCategories.length !== selectedCategories.length ||
+      qpCategories.some((c, i) => c !== selectedCategories[i])
+    ) {
+      setSelectedCategories(qpCategories);
+    }
+
+    const qpBrandsArr = qpBrands ? qpBrands.split(",").filter(Boolean) : [];
+    if (
+      qpBrandsArr.length !== selectedBrands.length ||
+      qpBrandsArr.some((b, i) => b !== selectedBrands[i])
+    ) {
+      setSelectedBrands(qpBrandsArr);
+    }
+
+    if (
+      (!Number.isNaN(qpMin) && qpMin !== priceRange[0]) ||
+      (!Number.isNaN(qpMax) && qpMax !== priceRange[1])
+    ) {
+      setPriceRange([qpMin, qpMax]);
+    }
+
+    if (qpInStock !== null) setInStock(qpInStock === "true");
+    if (qpOutStock !== null) setOutStock(qpOutStock === "true");
+
+    if (qpSort !== sort) setSort(qpSort);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // ---------- UI pieces ----------
   const Section = ({ title, name, children }) => (
@@ -194,14 +342,29 @@ export default function Shop() {
             <Slider
               min={0}
               max={100000}
-              step={100}
-              value={priceRange}
-              onValueChange={setPriceRange}
+              step={1}
+              defaultValue={priceRange}
+              onValueChange={(val) => {
+                // raw events update the ref immediately (no React render)
+                tempRef.current = val;
+
+                // schedule a single state update per animation frame
+                if (!rafRef.current) {
+                  rafRef.current = requestAnimationFrame(() => {
+                    rafRef.current = null;
+                    setTempPrice(tempRef.current); // React render once per frame at most
+                  });
+                }
+              }}
+              onValueCommit={(val) => {
+                console.log("commit", val);
+                setPriceRange(val);
+              }}
               className="w-full"
             />
             <div className="flex justify-between text-sm text-gray-600 mt-2">
-              <span>KES {priceRange[0]}</span>
-              <span>KES {priceRange[1]}</span>
+              <span>KES {Math.round(tempPrice[0]).toLocaleString()}</span>
+              <span>KES {Math.round(tempPrice[1]).toLocaleString()}</span>
             </div>
           </div>
         </Section>
@@ -316,14 +479,29 @@ export default function Shop() {
                   <Slider
                     min={0}
                     max={100000}
-                    step={100}
-                    value={priceRange}
-                    onValueChange={setPriceRange}
+                    step={1}
+                    defaultValue={priceRange}
+                    onValueChange={(val) => {
+                      // raw events update the ref immediately (no React render)
+                      tempRef.current = val;
+
+                      // schedule a single state update per animation frame
+                      if (!rafRef.current) {
+                        rafRef.current = requestAnimationFrame(() => {
+                          rafRef.current = null;
+                          setTempPrice(tempRef.current); // React render once per frame at most
+                        });
+                      }
+                    }}
+                    onValueCommit={(val) => {
+                      console.log("commit", val);
+                      setPriceRange(val);
+                    }}
                     className="w-full"
                   />
                   <div className="flex justify-between text-sm text-gray-600 mt-2">
-                    <span>KES {priceRange[0]}</span>
-                    <span>KES {priceRange[1]}</span>
+                    <span>KES {Math.round(tempPrice[0]).toLocaleString()}</span>
+                    <span>KES {Math.round(tempPrice[1]).toLocaleString()}</span>
                   </div>
                 </div>
               </Section>
@@ -390,7 +568,7 @@ export default function Shop() {
         {/* Sorting & Count */}
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">
-            <Select onValueChange={setSort}>
+            <Select onValueChange={(v) => setSort(v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Alphabetically, A-Z" />
               </SelectTrigger>
@@ -414,7 +592,7 @@ export default function Shop() {
 
           <p className="hidden md:block text-sm text-gray-500">
             Showing {sortedProducts.length}{" "}
-            {sortedProducts.length === 1 ? "product" : "products"}{" "}
+            {sortedProducts.length === 1 ? "product" : "products"}
             {sortedProducts.length !== products.length && (
               <>out of {products.length} total</>
             )}
@@ -441,15 +619,15 @@ export default function Shop() {
             "
           >
             {currentProducts.map((product) => (
-              <div
+              <Link
                 key={product.id}
-                onClick={() => navigate(`/shop/${product.id}`)}
+                to={`/shop/${product.id}`}
                 className="cursor-pointer flex flex-col"
                 onMouseEnter={() => prefetchProductById(product.id)}
                 onFocus={() => prefetchProductById(product.id)}
               >
                 <Card product={product} />
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -459,7 +637,7 @@ export default function Shop() {
           <div className="mt-2 text-xs text-gray-500">Refreshing products…</div>
         )}
 
-        {/* Pagination (unchanged) */}
+        {/* Pagination (unchanged, but now synced to URL) */}
         {totalPages > 1 && (
           <div className="flex flex-wrap justify-center mt-8 gap-2 items-center px-2">
             <Button
