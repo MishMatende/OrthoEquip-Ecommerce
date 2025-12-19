@@ -261,9 +261,14 @@ Phone: ${form.phone}
           </section>
 
           {/* Payment Notice */}
-          <section className="text-sm text-gray-600 bg-blue-50 p-4 rounded-xl">
-            You will be redirected to <strong>Pesapal</strong> to complete your
-            payment securely.
+          <section className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm">
+            <p className="font-medium text-blue-800">
+              Secure payment via Pesapal
+            </p>
+            <p className="text-blue-700 mt-1">
+              You’ll be redirected to Pesapal to complete payment using M-PESA,
+              Visa, Mastercard, or Airtel Money.
+            </p>
           </section>
 
           {/* Button */}

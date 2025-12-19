@@ -47,7 +47,11 @@ export default function PaymentCallback() {
       {status === "checking" && (
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p>Confirming payment…</p>
+          <p className="text-gray-600 text-sm">
+            We’re confirming your payment with Pesapal.
+            <br />
+            This usually takes a few seconds.
+          </p>
         </div>
       )}
 

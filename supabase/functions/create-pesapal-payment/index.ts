@@ -85,7 +85,7 @@ serve(async (req) => {
           amount,
           description: `Order #${order_id}`,
           callback_url: Deno.env.get("PESAPAL_CALLBACK_URL"),
-          notification_id: Deno.env.get("PESAPAL_IPN_URL"),
+          notification_id: Deno.env.get("PESAPAL_IPN_ID"),
           billing_address: {
             email_address: email,
             phone_number: phone,
