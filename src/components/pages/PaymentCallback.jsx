@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
 
 export default function PaymentCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState("checking");
 
+  // ✅ Correct params from Pesapal
   const trackingId = searchParams.get("OrderTrackingId");
+  const orderId = searchParams.get("OrderMerchantReference");
 
   useEffect(() => {
-    if (!orderId) {
+    if (!trackingId || !orderId) {
       setStatus("error");
       return;
     }
@@ -24,35 +26,41 @@ export default function PaymentCallback() {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("id, status")
-        .eq("pesapal_tracking_id", trackingId)
+        .select("status")
+        .eq("id", orderId)
         .single();
 
-      if (error) {
+      if (error || !data) {
         setStatus("error");
         return;
       }
 
       if (data.status === "paid") {
         setStatus("success");
-        setTimeout(() => navigate(`/order-confirmation/${orderId}`), 2000);
-      } else if (data.status === "payment_failed") {
+        setTimeout(() => {
+          navigate(`/order-confirmation/${orderId}`);
+        }, 2000);
+        return;
+      }
+
+      if (data.status === "payment_failed") {
         setStatus("failed");
-      } else {
-        if (attempts >= MAX_ATTEMPTS) {
-          setStatus("pending");
-          return;
-        }
-        // Payment still processing → retry
+        return;
+      }
+
+      // Still pending → retry with limit
+      if (attempts < MAX_ATTEMPTS) {
         setTimeout(checkStatus, 2000);
+      } else {
+        setStatus("pending");
       }
     };
 
     checkStatus();
-  }, [orderId, navigate]);
+  }, [trackingId, orderId, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       {status === "checking" && (
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
@@ -75,6 +83,17 @@ export default function PaymentCallback() {
         <div className="text-center text-red-600">
           <XCircle className="w-10 h-10 mx-auto mb-2" />
           <p>Payment failed. Please try again.</p>
+        </div>
+      )}
+
+      {status === "pending" && (
+        <div className="text-center text-yellow-600">
+          <Clock className="w-10 h-10 mx-auto mb-2" />
+          <p>
+            Payment is still processing.
+            <br />
+            Please check your orders shortly.
+          </p>
         </div>
       )}
 
