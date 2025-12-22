@@ -11,10 +11,12 @@ import {
 } from "../../components/ui/tabs";
 import { Loader2, Minus, Plus, X } from "lucide-react";
 import { useCart } from "../../context/CartContext";
+import { UserAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useProduct } from "../../hooks/useProduct";
 
 export default function ProductDetails() {
+  const { session } = UserAuth();
   const { addToCart } = useCart();
 
   const { id } = useParams();
@@ -314,7 +316,24 @@ export default function ProductDetails() {
                   : "cursor-pointer hover:bg-gray-100"
               }`}
               disabled={product.stock <= 0}
-              onClick={() =>
+              onClick={() => {
+                if (!session) {
+                  navigate("/signin", {
+                    state: {
+                      redirectTo: "/checkout",
+                      buyNow: true,
+                      product: {
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        image_url: product.image_url,
+                      },
+                      quantity,
+                    },
+                  });
+                  return;
+                }
+
                 navigate("/checkout", {
                   state: {
                     buyNow: true,
@@ -326,8 +345,8 @@ export default function ProductDetails() {
                     },
                     quantity,
                   },
-                })
-              }
+                });
+              }}
             >
               {product.stock <= 0 ? "Out of Stock" : "Buy it now"}
             </Button>
