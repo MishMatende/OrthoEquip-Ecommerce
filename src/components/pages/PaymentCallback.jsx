@@ -27,7 +27,6 @@ export default function PaymentCallback() {
       if (cancelled) return;
 
       attemptsRef.current += 1;
-      console.log(`🔍 Poll attempt ${attemptsRef.current}/${MAX_ATTEMPTS}`);
 
       const { data, error } = await supabase
         .from("orders")
@@ -39,8 +38,6 @@ export default function PaymentCallback() {
         setStatus("error");
         return;
       }
-
-      console.log("📦 Order row from DB:", data);
 
       if (data.payment_status === "paid") {
         setStatus("success");

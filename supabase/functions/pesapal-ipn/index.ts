@@ -63,7 +63,6 @@ serve(async (req) => {
         .from("orders")
         .update({
           payment_status: "paid",
-          status: "processing",
           paid_at: new Date().toISOString(),
         })
         .eq("pesapal_tracking_id", orderTrackingId)
