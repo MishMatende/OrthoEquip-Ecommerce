@@ -310,7 +310,7 @@ export default function ProductDetails() {
             {/* Buy it now */}
             <Button
               variant="outline"
-              className={`rounded-xl w-full sm:w-auto px-6 py-3 font-semibold ${
+              className={`rounded-xl w-full sm:w-auto px-6 py-3 font-semibold text-black ${
                 product.stock <= 0
                   ? "opacity-50 cursor-not-allowed"
                   : "cursor-pointer hover:bg-gray-100"

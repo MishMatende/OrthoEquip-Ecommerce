@@ -10,6 +10,20 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  const requiredVars = [
+  "PESAPAL_CONSUMER_KEY",
+  "PESAPAL_CONSUMER_SECRET",
+  "PESAPAL_BASE_URL",
+  "PESAPAL_IPN_ID",
+  "PESAPAL_CALLBACK_URL",
+];
+
+for (const key of requiredVars) {
+  if (!Deno.env.get(key)) {
+    throw new Error(`Missing env var: ${key}`);
+  }
+}
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -52,8 +66,9 @@ serve(async (req) => {
     }
 
     // 2. Authenticate with Pesapal (Sandbox)
+    const PESAPAL_BASE_URL = Deno.env.get("PESAPAL_BASE_URL")!;
     const authRes = await fetch(
-      "https://cybqa.pesapal.com/pesapalv3/api/Auth/RequestToken",
+  `${PESAPAL_BASE_URL}/api/Auth/RequestToken`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,7 +87,7 @@ serve(async (req) => {
 
     // 3. Create Pesapal order
     const pesapalRes = await fetch(
-      "https://cybqa.pesapal.com/pesapalv3/api/Transactions/SubmitOrderRequest",
+  `${PESAPAL_BASE_URL}/api/Transactions/SubmitOrderRequest`,
       {
         method: "POST",
         headers: {
