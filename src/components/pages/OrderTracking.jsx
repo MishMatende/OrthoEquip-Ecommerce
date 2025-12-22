@@ -10,7 +10,7 @@ export default function OrderTracking() {
   const [loading, setLoading] = useState(true);
 
   const steps = [
-    { key: "pending", label: "Order Placed" },
+    { key: "placed", label: "Order Placed" },
     { key: "confirmed", label: "Order Confirmed" },
     { key: "shipped", label: "Shipped" },
     { key: "delivered", label: "Delivered" },
