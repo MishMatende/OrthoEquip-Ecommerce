@@ -97,9 +97,9 @@ ${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
 ${form.city}
 Postal code: ${form.postalCode}
 Phone: ${form.phone}
-      `.trim();
+    `.trim();
 
-      // 1️⃣ Create pending order
+      // 1️⃣ Create order
       const { data: order, error } = await supabase
         .from("orders")
         .insert({
@@ -115,9 +115,10 @@ Phone: ${form.phone}
 
       if (error) throw error;
 
-      // 2️⃣ Create Pesapal payment
-      const { data: paymentRes, error: paymentErr } =
-        await supabase.functions.invoke("create-pesapal-payment", {
+      // 2️⃣ Call payment function
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "create-pesapal-payment",
+        {
           body: {
             order_id: order.id,
             amount: total,
@@ -126,16 +127,22 @@ Phone: ${form.phone}
             first_name: form.firstName,
             last_name: form.lastName,
           },
-        });
+        }
+      );
 
-      if (paymentErr) throw paymentErr;
+      if (fnError) throw fnError;
 
-      // 3️⃣ Redirect to Pesapal
-      window.location.href = paymentRes.payment_url;
+      // ✅ HARD GUARD (THIS WAS MISSING)
+      if (!data?.payment_url) {
+        throw new Error("Payment URL not returned");
+      }
+
+      // 3️⃣ Redirect
+      window.location.assign(data.payment_url);
     } catch (err) {
-      console.error(err);
-      toast.error("Something went wrong. Please try again.");
-      setLoading(false);
+      console.error("Checkout error:", err);
+      toast.error("Unable to start payment. Please try again.");
+      setLoading(false); // ✅ GUARANTEED RESET
     }
   };
 
