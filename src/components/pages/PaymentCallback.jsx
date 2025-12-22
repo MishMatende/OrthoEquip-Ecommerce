@@ -8,12 +8,21 @@ export default function PaymentCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("checking");
 
-  // ✅ Correct params from Pesapal
   const trackingId = searchParams.get("OrderTrackingId");
   const orderId = searchParams.get("OrderMerchantReference");
 
+  console.log("🔁 PaymentCallback mounted");
+  console.log("📌 Query params:", {
+    OrderTrackingId: trackingId,
+    OrderMerchantReference: orderId,
+  });
+
   useEffect(() => {
     if (!trackingId || !orderId) {
+      console.error("❌ Missing required query params", {
+        trackingId,
+        orderId,
+      });
       setStatus("error");
       return;
     }
@@ -23,37 +32,54 @@ export default function PaymentCallback() {
 
     const checkStatus = async () => {
       attempts++;
+      console.log(`🔍 Poll attempt ${attempts}/${MAX_ATTEMPTS}`);
 
       const { data, error } = await supabase
         .from("orders")
-        .select("status")
+        .select("id, status, pesapal_tracking_id")
         .eq("id", orderId)
         .single();
 
-      if (error || !data) {
+      if (error) {
+        console.error("❌ Supabase query error:", error);
+        setStatus("error");
+        return;
+      }
+
+      console.log("📦 Order row from DB:", data);
+
+      if (!data) {
+        console.error("❌ No order returned from DB");
         setStatus("error");
         return;
       }
 
       if (data.status === "paid") {
+        console.log("✅ Payment confirmed");
         setStatus("success");
+
         setTimeout(() => {
-          navigate(`/order-confirmation/${orderId}`);
+          console.log("➡️ Redirecting to order confirmation", data.id);
+          navigate(`/order-confirmation/${data.id}`);
         }, 2000);
+
         return;
       }
 
       if (data.status === "payment_failed") {
+        console.warn("⚠️ Payment failed");
         setStatus("failed");
         return;
       }
 
-      // Still pending → retry with limit
-      if (attempts < MAX_ATTEMPTS) {
-        setTimeout(checkStatus, 2000);
-      } else {
+      if (attempts >= MAX_ATTEMPTS) {
+        console.warn("⏳ Max attempts reached, marking as pending");
         setStatus("pending");
+        return;
       }
+
+      console.log("⏲️ Payment still pending, retrying in 2s...");
+      setTimeout(checkStatus, 2000);
     };
 
     checkStatus();
@@ -66,8 +92,6 @@ export default function PaymentCallback() {
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 text-sm">
             We’re confirming your payment with Pesapal.
-            <br />
-            This usually takes a few seconds.
           </p>
         </div>
       )}
