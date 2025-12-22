@@ -31,7 +31,7 @@ export default function PaymentCallback() {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("id, status")
+        .select("id, payment_status")
         .eq("id", orderId)
         .single();
 
@@ -42,7 +42,7 @@ export default function PaymentCallback() {
 
       console.log("📦 Order row from DB:", data);
 
-      if (data.status === "paid") {
+      if (data.payment_status === "paid") {
         setStatus("success");
         setTimeout(() => navigate(`/order-confirmation/${data.id}`), 2000);
         return;

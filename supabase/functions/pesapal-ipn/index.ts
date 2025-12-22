@@ -1,35 +1,27 @@
-// supabase/functions/pesapal-ipn/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "@supabase/supabase-js";
 
 serve(async (req) => {
-  // ✅ ALWAYS acknowledge immediately
   const ack = new Response("OK", { status: 200 });
 
   try {
-    // Pesapal sends params in query string
     const url = new URL(req.url);
     const orderTrackingId = url.searchParams.get("OrderTrackingId");
     const merchantRef = url.searchParams.get("OrderMerchantReference");
 
-    console.log("🔔 Pesapal IPN HIT:", {
-      orderTrackingId,
-      merchantRef,
-    });
+    console.log("🔔 Pesapal IPN HIT:", { orderTrackingId, merchantRef });
 
-    // If missing params, still ACK
     if (!orderTrackingId || !merchantRef) {
       console.warn("⚠️ Missing IPN params");
       return ack;
     }
 
-    // Create Supabase client (SERVICE ROLE – no RLS issues)
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1️⃣ Authenticate with Pesapal (LIVE)
+    // 1️⃣ Authenticate with Pesapal
     const authRes = await fetch(
       `${Deno.env.get("PESAPAL_BASE_URL")}/api/Auth/RequestToken`,
       {
@@ -61,33 +53,40 @@ serve(async (req) => {
     const statusData = await statusRes.json();
     console.log("📦 Pesapal status:", statusData);
 
-    // Only mark as paid if COMPLETED
+    // 3️⃣ Update order based on status
     if (
       statusData.payment_status_description === "Completed" ||
+      statusData.status_code === 0 ||
       statusData.status_code === 1
     ) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .update({
-          status: "paid",
+          payment_status: "paid",
+          status: "processing",
           paid_at: new Date().toISOString(),
-          pesapal_tracking_id: orderTrackingId,
         })
-        .eq("id", merchantRef);
+        .eq("pesapal_tracking_id", orderTrackingId)
+        .select()
+        .single();
 
       if (error) {
-        console.error("❌ Failed to update order:", error);
+        console.error("❌ Failed to mark order as paid:", error);
       } else {
-        console.log("✅ Order marked as PAID:", merchantRef);
+        console.log("✅ Order payment confirmed:", data.id);
       }
     } else {
+      await supabase
+        .from("orders")
+        .update({ payment_status: "pending" })
+        .eq("pesapal_tracking_id", orderTrackingId);
+
       console.log(
-        "⏳ Payment not completed yet:",
+        "⏳ Payment still pending:",
         statusData.payment_status_description
       );
     }
   } catch (err) {
-    // NEVER throw — always ACK Pesapal
     console.error("❌ IPN processing error:", err);
   }
 
