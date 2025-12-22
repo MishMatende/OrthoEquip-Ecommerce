@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
@@ -11,80 +11,67 @@ export default function PaymentCallback() {
   const trackingId = searchParams.get("OrderTrackingId");
   const orderId = searchParams.get("OrderMerchantReference");
 
-  console.log("🔁 PaymentCallback mounted");
-  console.log("📌 Query params:", {
-    OrderTrackingId: trackingId,
-    OrderMerchantReference: orderId,
-  });
+  const attemptsRef = useRef(0);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     if (!trackingId || !orderId) {
-      console.error("❌ Missing required query params", {
-        trackingId,
-        orderId,
-      });
       setStatus("error");
       return;
     }
 
-    let attempts = 0;
-    const MAX_ATTEMPTS = 15;
+    const MAX_ATTEMPTS = 5;
+    let cancelled = false;
 
     const checkStatus = async () => {
-      attempts++;
-      console.log(`🔍 Poll attempt ${attempts}/${MAX_ATTEMPTS}`);
+      if (cancelled) return;
+
+      attemptsRef.current += 1;
+      console.log(`🔍 Poll attempt ${attemptsRef.current}/${MAX_ATTEMPTS}`);
 
       const { data, error } = await supabase
         .from("orders")
-        .select("id, status, pesapal_tracking_id")
+        .select("id, status")
         .eq("id", orderId)
         .single();
 
-      if (error) {
-        console.error("❌ Supabase query error:", error);
+      if (error || !data) {
         setStatus("error");
         return;
       }
 
       console.log("📦 Order row from DB:", data);
 
-      if (!data) {
-        console.error("❌ No order returned from DB");
-        setStatus("error");
-        return;
-      }
-
       if (data.status === "paid") {
-        console.log("✅ Payment confirmed");
         setStatus("success");
-
-        setTimeout(() => {
-          console.log("➡️ Redirecting to order confirmation", data.id);
-          navigate(`/order-confirmation/${data.id}`);
-        }, 2000);
-
+        setTimeout(() => navigate(`/order-confirmation/${data.id}`), 2000);
         return;
       }
 
       if (data.status === "payment_failed") {
-        console.warn("⚠️ Payment failed");
         setStatus("failed");
         return;
       }
 
-      if (attempts >= MAX_ATTEMPTS) {
-        console.warn("⏳ Max attempts reached, marking as pending");
+      if (attemptsRef.current >= MAX_ATTEMPTS) {
         setStatus("pending");
         return;
       }
 
-      console.log("⏲️ Payment still pending, retrying in 2s...");
-      setTimeout(checkStatus, 2000);
+      timeoutRef.current = setTimeout(checkStatus, 2000);
     };
 
     checkStatus();
+
+    return () => {
+      cancelled = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [trackingId, orderId, navigate]);
 
+  // UI unchanged ↓
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       {status === "checking" && (
