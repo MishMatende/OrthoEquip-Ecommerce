@@ -8,7 +8,7 @@ export default function PaymentCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("checking");
 
-  const orderId = searchParams.get("OrderMerchantReference");
+  const trackingId = searchParams.get("OrderTrackingId");
 
   useEffect(() => {
     if (!orderId) {
@@ -16,11 +16,16 @@ export default function PaymentCallback() {
       return;
     }
 
+    let attempts = 0;
+    const MAX_ATTEMPTS = 15;
+
     const checkStatus = async () => {
+      attempts++;
+
       const { data, error } = await supabase
         .from("orders")
-        .select("status")
-        .eq("id", orderId)
+        .select("id, status")
+        .eq("pesapal_tracking_id", trackingId)
         .single();
 
       if (error) {
@@ -34,6 +39,10 @@ export default function PaymentCallback() {
       } else if (data.status === "payment_failed") {
         setStatus("failed");
       } else {
+        if (attempts >= MAX_ATTEMPTS) {
+          setStatus("pending");
+          return;
+        }
         // Payment still processing → retry
         setTimeout(checkStatus, 2000);
       }
