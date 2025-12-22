@@ -129,11 +129,11 @@ export default function Home() {
               </ul>
             </div>
 
-            <div>
+            {/* <div>
               <p className="mt-6 font-semibold text-[#4eb0e3] hover:underline cursor-pointer">
                 LEARN MORE
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
