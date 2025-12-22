@@ -2,19 +2,20 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { UserAuth } from "../../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
-import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
 import { Loader2 } from "lucide-react";
 
 export default function Orders() {
   const { session, loadingAuth } = UserAuth();
   const navigate = useNavigate();
+
   const [orders, setOrders] = useState([]);
-  const [statuses, setStatuses] = useState([]);
-  const [selectedStatus, setSelectedStatus] = useState("All");
+  const [stages, setStages] = useState([]);
+  const [selectedStage, setSelectedStage] = useState("All");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (loadingAuth) return;
+
     if (!session) {
       navigate("/signin");
       return;
@@ -41,22 +42,24 @@ export default function Orders() {
         console.error("Error fetching orders:", error);
       } else {
         setOrders(data || []);
-        // Extract unique statuses
-        const uniqueStatuses = [
-          ...new Set(data.map((order) => order.status)),
+
+        // ✅ Extract unique tracking stages
+        const uniqueStages = [
+          ...new Set(data.map((order) => order.tracking_stage)),
         ].filter(Boolean);
-        setStatuses(["All", ...uniqueStatuses]);
+
+        setStages(["All", ...uniqueStages]);
       }
 
       setLoading(false);
     }
 
     fetchOrders();
-  }, [session, loadingAuth]);
+  }, [session, loadingAuth, navigate]);
 
   if (loadingAuth || loading)
     return (
-      <div className="flex flex-row items-center justify-center py-20 text-gray-500">
+      <div className="flex items-center justify-center py-20 text-gray-500">
         <Loader2 className="w-6 h-6 animate-spin mr-3" />
         <span>Loading...</span>
       </div>
@@ -75,46 +78,51 @@ export default function Orders() {
       </div>
     );
 
-  // Filter orders by selected status
+  // ✅ Filter orders by tracking_stage
   const filteredOrders =
-    selectedStatus === "All"
+    selectedStage === "All"
       ? orders
-      : orders.filter((order) => order.status === selectedStatus);
+      : orders.filter((order) => order.tracking_stage === selectedStage);
+
+  // helper for readable labels
+  const formatStage = (stage) =>
+    stage.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
   return (
     <div className="min-h-screen bg-gray-50">
       <hr />
+
+      {/* Tabs */}
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-          {/* Tabs Section */}
           <div className="flex gap-3 flex-wrap overflow-x-auto scrollbar-hide">
-            {statuses.map((status) => {
+            {stages.map((stage) => {
               const count =
-                status === "All"
+                stage === "All"
                   ? orders.length
-                  : orders.filter((order) => order.status === status).length;
+                  : orders.filter((order) => order.tracking_stage === stage)
+                      .length;
 
               return (
                 <button
-                  key={status}
-                  onClick={() => setSelectedStatus(status)}
+                  key={stage}
+                  onClick={() => setSelectedStage(stage)}
                   className={`relative px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition
-              ${
-                selectedStatus === status
-                  ? "bg-[#4eb0e3] text-white shadow-sm"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                    ${
+                      selectedStage === stage
+                        ? "bg-[#4eb0e3] text-white shadow-sm"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
                 >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  {stage === "All" ? "All" : formatStage(stage)}
 
-                  {/* Badge */}
                   <span
                     className={`ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full
-                ${
-                  selectedStatus === status
-                    ? "bg-white/20 text-white"
-                    : "bg-[#4eb0e3]/10 text-[#4eb0e3]"
-                }`}
+                      ${
+                        selectedStage === stage
+                          ? "bg-white/20 text-white"
+                          : "bg-[#4eb0e3]/10 text-[#4eb0e3]"
+                      }`}
                   >
                     {count}
                   </span>
@@ -123,7 +131,6 @@ export default function Orders() {
             })}
           </div>
 
-          {/* Continue Shopping Link */}
           <Link
             to="/"
             className="text-md text-black hover:text-[#4eb0e3] whitespace-nowrap"
@@ -133,10 +140,12 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* Orders List */}
+      {/* Orders */}
       <main className="max-w-6xl mx-auto py-10 px-4">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-          {selectedStatus === "All" ? "All Orders" : `${selectedStatus} Orders`}
+          {selectedStage === "All"
+            ? "All Orders"
+            : `${formatStage(selectedStage)} Orders`}
         </h2>
 
         <div className="space-y-6">
@@ -159,28 +168,27 @@ export default function Orders() {
                     })}
                   </p>
                 </div>
+
                 <div className="text-right">
                   <p className="font-semibold text-[#4eb0e3]">
                     Total: KES {Number(order.total_amount).toLocaleString()}
                   </p>
+
                   <p
                     className={`text-sm font-medium ${
-                      order.status === "completed"
+                      order.tracking_stage === "delivered"
                         ? "text-green-600"
-                        : order.status === "pending"
-                        ? "text-yellow-600"
-                        : order.status === "cancelled"
+                        : order.tracking_stage === "cancelled"
                         ? "text-red-600"
-                        : "text-gray-600"
+                        : "text-yellow-600"
                     }`}
                   >
-                    {order.status.charAt(0).toUpperCase() +
-                      order.status.slice(1)}
+                    {formatStage(order.tracking_stage)}
                   </p>
                 </div>
               </div>
 
-              {/* Order items */}
+              {/* Items */}
               <div className="divide-y border-t pt-4">
                 {order.order_items.map((item) => (
                   <div
@@ -205,6 +213,7 @@ export default function Orders() {
                         </p>
                       </div>
                     </div>
+
                     <p className="font-semibold text-gray-700">
                       KES {(item.price * item.quantity).toLocaleString()}
                     </p>
@@ -212,7 +221,7 @@ export default function Orders() {
                 ))}
               </div>
 
-              <div className="flex flex-col justify-between sm:flex-row gap-3 mt-4">
+              <div className="flex flex-col sm:flex-row justify-between gap-3 mt-4">
                 <Link
                   to={`/order-confirmation/${order.id}`}
                   className="text-sm text-[#4eb0e3] hover:underline"
@@ -223,12 +232,12 @@ export default function Orders() {
                 <Link
                   to={`/track/${order.id}`}
                   className={`inline-block text-sm px-4 py-2 rounded-lg transition
-    ${
-      order.tracking_stage === "delivered" ||
-      order.tracking_stage === "reviewed"
-        ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-        : "bg-[#4eb0e3] text-white hover:bg-[#0570b3]"
-    }`}
+                    ${
+                      order.tracking_stage === "delivered" ||
+                      order.tracking_stage === "reviewed"
+                        ? "bg-gray-300 text-gray-700 cursor-not-allowed"
+                        : "bg-[#4eb0e3] text-white hover:bg-[#0570b3]"
+                    }`}
                 >
                   Track Order
                 </Link>
