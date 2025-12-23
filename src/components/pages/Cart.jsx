@@ -89,8 +89,6 @@ export default function Cart() {
     );
   }
 
-  console.log(cart);
-
   return (
     <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl sm:text-3xl font-semibold mb-8 text-gray-800 text-center sm:text-left">

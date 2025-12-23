@@ -6,6 +6,7 @@ import FooterInfoBanner from "./components/FooterInfoBanner";
 import Header from "./components/Header";
 import { Toaster } from "./components/ui/sonner";
 import TopBar from "./components/TopBar";
+import WhatsAppChat from "./components/WhatsAppChat";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       </main>
       <FooterInfoBanner />
       <Footer />
+      <WhatsAppChat />
     </div>
   );
 }

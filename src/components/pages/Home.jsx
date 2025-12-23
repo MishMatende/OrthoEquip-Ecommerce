@@ -100,11 +100,11 @@ export default function Home() {
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">
                 Grade A Safety Masks For Sale. <br /> Hurry Up!
               </h1>
-              <p className="text-gray-600 mt-4 max-w-lg">
+              {/* <p className="text-gray-600 mt-4 max-w-lg">
                 Over 39,000 people work for us in more than 70 countries all
                 over the world. This breadth of global coverage, combined with
                 specialist services, ensures we deliver excellence everywhere.
-              </p>
+              </p> */}
             </div>
 
             <div className="flex gap-20 mt-4">
@@ -138,7 +138,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-[0%] lg:mx-[2%] xl:mx-[20%] text-center mb-10">
+      <section className="px-4 sm:px-6 lg:px-8 xl:px-[15%] md:mt-4 text-center mb-10">
         {/* Best Selling Product */}
         <h1 className="text-2xl sm:text-3xl font-semibold text-black py-8">
           Best Selling

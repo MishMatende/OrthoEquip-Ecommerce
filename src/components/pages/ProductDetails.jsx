@@ -1,7 +1,8 @@
 // src/pages/ProductDetails.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { supabase } from "../../supabaseClient"; // import your Supabase client
+import { useParams, useNavigate } from "react-router-dom";
+import { Loader2, Minus, Plus, X } from "lucide-react";
+
 import { Button } from "../../components/ui/button";
 import {
   Tabs,
@@ -9,18 +10,17 @@ import {
   TabsTrigger,
   TabsContent,
 } from "../../components/ui/tabs";
-import { Loader2, Minus, Plus, X } from "lucide-react";
+
 import { useCart } from "../../context/CartContext";
 import { UserAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { useProduct } from "../../hooks/useProduct";
+import WhatsAppChat from "../../components/WhatsAppChat";
 
 export default function ProductDetails() {
   const { session } = UserAuth();
   const { addToCart } = useCart();
-
+  const navigate = useNavigate();
   const { id } = useParams();
-  // console.log("ProductDetails param id:", id);
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -33,47 +33,35 @@ export default function ProductDetails() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalImageSrc, setModalImageSrc] = useState(null);
   const modalRef = useRef(null);
-
   const imageRef = useRef(null);
-  const navigate = useNavigate();
 
-  const hook = useProduct(id);
-  const { data, isLoading, isError, error, isFetching } = hook;
+  const { data, isLoading, isError, error } = useProduct(id);
 
-  // defensive extraction: support both shapes, but prefer { product, images }
   const product =
     (data && data.product) ?? (data && (data.id ? data : null)) ?? null;
   const images = (data && data.images) ?? [];
 
   useEffect(() => {
-    // reset selected image when product changes
     setSelectedImage(null);
+    setZoom(false);
   }, [id]);
 
-  // prevent background scroll when modal is open
+  // prevent background scroll when modal open
   useEffect(() => {
-    if (modalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = modalOpen ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
   }, [modalOpen]);
 
   // close modal on Escape
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") setModalOpen(false);
-    };
+    const onKey = (e) => e.key === "Escape" && setModalOpen(false);
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
   if (isLoading) {
     return (
-      <div className="flex flex-row justify-center py-20 text-gray-500">
+      <div className="flex justify-center py-20 text-gray-500">
         <Loader2 className="w-6 h-6 animate-spin mr-3" />
         Loading product details...
       </div>
@@ -96,47 +84,35 @@ export default function ProductDetails() {
     );
   }
 
-  // helper to decide if zooming makes sense (source must be larger than display)
-  const canZoom = () => {
-    if (!naturalSize.w || !displayWidth) return false;
-    return naturalSize.w / displayWidth > 1.15; // at least ~15% bigger than displayed
+  const canZoom = () =>
+    naturalSize.w && displayWidth ? naturalSize.w / displayWidth > 1.15 : false;
+
+  const getZoomScale = () => {
+    if (!naturalSize.w || !displayWidth) return 1.5;
+    const raw = naturalSize.w / displayWidth;
+    return Math.min(Math.max(raw, 1.1), 2.5);
   };
 
   const handleImgLoad = (e) => {
     const img = e.target;
     setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
-    // measure displayed width
-    const rect = img.getBoundingClientRect();
-    setDisplayWidth(rect.width || 0);
-  };
-
-  const openModal = (src) => {
-    setModalImageSrc(src);
-    setModalOpen(true);
+    setDisplayWidth(img.getBoundingClientRect().width);
   };
 
   const handleClickImage = () => {
     const src =
       selectedImage ||
       product.image_url ||
-      "https://images.unsplash.com/photo-1584367360396-25b0d7c4b9a0?auto=format&fit=crop&w=600&q=80";
+      "https://images.unsplash.com/photo-1584367360396-25b0d7c4b9a0";
 
     if (canZoom()) {
       setZoom((z) => !z);
     } else {
-      // open modal with full-size image instead of new tab
-      openModal(src);
+      setModalImageSrc(src);
+      setModalOpen(true);
     }
   };
 
-  // computed zoom scale based on natural / displayed width, capped
-  const getZoomScale = () => {
-    if (!naturalSize.w || !displayWidth) return 1.5;
-    const raw = naturalSize.w / (displayWidth || 1);
-    return Math.min(Math.max(raw, 1.1), 2.5); // between 1.1x and 2.5x
-  };
-
-  // close modal when clicking the backdrop (outside modal content)
   const handleBackdropClick = (e) => {
     if (modalRef.current && !modalRef.current.contains(e.target)) {
       setModalOpen(false);
@@ -144,42 +120,30 @@ export default function ProductDetails() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-24 py-8 text-center">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-24 py-8">
       {/* Top Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Left: Images */}
+        {/* Images */}
         <div>
-          {/* Main Image with Zoom */}
-          <div className="relative border rounded-2xl overflow-hidden mb-2 bg-gray-50">
-            {/* Zoomable image */}
+          <div className="relative border rounded-2xl overflow-hidden bg-gray-50">
             <div
               onClick={handleClickImage}
               onMouseMove={(e) => {
-                const { left, top, width, height } =
-                  e.currentTarget.getBoundingClientRect();
-                const x = ((e.pageX - left) / width) * 100;
-                const y = ((e.pageY - top) / height) * 100;
-                setMousePosition({ x, y });
-
-                // keep displayWidth updated if container resizes while hovering
-                setDisplayWidth(width);
+                const rect = e.currentTarget.getBoundingClientRect();
+                setMousePosition({
+                  x: ((e.pageX - rect.left) / rect.width) * 100,
+                  y: ((e.pageY - rect.top) / rect.height) * 100,
+                });
+                setDisplayWidth(rect.width);
               }}
-              className={`relative overflow-hidden transition-all duration-300 ${
-                zoom ? "cursor-zoom-out" : "cursor-zoom-in"
-              }`}
+              className={zoom ? "cursor-zoom-out" : "cursor-zoom-in"}
             >
               <img
                 ref={imageRef}
-                src={
-                  selectedImage ||
-                  product.image_url ||
-                  "https://images.unsplash.com/photo-1584367360396-25b0d7c4b9a0?auto=format&fit=crop&w=600&q=80"
-                }
+                src={selectedImage || product.image_url}
                 alt={product.name}
                 onLoad={handleImgLoad}
-                loading="lazy"
-                decoding="async"
-                className={`w-full h-auto max-h-[60vh] object-contain transition-transform duration-300 ease-in-out`}
+                className="w-full max-h-[60vh] object-contain transition-transform duration-300"
                 style={
                   zoom
                     ? {
@@ -192,8 +156,7 @@ export default function ProductDetails() {
             </div>
           </div>
 
-          {/* Click instruction text */}
-          <p className="text-md text-gray-500 mt-2 italic pb-2">
+          <p className="text-sm text-gray-500 mt-2 italic">
             {canZoom()
               ? zoom
                 ? "Click image to zoom out"
@@ -201,9 +164,8 @@ export default function ProductDetails() {
               : "Tap to open full-size image"}
           </p>
 
-          {/* Thumbnail Gallery */}
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {(images.length > 0 ? images : [product.image_url])
+          <div className="flex gap-3 mt-3 overflow-x-auto">
+            {(images.length ? images : [product.image_url])
               .filter(Boolean)
               .map((url, idx) => (
                 <img
@@ -211,207 +173,153 @@ export default function ProductDetails() {
                   src={url}
                   onClick={() => {
                     setSelectedImage(url);
-                    // reset zoom state when changing image
                     setZoom(false);
                   }}
-                  loading="lazy"
-                  decoding="async"
-                  className={`w-20 h-20 object-cover rounded-xl border-2 cursor-pointer transition-transform hover:scale-105 ${
+                  className={`w-20 h-20 object-cover rounded-xl border-2 cursor-pointer ${
                     selectedImage === url
                       ? "border-[#4eb0e3]"
                       : "border-transparent hover:border-gray-300"
                   }`}
-                  alt={`Product ${idx + 1}`}
+                  alt={`Thumbnail ${idx + 1}`}
                 />
               ))}
           </div>
         </div>
 
-        {/* Right: Product info */}
-        <div className="text-left">
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">
+        {/* Product Info */}
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">
             {product.name}
           </h1>
 
-          <div className="flex items-center gap-3 mt-3">
-            <p className="text-2xl sm:text-3xl font-bold text-[#4eb0e3]">
-              KES {Number(product.price).toLocaleString()}
-            </p>
-          </div>
+          <p className="text-3xl font-bold text-[#4eb0e3] mt-3">
+            KES {Number(product.price).toLocaleString()}
+          </p>
 
-          <p className="text-sm text-gray-600 mt-4 leading-relaxed">
+          <p className="text-gray-600 mt-4">
             {product.description || "No description available."}
           </p>
 
           <div className="mt-6 space-y-2 text-sm">
             {product.category && (
               <p>
-                <span className="font-semibold text-gray-700">Category:</span>{" "}
-                {product.category}
+                <strong>Category:</strong> {product.category}
               </p>
             )}
             {product.brand && (
               <p>
-                <span className="font-semibold text-gray-700">Brand:</span>{" "}
-                {product.brand}
+                <strong>Brand:</strong> {product.brand}
               </p>
             )}
-            {product.stock !== undefined && (
-              <p>
-                <span className="font-semibold text-gray-700">Stock:</span>{" "}
-                {product.stock > 0
-                  ? `${product.stock} available`
-                  : "Out of stock"}
-              </p>
-            )}
+            <p>
+              <strong>Stock:</strong>{" "}
+              {product.stock > 0
+                ? `${product.stock} available`
+                : "Out of stock"}
+            </p>
           </div>
 
-          {/* Quantity + Buttons */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-6 w-full">
-            {/* Quantity Selector */}
-            <div className="flex items-center justify-between sm:justify-start border rounded-xl w-full sm:w-auto">
+          {/* Quantity + Actions */}
+          <div className="mt-6 flex flex-col sm:flex-row gap-4">
+            <div className="flex border rounded-xl">
               <button
-                className="p-2 hover:bg-gray-100 cursor-pointer"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={quantity <= 1}
+                className="p-2"
               >
                 <Minus size={16} />
               </button>
-              <span className="px-4 text-gray-700">{quantity}</span>
+              <span className="px-4 flex items-center">{quantity}</span>
               <button
-                className={`p-2 hover:bg-gray-100 cursor-pointer ${
-                  quantity >= product.stock
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
                 onClick={() =>
-                  setQuantity((prev) =>
-                    prev < product.stock ? prev + 1 : prev
-                  )
+                  setQuantity((q) => (q < product.stock ? q + 1 : q))
                 }
+                className="p-2"
                 disabled={quantity >= product.stock}
               >
                 <Plus size={16} />
               </button>
             </div>
 
-            {/* Add to Cart */}
             <Button
-              onClick={() => {
-                const safeQuantity = Math.min(quantity, product.stock);
-                addToCart(product, safeQuantity);
-              }}
-              className="bg-[#4eb0e3] hover:bg-[#3ca0d4] rounded-xl w-full sm:w-auto px-6 py-3 text-white font-semibold"
               disabled={product.stock <= 0}
+              onClick={() =>
+                addToCart(product, Math.min(quantity, product.stock))
+              }
+              className="bg-[#4eb0e3] hover:bg-[#3ca0d4]"
             >
               {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
 
-            {/* Buy it now */}
             <Button
               variant="outline"
-              className={`rounded-xl w-full sm:w-auto px-6 py-3 font-semibold text-black ${
-                product.stock <= 0
-                  ? "opacity-50 cursor-not-allowed"
-                  : "cursor-pointer hover:bg-gray-100"
-              }`}
               disabled={product.stock <= 0}
               onClick={() => {
                 if (!session) {
                   navigate("/signin", {
+                    state: { redirectTo: "/checkout" },
+                  });
+                } else {
+                  navigate("/checkout", {
                     state: {
-                      redirectTo: "/checkout",
                       buyNow: true,
-                      product: {
-                        id: product.id,
-                        name: product.name,
-                        price: product.price,
-                        image_url: product.image_url,
-                      },
+                      product,
                       quantity,
                     },
                   });
-                  return;
                 }
-
-                navigate("/checkout", {
-                  state: {
-                    buyNow: true,
-                    product: {
-                      id: product.id,
-                      name: product.name,
-                      price: product.price,
-                      image_url: product.image_url,
-                    },
-                    quantity,
-                  },
-                });
               }}
             >
-              {product.stock <= 0 ? "Out of Stock" : "Buy it now"}
+              Buy it now
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Tabs Section */}
-      <div className="mt-10 text-left">
+      {/* Tabs */}
+      <div className="mt-10">
         <Tabs defaultValue="description">
-          <TabsList className="border-b flex gap-6">
+          <TabsList>
             <TabsTrigger value="description">Description</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
-            <TabsTrigger value="shipping">Shipping Policy</TabsTrigger>
+            <TabsTrigger value="shipping">Shipping</TabsTrigger>
           </TabsList>
 
-          <TabsContent
-            value="description"
-            className="pt-6 text-gray-600 text-sm leading-relaxed"
-          >
-            {product.description || "No description available."}
-          </TabsContent>
+          <TabsContent value="description">{product.description}</TabsContent>
 
-          <TabsContent value="reviews" className="pt-6 text-gray-600 text-sm">
-            No reviews yet.
-          </TabsContent>
+          <TabsContent value="reviews">No reviews yet.</TabsContent>
 
-          <TabsContent value="shipping" className="pt-6 text-gray-600 text-sm">
-            Fast delivery. Orders are processed within the same day.
-          </TabsContent>
+          <TabsContent value="shipping">Fast delivery nationwide.</TabsContent>
         </Tabs>
       </div>
 
       {/* Image Modal */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
           onMouseDown={handleBackdropClick}
           onTouchStart={handleBackdropClick}
         >
           <div
             ref={modalRef}
-            className="relative max-w-4xl w-full max-h-[90vh] overflow-auto rounded-lg bg-white p-3"
-            role="dialog"
-            aria-modal="true"
+            className="bg-white rounded-lg p-3 max-w-4xl w-full relative"
           >
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-2 right-2 p-2 rounded-md bg-white hover:bg-gray-100"
-              aria-label="Close"
+              className="absolute top-2 right-2"
             >
-              <X size={20} />
+              <X />
             </button>
-
-            <div className="flex items-center justify-center">
-              <img
-                src={modalImageSrc}
-                alt={product.name}
-                className="max-w-full max-h-[80vh] object-contain"
-                loading="eager"
-              />
-            </div>
+            <img
+              src={modalImageSrc}
+              alt={product.name}
+              className="max-h-[80vh] mx-auto object-contain"
+            />
           </div>
         </div>
       )}
+
+      {/* WhatsApp Chat Bubble */}
+      <WhatsAppChat productName={product.name} hidden={modalOpen} />
     </div>
   );
 }
