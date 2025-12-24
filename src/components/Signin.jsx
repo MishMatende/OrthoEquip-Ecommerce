@@ -11,9 +11,8 @@ export default function Signin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [forgotSent, setForgotSent] = useState(false);
 
-  const { signinUser, forgotPassword } = UserAuth();
+  const { signinUser } = UserAuth();
   const navigate = useNavigate();
 
   /* -------- SIGN IN -------- */
@@ -39,27 +38,6 @@ export default function Signin() {
     toast.success("Signed in successfully");
 
     navigate(profile?.is_admin ? "/admin" : "/", { replace: true });
-    setLoading(false);
-  };
-
-  /* -------- FORGOT PASSWORD -------- */
-  const handleForgotPassword = async () => {
-    if (!email) {
-      toast.error("Please enter your email first");
-      return;
-    }
-
-    setLoading(true);
-
-    const result = await forgotPassword(email);
-
-    if (result.success) {
-      toast.success("Password reset link sent to your email");
-      setForgotSent(true);
-    } else {
-      toast.error(result.error || "Failed to send reset email");
-    }
-
     setLoading(false);
   };
 
@@ -93,14 +71,12 @@ export default function Signin() {
             required
           />
 
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            disabled={forgotSent || loading}
-            className="text-xs text-right text-[#4eb0e3] hover:underline disabled:opacity-50 w-full"
+          <Link
+            to="/forgot-password"
+            className="text-xs text-right text-[#4eb0e3] hover:underline w-full block"
           >
-            {forgotSent ? "Reset link sent" : "Forgot password?"}
-          </button>
+            Forgot password?
+          </Link>
 
           <Button
             type="submit"

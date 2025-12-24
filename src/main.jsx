@@ -7,15 +7,14 @@ import "./index.css";
 import App from "./App.jsx";
 import { Loader2 } from "lucide-react";
 import About from "./components/pages/About";
-import RequestReset from "./components/RequestReset";
 import ResetPassword from "./components/ResetPassword";
 
 // React Query
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "./lib/queryClient";
-import CheckEmail from "./components/CheckEmail";
 import PaymentCallback from "./components/pages/PaymentCallback";
+import ForgotPassword from "./components/ForgotPassword";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
@@ -89,8 +88,7 @@ createRoot(document.getElementById("root")).render(
                     path="auth/reset-password"
                     element={<ResetPassword />}
                   />
-                  <Route path="/auth/reset" element={<RequestReset />} />
-                  <Route path="/auth/check-email" element={<CheckEmail />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
                 </Route>
 
                 {/* ⚙️ Admin Section */}
