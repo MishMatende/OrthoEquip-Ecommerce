@@ -311,9 +311,9 @@ export default function Navbar() {
                 if (!session) navigate("/signin");
                 else setOpenUserMenu((prev) => !prev);
               }}
-              className="flex items-center hover:text-[#4eb0e3] transition"
+              className="flex items-center hover:text-[#4eb0e3] transition cursor-pointer"
             >
-              <UserRoundPen size={22} />
+              <UserRoundPen className="cursor-pointer" size={22} />
             </button>
 
             <AnimatePresence>
@@ -330,7 +330,7 @@ export default function Navbar() {
                       <button
                         type="button"
                         onClick={() => navigate("/profile")}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 cursor-pointer"
                       >
                         Profile
                       </button>
@@ -340,7 +340,7 @@ export default function Navbar() {
                       <button
                         type="button"
                         onClick={() => navigate("/dashboard")}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 cursor-pointer"
                       >
                         Dashboard
                       </button>
@@ -364,7 +364,7 @@ export default function Navbar() {
                             console.error("Sign out failed:", err);
                           }
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-500"
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-500 cursor-pointer"
                       >
                         Logout
                       </button>

@@ -7,10 +7,11 @@ export const buttonVariants = cva(
       variant: {
         default:
           "border border-gray-300 bg-white text-black hover:bg-[#4eb0e3] hover:text-white hover:border-[#4eb0e3]",
-        filled: "bg-[#4eb0e3] text-white hover:bg-[#056eb1]",
-        ghost: "text-black hover:bg-[#4eb0e3]/10 hover:text-[#4eb0e3]",
+        filled: "bg-[#4eb0e3] text-white hover:bg-[#056eb1] cursor-pointer",
+        ghost:
+          "text-black hover:bg-[#4eb0e3]/10 hover:text-[#4eb0e3] cursor-pointer",
         outline:
-          "border border-gray-300 bg-transparent text-black hover:bg-[#4eb0e3] hover:text-white",
+          "border border-gray-300 bg-transparent text-black hover:bg-[#4eb0e3] hover:text-white cursor-pointer",
       },
       size: {
         default: "h-9 px-4 py-2",

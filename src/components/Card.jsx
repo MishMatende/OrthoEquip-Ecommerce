@@ -52,7 +52,7 @@ export default function Card({ product }) {
         tabIndex={0}
         onClick={handleNavigate}
         onKeyDown={handleKeyNavigate}
-        className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#4eb0e3] rounded-t-2xl"
+        className="cursor-pointer focus:outline-none rounded-t-2xl"
         aria-label={`View details for ${product.name}`}
       >
         {/* Image */}

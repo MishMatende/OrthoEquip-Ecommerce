@@ -14,6 +14,7 @@ import {
   BarChart2,
   Settings,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,6 +34,11 @@ export default function AdminLayout() {
     { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={18} /> },
     { name: "Products", path: "/admin/products", icon: <Package size={18} /> },
     { name: "Orders", path: "/admin/orders", icon: <ShoppingCart size={18} /> },
+    {
+      name: "Quotations",
+      path: "/admin/quotes",
+      icon: <MessageCircle size={18} />,
+    },
     {
       name: "Analytics",
       path: "/admin/analytics",

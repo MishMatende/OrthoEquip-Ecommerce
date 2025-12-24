@@ -63,6 +63,7 @@ export default function WhatsAppChat({ productName, hidden }) {
         bg-[#25D366] text-white
         shadow-lg
         hover:scale-110
+        cursor-pointer
         transition-transform duration-300
         whatsapp-pulse
       "

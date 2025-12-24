@@ -1,3 +1,4 @@
+// src/components/Signin.jsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
@@ -22,23 +23,42 @@ export default function Signin() {
 
     const result = await signinUser(email, password);
 
+    // ❌ FAILED SIGN IN
     if (!result.success) {
-      toast.error(result.error || "Invalid email or password");
+      if (result.error === "NETWORK_ERROR") {
+        toast.warning(
+          "Network issue detected. Please check your internet connection and try again."
+        );
+      } else {
+        toast.error(result.error || "Invalid email or password");
+      }
+
       setLoading(false);
       return;
     }
 
-    const user = result.data.session?.user;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
+    try {
+      const user = result.data.session?.user;
 
-    toast.success("Signed in successfully");
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
 
-    navigate(profile?.is_admin ? "/admin" : "/", { replace: true });
-    setLoading(false);
+      if (error) {
+        throw error;
+      }
+
+      toast.success("Signed in successfully");
+      navigate(profile?.is_admin ? "/admin" : "/", { replace: true });
+    } catch (err) {
+      toast.warning(
+        "Signed in, but we couldn't verify your profile due to a network issue."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,18 +91,10 @@ export default function Signin() {
             required
           />
 
-          {/* FOrgot Pass word option */}
-          {/* <Link
-            to="/forgot-password"
-            className="text-xs text-right text-[#4eb0e3] hover:underline w-full block"
-          >
-            Forgot password?
-          </Link> */}
-
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#4eb0e3] text-white"
+            className="w-full bg-[#4eb0e3] text-white cursor-pointer"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -96,7 +108,10 @@ export default function Signin() {
 
           <p className="text-center text-sm">
             Don’t have an account?{" "}
-            <Link to="/signup" className="text-[#4eb0e3] font-semibold">
+            <Link
+              to="/signup"
+              className="text-[#4eb0e3] font-semibold cursor-pointer"
+            >
               Sign up
             </Link>
           </p>

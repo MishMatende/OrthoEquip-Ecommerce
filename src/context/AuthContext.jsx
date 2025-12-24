@@ -9,16 +9,23 @@ export const AuthContextProvider = ({ children }) => {
   const [session, setSession] = useState(undefined);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+
   const navigate = useNavigate();
 
   /* -------------------- SIGN UP -------------------- */
   const signupNewUser = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      console.error("Signup error:", error);
-      return { success: false, error: error.message };
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "NETWORK_ERROR" };
     }
-    return { success: true, data };
   };
 
   /* -------------------- SIGN IN -------------------- */
@@ -30,56 +37,19 @@ export const AuthContextProvider = ({ children }) => {
       });
 
       if (error) {
-        console.error("Signin error:", error);
         return { success: false, error: error.message };
-      }
-
-      if (data?.session?.user?.id) {
-        await fetchUserProfile(data.session.user.id);
       }
 
       return { success: true, data };
     } catch (err) {
-      console.error("Signin unexpected error:", err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  /* -------------------- FORGOT PASSWORD -------------------- */
-  const forgotPassword = async (email) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) {
-        console.error("Forgot password error:", error);
-        return { success: false, error: error.message };
+      if (
+        err instanceof TypeError ||
+        err?.message?.toLowerCase().includes("network")
+      ) {
+        return { success: false, error: "NETWORK_ERROR" };
       }
 
-      return { success: true };
-    } catch (err) {
-      console.error("Forgot password unexpected error:", err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  /* -------------------- UPDATE PASSWORD -------------------- */
-  const updatePassword = async (newPassword) => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        console.error("Update password error:", error);
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (err) {
-      console.error("Update password unexpected error:", err);
-      return { success: false, error: err.message };
+      return { success: false, error: "Unexpected error occurred" };
     }
   };
 
@@ -90,20 +60,39 @@ export const AuthContextProvider = ({ children }) => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, is_admin")
+        .select("id, email, is_admin, phone, username")
         .eq("id", userId)
         .single();
 
       if (error) {
+        if (
+          error.message?.toLowerCase().includes("fetch") ||
+          error.message?.toLowerCase().includes("network")
+        ) {
+          throw new TypeError("Network error while fetching profile");
+        }
+
         console.error("Fetch profile error:", error);
         return null;
       }
 
       setUserProfile(data);
+
+      /* 🔔 Require phone AND username (non-admins only) */
+      const needsProfileCompletion =
+        (!data.phone || !data.username) &&
+        !data.is_admin &&
+        !sessionStorage.getItem("profileModalShown");
+
+      if (needsProfileCompletion) {
+        sessionStorage.setItem("profileModalShown", "true");
+        setShowPhoneModal(true);
+      }
+
       return data;
     } catch (err) {
       console.error("fetchUserProfile failed:", err);
-      return null;
+      throw err;
     }
   };
 
@@ -111,7 +100,7 @@ export const AuthContextProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    async function loadSession() {
+    const loadSession = async () => {
       try {
         const {
           data: { session: initialSession },
@@ -129,7 +118,7 @@ export const AuthContextProvider = ({ children }) => {
       } finally {
         if (mounted) setLoadingAuth(false);
       }
-    }
+    };
 
     loadSession();
 
@@ -145,6 +134,8 @@ export const AuthContextProvider = ({ children }) => {
           }
         } else {
           setUserProfile(null);
+          setShowPhoneModal(false);
+          sessionStorage.removeItem("profileModalShown");
         }
 
         setLoadingAuth(false);
@@ -164,17 +155,19 @@ export const AuthContextProvider = ({ children }) => {
   const signoutUser = async () => {
     try {
       const { error } = await supabase.auth.signOut();
+
       if (error) {
-        console.error("Signout error:", error);
         return { ok: false, error: error.message };
       }
 
       setUserProfile(null);
       setSession(null);
+      setShowPhoneModal(false);
+      sessionStorage.removeItem("profileModalShown");
+
       return { ok: true };
-    } catch (err) {
-      console.error("Signout unexpected error:", err);
-      return { ok: false, error: err.message };
+    } catch {
+      return { ok: false, error: "NETWORK_ERROR" };
     }
   };
 
@@ -184,10 +177,10 @@ export const AuthContextProvider = ({ children }) => {
         session,
         loadingAuth,
         userProfile,
+        showPhoneModal,
+        setShowPhoneModal,
         signupNewUser,
         signinUser,
-        forgotPassword,
-        updatePassword,
         signoutUser,
       }}
     >

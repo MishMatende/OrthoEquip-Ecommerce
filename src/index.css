@@ -166,3 +166,9 @@ h1 {
     background-color: #9ca3af; /* gray-400 */
   }
 }
+
+html,
+body,
+#root {
+  height: 100%;
+}

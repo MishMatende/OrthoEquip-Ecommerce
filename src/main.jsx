@@ -15,6 +15,12 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "./lib/queryClient";
 import PaymentCallback from "./components/pages/PaymentCallback";
 import ForgotPassword from "./components/ForgotPassword";
+import QuoteDetails from "./components/pages/QuoteDetails";
+import Quotes from "./components/admin/Quotes";
+import CreateQuote from "./components/admin/CreateQuote";
+import CheckoutFromQuote from "./components/pages/CheckoutFromQuote";
+import Profile from "./components/pages/Profile";
+import QuoteDetailsAdmin from "./components/admin/QuoteDetailsAdmin";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
@@ -73,6 +79,12 @@ createRoot(document.getElementById("root")).render(
                     path="/payment-callback"
                     element={<PaymentCallback />}
                   />
+                  <Route path="/quote/:id" element={<QuoteDetails />} />
+                  <Route
+                    path="/checkout-from-quote/:id"
+                    element={<CheckoutFromQuote />}
+                  />
+                  <Route path="profile" element={<Profile />} />
                 </Route>
 
                 {/* 🛒 Checkout Flow */}
@@ -98,6 +110,12 @@ createRoot(document.getElementById("root")).render(
                   <Route path="/admin/orders" element={<AdminOrders />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/settings" element={<AdminSettings />} />
+                  <Route path="/admin/quotes" element={<Quotes />} />
+                  <Route path="/admin/quotes/new" element={<CreateQuote />} />
+                  <Route
+                    path="/admin/quotes/:id"
+                    element={<QuoteDetailsAdmin />}
+                  />
                 </Route>
               </Routes>
             </Suspense>
