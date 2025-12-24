@@ -55,46 +55,50 @@ export default function Footer() {
         {/* RIGHT: Company + Services + Payments */}
         <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-8">
           {/* Company */}
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-4">Company</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link to="/">Home</Link>
-              </li>
-              <li>
-                <Link to="/about">About</Link>
-              </li>
-              <li>
-                <Link to="/shop">Products</Link>
-              </li>
-              <li>
-                <Link to="/contact">Contact us</Link>
-              </li>
-              {session && (
+          <div className="flex flex-row justify-center gap-10 md:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Company</h3>
+              <ul className="space-y-2 text-sm">
                 <li>
-                  <Link to="/orders">My Orders</Link>
+                  <Link to="/">Home</Link>
                 </li>
-              )}
-            </ul>
-          </div>
+                <li>
+                  <Link to="/about">About</Link>
+                </li>
+                <li>
+                  <Link to="/shop">Products</Link>
+                </li>
+                <li>
+                  <Link to="/contact">Contact us</Link>
+                </li>
+                {session && (
+                  <li>
+                    <Link to="/orders">My Orders</Link>
+                  </li>
+                )}
+              </ul>
+            </div>
 
-          {/* Services */}
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link to="/signin">Login</Link>
-              </li>
-              <li>
-                <Link to="/">My Account</Link>
-              </li>
-              <li>
-                <Link to="/">Terms & Conditions</Link>
-              </li>
-              <li>
-                <Link to="/">FAQ</Link>
-              </li>
-            </ul>
+            {/* Services */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Services
+              </h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link to="/signin">Login</Link>
+                </li>
+                <li>
+                  <Link to="/">My Account</Link>
+                </li>
+                <li>
+                  <Link to="/">Terms & Conditions</Link>
+                </li>
+                <li>
+                  <Link to="/">FAQ</Link>
+                </li>
+              </ul>
+            </div>
           </div>
 
           {/* Payments */}
@@ -102,7 +106,7 @@ export default function Footer() {
             <h3 className="text-lg font-semibold text-white mb-4">
               Payment Methods
             </h3>
-            <div className="grid grid-cols-4 gap-1 items-center">
+            <div className="flex gap-5 justify-center">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg"
                 alt="Visa"
@@ -124,6 +128,25 @@ export default function Footer() {
                 className="h-6"
               />
             </div>
+          </div>
+        </div>
+      </div>
+      {/* Bottom copyright bar */}
+      <div className="border-t border-white/10 mt-10 pt-6 text-sm text-gray-400">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-6 md:px-16">
+          <p className="text-center md:text-left">
+            © {new Date().getFullYear()}{" "}
+            <span className="text-white">Balm Ortho</span>. All rights reserved.
+          </p>
+
+          <div className="flex space-x-4 text-sm">
+            <Link to="/about" className="hover:text-teal-400">
+              Privacy Policy
+            </Link>
+            <span className="opacity-40">|</span>
+            <Link to="/about" className="hover:text-teal-400">
+              Terms of Service
+            </Link>
           </div>
         </div>
       </div>
