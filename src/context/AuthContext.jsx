@@ -11,43 +11,82 @@ export const AuthContextProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const navigate = useNavigate();
 
-  // Sign up
+  /* -------------------- SIGN UP -------------------- */
   const signupNewUser = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      console.error("There was a problem signing up:", error);
-      return { success: false, error };
+      console.error("Signup error:", error);
+      return { success: false, error: error.message };
     }
     return { success: true, data };
   };
 
-  // Sign in
+  /* -------------------- SIGN IN -------------------- */
   const signinUser = async (email, password) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (error) {
-        console.error("Sign-in error occurred:", error);
+        console.error("Signin error:", error);
         return { success: false, error: error.message };
       }
 
-      // Attempt to fetch profile after sign in
       if (data?.session?.user?.id) {
         await fetchUserProfile(data.session.user.id);
       }
 
       return { success: true, data };
-    } catch (error) {
-      console.error("An unexpected error occurred during signin:", error);
-      return { success: false, error };
+    } catch (err) {
+      console.error("Signin unexpected error:", err);
+      return { success: false, error: err.message };
     }
   };
 
-  // Fetch user profile
+  /* -------------------- FORGOT PASSWORD -------------------- */
+  const forgotPassword = async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        console.error("Forgot password error:", error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error("Forgot password unexpected error:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  /* -------------------- UPDATE PASSWORD -------------------- */
+  const updatePassword = async (newPassword) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        console.error("Update password error:", error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error("Update password unexpected error:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  /* -------------------- FETCH PROFILE -------------------- */
   const fetchUserProfile = async (userId) => {
     if (!userId) return null;
+
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -56,21 +95,22 @@ export const AuthContextProvider = ({ children }) => {
         .single();
 
       if (error) {
-        console.error("Error fetching profile:", error);
+        console.error("Fetch profile error:", error);
         return null;
-      } else {
-        setUserProfile(data);
-        return data;
       }
+
+      setUserProfile(data);
+      return data;
     } catch (err) {
       console.error("fetchUserProfile failed:", err);
       return null;
     }
   };
 
-  // Load initial session + subscribe to changes
+  /* -------------------- SESSION HANDLING -------------------- */
   useEffect(() => {
     let mounted = true;
+
     async function loadSession() {
       try {
         const {
@@ -78,13 +118,14 @@ export const AuthContextProvider = ({ children }) => {
         } = await supabase.auth.getSession();
 
         if (!mounted) return;
+
         setSession(initialSession);
 
         if (initialSession?.user) {
           await fetchUserProfile(initialSession.user.id);
         }
-      } catch (e) {
-        console.error("Error getting session:", e);
+      } catch (err) {
+        console.error("Get session error:", err);
       } finally {
         if (mounted) setLoadingAuth(false);
       }
@@ -92,57 +133,48 @@ export const AuthContextProvider = ({ children }) => {
 
     loadSession();
 
-    // Subscribe to auth changes (works with supabase-js v2 shapes)
     const { data } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        try {
-          setSession(newSession);
+      async (event, newSession) => {
+        setSession(newSession);
 
-          if (newSession?.user) {
-            const profile = await fetchUserProfile(newSession.user.id);
-            // optional redirect on sign-in if admin
-            if (_event === "SIGNED_IN" && profile?.is_admin) {
-              navigate("/admin");
-            }
-          } else {
-            // signed out
-            setUserProfile(null);
+        if (newSession?.user) {
+          const profile = await fetchUserProfile(newSession.user.id);
+
+          if (event === "SIGNED_IN" && profile?.is_admin) {
+            navigate("/admin");
           }
-        } catch (err) {
-          console.error("onAuthStateChange handler error:", err);
-        } finally {
-          setLoadingAuth(false);
+        } else {
+          setUserProfile(null);
         }
+
+        setLoadingAuth(false);
       }
     );
 
     return () => {
       mounted = false;
-      // unsubscribe guard for both possible shapes
       try {
         if (data?.subscription?.unsubscribe) data.subscription.unsubscribe();
         else if (typeof data?.unsubscribe === "function") data.unsubscribe();
-      } catch (err) {
-        // swallow unsubscribe errors
-      }
+      } catch {}
     };
   }, [navigate]);
 
-  // sign out — returns { ok: true } or { ok: false, error }
+  /* -------------------- SIGN OUT -------------------- */
   const signoutUser = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("There was an error signing out:", error);
-        return { ok: false, error };
+        console.error("Signout error:", error);
+        return { ok: false, error: error.message };
       }
-      // local clear
+
       setUserProfile(null);
       setSession(null);
       return { ok: true };
     } catch (err) {
-      console.error("signoutUser unexpected error:", err);
-      return { ok: false, error: err };
+      console.error("Signout unexpected error:", err);
+      return { ok: false, error: err.message };
     }
   };
 
@@ -154,6 +186,8 @@ export const AuthContextProvider = ({ children }) => {
         userProfile,
         signupNewUser,
         signinUser,
+        forgotPassword,
+        updatePassword,
         signoutUser,
       }}
     >

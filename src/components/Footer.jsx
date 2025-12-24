@@ -15,7 +15,9 @@ export default function Footer() {
         <div className="md:col-span-4">
           <div className="flex items-center mb-4 space-x-2">
             <img src={BalmOrthoLogo} className="h-[50px]" alt="Balm Ortho" />
-            <h2 className="text-2xl font-semibold text-white">Balm Ortho</h2>
+            <h2 className="text-2xl font-semibold text-white">
+              Balm Ortho Medical
+            </h2>
           </div>
 
           <p className="text-sm leading-6 mb-4">
@@ -136,7 +138,8 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-6 md:px-16">
           <p className="text-center md:text-left">
             © {new Date().getFullYear()}{" "}
-            <span className="text-white">Balm Ortho</span>. All rights reserved.
+            <span className="text-white">Balm Ortho Medical</span>. All rights
+            reserved.
           </p>
 
           <div className="flex space-x-4 text-sm">
