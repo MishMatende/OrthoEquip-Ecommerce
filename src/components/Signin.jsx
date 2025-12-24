@@ -71,12 +71,13 @@ export default function Signin() {
             required
           />
 
-          <Link
+          {/* FOrgot Pass word option */}
+          {/* <Link
             to="/forgot-password"
             className="text-xs text-right text-[#4eb0e3] hover:underline w-full block"
           >
             Forgot password?
-          </Link>
+          </Link> */}
 
           <Button
             type="submit"
