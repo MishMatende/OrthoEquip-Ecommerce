@@ -171,6 +171,30 @@ export const AuthContextProvider = ({ children }) => {
     }
   };
 
+  /* -------------------- FORGOT PASSWORD -------------------- */
+  const forgotPassword = async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err) {
+      if (
+        err instanceof TypeError ||
+        err?.message?.toLowerCase().includes("network")
+      ) {
+        return { success: false, error: "NETWORK_ERROR" };
+      }
+
+      return { success: false, error: "Unexpected error occurred" };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -182,6 +206,7 @@ export const AuthContextProvider = ({ children }) => {
         signupNewUser,
         signinUser,
         signoutUser,
+        forgotPassword,
       }}
     >
       {children}
