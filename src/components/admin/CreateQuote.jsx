@@ -4,8 +4,14 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Plus, Trash2, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
+import { UserAuth } from "../../context/AuthContext";
 
 export default function CreateQuote() {
+  const { session } = UserAuth();
+  const userId = session?.user?.id;
+
+  /* ---------------- STATE ---------------- */
+
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
@@ -18,14 +24,17 @@ export default function CreateQuote() {
   const [guestPhone, setGuestPhone] = useState("");
 
   // Pricing
-  const [discountType, setDiscountType] = useState("none"); // none | flat | percent
+  const [discountType, setDiscountType] = useState("none");
   const [discountValue, setDiscountValue] = useState(0);
-  const [taxRate, setTaxRate] = useState(0);
 
   const [validUntil, setValidUntil] = useState("");
-  const PRODUCT_LIMIT = 10;
 
-  const [visibleCount, setVisibleCount] = useState(PRODUCT_LIMIT);
+  const PRODUCT_LIMIT = 10;
+  const [visibleCount] = useState(PRODUCT_LIMIT);
+
+  // Draft persistence
+  const DRAFT_KEY = userId ? `quote_draft_${userId}` : null;
+  const [draftReady, setDraftReady] = useState(false);
 
   /* ---------------- FETCH DATA ---------------- */
 
@@ -35,37 +44,81 @@ export default function CreateQuote() {
   }, []);
 
   async function fetchCustomers() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("profiles")
-      .select("id, username, email, phone, role")
+      .select("id, username, email, phone")
       .eq("role", "customer")
       .order("email");
-
-    console.log("CUSTOMERS:", data, error);
-
-    if (error) {
-      console.error("Failed to fetch customers:", error);
-      return;
-    }
 
     setCustomers(data || []);
   }
 
   async function fetchProducts() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("products")
-      .select("id, name, price")
+      .select("id, name, price, image_url")
       .order("name");
-
-    console.log("PRODUCTS:", data, error);
-
-    if (error) {
-      console.error("Product fetch error:", error);
-      return;
-    }
 
     setProducts(data || []);
   }
+
+  /* ---------------- DRAFT RESTORE ---------------- */
+
+  useEffect(() => {
+    if (!DRAFT_KEY) return;
+
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (!saved) {
+      setDraftReady(true);
+      return;
+    }
+
+    try {
+      const draft = JSON.parse(saved);
+
+      setCustomerId(draft.customerId || "");
+      setGuestName(draft.guestName || "");
+      setGuestPhone(draft.guestPhone || "");
+      setItems(draft.items || []);
+      setDiscountType(draft.discountType || "none");
+      setDiscountValue(draft.discountValue || 0);
+      setValidUntil(draft.validUntil || "");
+
+      toast.message("Draft restored");
+    } catch {
+      localStorage.removeItem(DRAFT_KEY);
+    } finally {
+      setDraftReady(true);
+    }
+  }, [DRAFT_KEY]);
+
+  /* ---------------- DRAFT AUTOSAVE ---------------- */
+
+  useEffect(() => {
+    if (!DRAFT_KEY || !draftReady) return;
+
+    const draft = {
+      customerId,
+      guestName,
+      guestPhone,
+      items,
+      discountType,
+      discountValue,
+      validUntil,
+    };
+
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [
+    DRAFT_KEY,
+    draftReady,
+    customerId,
+    guestName,
+    guestPhone,
+    items,
+    discountType,
+    discountValue,
+    validUntil,
+  ]);
 
   /* ---------------- PRODUCTS ---------------- */
 
@@ -80,6 +133,7 @@ export default function CreateQuote() {
       {
         product_id: product.id,
         name: product.name,
+        image_url: product.image_url,
         quantity: 1,
         price: product.price,
         locked: true,
@@ -119,8 +173,9 @@ export default function CreateQuote() {
     const { data, error } = await supabase
       .from("profiles")
       .insert({
+        username: guestName,
         phone: guestPhone,
-        full_name: guestName,
+        role: "customer",
       })
       .select()
       .single();
@@ -150,12 +205,7 @@ export default function CreateQuote() {
     return 0;
   }, [discountType, discountValue, subtotal]);
 
-  const taxAmount = useMemo(
-    () => ((subtotal - discountAmount) * Number(taxRate)) / 100,
-    [subtotal, discountAmount, taxRate]
-  );
-
-  const total = subtotal - discountAmount + taxAmount;
+  const total = subtotal - discountAmount;
 
   /* ---------------- SAVE ---------------- */
 
@@ -200,46 +250,52 @@ export default function CreateQuote() {
     );
 
     toast.success("Quotation created");
+
+    if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
+
+    setItems([]);
+    setCustomerId("");
+    setGuestName("");
+    setGuestPhone("");
+    setDiscountType("none");
+    setDiscountValue(0);
+    setValidUntil("");
   }
 
   const filteredProducts = useMemo(() => {
     const list = products.filter((p) =>
       p.name.toLowerCase().includes(search.toLowerCase())
     );
-
-    // If searching, reset visible count
-    if (search.trim()) {
-      return list.slice(0, PRODUCT_LIMIT);
-    }
-
     return list.slice(0, visibleCount);
   }, [products, search, visibleCount]);
 
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-8 px-3 md:px-0">
       <h1 className="text-2xl font-bold">Create Quotation</h1>
 
       {/* CUSTOMER */}
-      <select
-        className="w-full border p-2 rounded"
-        value={customerId}
-        onChange={(e) => setCustomerId(e.target.value)}
-      >
-        <option value="">Select customer</option>
-
-        {customers.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.username || c.email}
-            {c.phone ? ` — ${c.phone}` : ""}
-          </option>
-        ))}
-      </select>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Customer</label>
+        <select
+          className="w-full border rounded px-3 py-2"
+          value={customerId}
+          onChange={(e) => setCustomerId(e.target.value)}
+        >
+          <option value="">Select customer</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.username || c.email}
+              {c.phone ? ` — ${c.phone}` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* GUEST */}
       {!customerId && (
-        <div className="border p-4 rounded space-y-2">
+        <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
           <p className="font-medium">Guest customer</p>
           <Input
             placeholder="Guest name"
@@ -271,71 +327,74 @@ export default function CreateQuote() {
         ))}
       </div>
 
-      {/* ITEMS */}
-      {items.map((item, i) => (
-        <div key={i} className="flex gap-2 items-center">
-          <span className="flex-1">{item.name}</span>
-
-          <Input
-            type="number"
-            value={item.quantity}
-            onChange={(e) => updateItem(i, "quantity", e.target.value)}
-            className="w-20"
-          />
-
-          <Input
-            type="number"
-            disabled={item.locked}
-            value={item.price}
-            onChange={(e) => updateItem(i, "price", e.target.value)}
-            className="w-24"
-          />
-
-          <Button variant="ghost" onClick={() => toggleLock(i)}>
-            {item.locked ? <Lock size={16} /> : <Unlock size={16} />}
-          </Button>
-
-          <Button variant="ghost" onClick={() => removeItem(i)}>
-            <Trash2 size={16} />
-          </Button>
-        </div>
-      ))}
-
-      {/* PRICING */}
-      <div className="border p-4 rounded space-y-2">
-        <p>Subtotal: {subtotal.toFixed(2)}</p>
-
-        <div className="flex gap-2">
-          <select
-            className="border p-2 rounded"
-            value={discountType}
-            onChange={(e) => setDiscountType(e.target.value)}
+      {/* SELECTED ITEMS */}
+      <div className="space-y-4">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className="border rounded-lg p-3 flex flex-col md:flex-row gap-4"
           >
-            <option value="none">No discount</option>
-            <option value="flat">Flat</option>
-            <option value="percent">Percent</option>
-          </select>
+            <div className="relative w-full md:w-20 h-40 md:h-20">
+              <img
+                src={
+                  item.image_url
+                    ? encodeURI(item.image_url)
+                    : "/placeholder.png"
+                }
+                alt={item.name}
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.png";
+                }}
+                className="w-full h-full object-cover rounded border"
+              />
 
-          {discountType !== "none" && (
-            <Input
-              type="number"
-              value={discountValue}
-              onChange={(e) => setDiscountValue(e.target.value)}
-            />
-          )}
-        </div>
+              {!item.image_url && (
+                <span className="absolute bottom-1 right-1 text-[10px] bg-gray-700 text-white px-1 rounded">
+                  No image
+                </span>
+              )}
+            </div>
 
-        <Input
-          type="number"
-          placeholder="Tax %"
-          value={taxRate}
-          onChange={(e) => setTaxRate(e.target.value)}
-        />
+            <div className="flex-1 space-y-1">
+              <p className="font-medium">{item.name}</p>
+              <p className="text-sm text-gray-500">Unit price: {item.price}</p>
+            </div>
 
-        <p className="font-bold">Total: {total.toFixed(2)}</p>
+            <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+              <Input
+                type="number"
+                value={item.quantity}
+                onChange={(e) => updateItem(i, "quantity", e.target.value)}
+              />
+              <Input
+                type="number"
+                disabled={item.locked}
+                value={item.price}
+                onChange={(e) => updateItem(i, "price", e.target.value)}
+              />
+            </div>
+
+            <div className="flex md:flex-col gap-2">
+              <Button variant="ghost" onClick={() => toggleLock(i)}>
+                {item.locked ? <Lock size={16} /> : <Unlock size={16} />}
+              </Button>
+              <Button variant="ghost" onClick={() => removeItem(i)}>
+                <Trash2 size={16} />
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <Button onClick={saveQuote}>Save Quote</Button>
+      {/* TOTALS */}
+      <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
+        <p>Subtotal: {subtotal.toFixed(2)}</p>
+        <p className="text-lg font-bold">Total: {total.toFixed(2)}</p>
+      </div>
+
+      <Button size="lg" className="w-full md:w-auto" onClick={saveQuote}>
+        Save Quotation
+      </Button>
     </div>
   );
 }

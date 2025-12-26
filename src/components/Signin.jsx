@@ -91,6 +91,13 @@ export default function Signin() {
             required
           />
 
+          <Link
+            to="/forgot-password"
+            className="text-xs text-right text-[#4eb0e3] hover:underline w-full block"
+          >
+            Forgot password?
+          </Link>
+
           <Button
             type="submit"
             disabled={loading}

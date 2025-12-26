@@ -3,10 +3,12 @@ import { supabase } from "../../supabaseClient";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { MessageCircle, Plus } from "lucide-react";
+import { UserAuth } from "../../context/AuthContext";
 
 export default function Quotes() {
   const [quotes, setQuotes] = useState([]);
   const [filter, setFilter] = useState("all");
+  const { session } = UserAuth();
 
   useEffect(() => {
     supabase
@@ -75,6 +77,43 @@ export default function Quotes() {
           q.id === quote.id ? { ...q, quote_status: "sent" } : q
         )
       );
+    }
+  }
+
+  async function sendQuoteEmail(quote) {
+    const email = quote.profile?.email;
+
+    if (!email) {
+      alert("Customer email missing");
+      return;
+    }
+
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          to: email,
+          subject: "Your Quotation",
+          html: `
+          <h2>Your quotation is ready</h2>
+          <p>Please review it using the link below:</p>
+          <a href="${window.location.origin}/quote/${quote.id}">
+            View quotation
+          </a>
+        `,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      alert("Failed to send email");
+    } else {
+      alert("Email sent");
     }
   }
 
@@ -157,6 +196,9 @@ export default function Quotes() {
               <Button variant="outline" onClick={() => shareOnWhatsApp(q)}>
                 <MessageCircle className="w-4 h-4 mr-1" />
                 WhatsApp
+              </Button>
+              <Button variant="outline" onClick={() => sendQuoteEmail(q)}>
+                Email
               </Button>
             </div>
           </div>
