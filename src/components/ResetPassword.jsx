@@ -56,16 +56,31 @@ export default function ResetPassword() {
 
     setLoading(true);
 
-    const result = await updatePassword(password);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password,
+      });
 
-    if (result.success) {
-      toast.success("Password updated successfully. Please sign in.");
+      if (error) {
+        // ✅ Handle Supabase's "same password" rule nicely
+        if (error.message?.toLowerCase().includes("same")) {
+          toast.error("New password must be different from your old password");
+        } else {
+          toast.error(error.message || "Failed to reset password");
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      // ✅ SUCCESS
+      toast.success("Password reset successfully. Please sign in.");
       navigate("/signin", { replace: true });
-    } else {
-      toast.error(result.error || "Failed to reset password");
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => {
