@@ -96,10 +96,7 @@ createRoot(document.getElementById("root")).render(
                 <Route element={<AuthLayout />}>
                   <Route path="signin" element={<Signin />} />
                   <Route path="signup" element={<Signup />} />
-                  <Route
-                    path="auth/reset-password"
-                    element={<ResetPassword />}
-                  />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                 </Route>
 
