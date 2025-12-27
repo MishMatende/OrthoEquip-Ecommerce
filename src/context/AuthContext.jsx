@@ -191,6 +191,23 @@ export const AuthContextProvider = ({ children }) => {
     }
   };
 
+  /* -------------------- UPDATE PASSWORD -------------------- */
+  const updatePassword = async (newPassword) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: "NETWORK_ERROR" };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -203,6 +220,7 @@ export const AuthContextProvider = ({ children }) => {
         signinUser,
         signoutUser,
         forgotPassword,
+        updatePassword,
       }}
     >
       {children}

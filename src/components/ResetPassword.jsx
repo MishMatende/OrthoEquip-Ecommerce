@@ -1,10 +1,11 @@
 // src/pages/ResetPassword.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { UserAuth } from "../context/AuthContext";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -66,6 +67,14 @@ export default function ResetPassword() {
 
     setLoading(false);
   };
+
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        console.log("Recovery session active");
+      }
+    });
+  }, []);
 
   return (
     <div className="flex justify-center py-20 px-4">
