@@ -326,7 +326,7 @@ export default function Navbar() {
                   className="absolute top-full right-0 w-48 bg-white shadow-xl rounded-md mt-2 z-50 text-black origin-top"
                 >
                   <ul className="flex flex-col divide-y divide-gray-100">
-                    <li>
+                    {/* <li>
                       <button
                         type="button"
                         onClick={() => navigate("/profile")}
@@ -344,7 +344,7 @@ export default function Navbar() {
                       >
                         Dashboard
                       </button>
-                    </li>
+                    </li> */}
 
                     <li>
                       <button
