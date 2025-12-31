@@ -2,9 +2,23 @@ import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 serve(async (req) => {
+  // 🔹 Handle preflight request
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", {
+      status: 405,
+      headers: corsHeaders,
+    });
   }
 
   try {
@@ -14,7 +28,7 @@ serve(async (req) => {
     if (!name || !email || !service || !message) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -26,23 +40,7 @@ serve(async (req) => {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
 
-    // 🚫 Rate limit: 3 messages per 10 minutes per IP
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-
-    const { count } = await supabase
-      .from("contact_messages")
-      .select("*", { count: "exact", head: true })
-      .eq("ip_address", ip)
-      .gte("created_at", tenMinutesAgo);
-
-    if ((count ?? 0) >= 3) {
-      return new Response(
-        JSON.stringify({ error: "Too many requests. Please wait." }),
-        { status: 429 }
-      );
-    }
-
-    // 💾 Save message
+    // Save message
     await supabase.from("contact_messages").insert({
       name,
       email,
@@ -52,7 +50,6 @@ serve(async (req) => {
       ip_address: ip,
     });
 
-    // 📧 Send admin email
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
     await resend.emails.send({
@@ -71,12 +68,15 @@ serve(async (req) => {
       `,
     });
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: corsHeaders }
+    );
   } catch (err) {
     console.error("Contact function error:", err);
     return new Response(
       JSON.stringify({ error: "Server error" }),
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
