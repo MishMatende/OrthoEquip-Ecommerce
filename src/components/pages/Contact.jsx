@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Mail, Phone, MapPin, Send, Loader2 } from "lucide-react";
-import emailjs from "emailjs-com";
 import { Link } from "react-router-dom";
 
 const Contact = () => {
@@ -43,44 +42,47 @@ const Contact = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setLoading(true);
     setStatus({ type: "", message: "" });
 
-    emailjs
-      .send(
-        import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-        formData,
-        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-      )
-      .then(
-        () => {
-          setStatus({
-            type: "success",
-            message: "✅ Your message has been sent successfully!",
-          });
-          setFormData({
-            name: "",
-            email: "",
-            service: "",
-            phone: "",
-            message: "",
-          });
-          setErrors({});
-        },
-        (error) => {
-          console.error("EmailJS Error:", error);
-          setStatus({
-            type: "error",
-            message: "❌ Failed to send message. Please try again later.",
-          });
-        }
-      )
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send");
+      }
+
+      setStatus({
+        type: "success",
+        message: "✅ Your message has been sent successfully!",
+      });
+
+      setFormData({
+        name: "",
+        email: "",
+        service: "",
+        phone: "",
+        message: "",
+      });
+    } catch (err) {
+      console.error(err);
+      setStatus({
+        type: "error",
+        message: "❌ Failed to send message. Please try again later.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
