@@ -51,7 +51,7 @@ const Contact = () => {
 
     try {
       const res = await fetch(
-        "https://YOUR_PROJECT_ID.functions.supabase.co/contact",
+        "https://uyyqzjdnvsruuzeaiqat.functions.supabase.co/contact",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
