@@ -50,17 +50,18 @@ const Contact = () => {
     setStatus({ type: "", message: "" });
 
     try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const res = await fetch(
+        "https://YOUR_PROJECT_ID.functions.supabase.co/contact",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send");
-      }
+      if (!res.ok) throw new Error(data.error);
 
       setStatus({
         type: "success",
@@ -75,7 +76,6 @@ const Contact = () => {
         message: "",
       });
     } catch (err) {
-      console.error(err);
       setStatus({
         type: "error",
         message: "❌ Failed to send message. Please try again later.",
