@@ -14,9 +14,13 @@ export default function Footer() {
         {/* LEFT: Brand / About */}
         <div className="md:col-span-4">
           <div className="flex items-center mb-4 space-x-2">
-            <img src={BalmOrthoLogo} className="h-[50px]" alt="Balm Ortho" />
+            <img
+              src={BalmOrthoLogo}
+              className="h-[50px]"
+              alt="Balm Ortho Medical Supplies Logo"
+            />
             <h2 className="text-2xl font-semibold text-white">
-              Balm Ortho Medical
+              Balm Ortho Medical Supplies
             </h2>
           </div>
 
@@ -90,14 +94,14 @@ export default function Footer() {
                 <li>
                   <Link to="/signin">Login</Link>
                 </li>
+                {/* <li>
+                  <Link to="/">Profile</Link>
+                </li> */}
                 <li>
-                  <Link to="/">My Account</Link>
+                  <Link to="/about#about-policies">Terms & Conditions</Link>
                 </li>
                 <li>
-                  <Link to="/">Terms & Conditions</Link>
-                </li>
-                <li>
-                  <Link to="/">FAQ</Link>
+                  <Link to="/about#about-FAQs">FAQ</Link>
                 </li>
               </ul>
             </div>
@@ -138,16 +142,16 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-6 md:px-16">
           <p className="text-center md:text-left">
             © {new Date().getFullYear()}{" "}
-            <span className="text-white">Balm Ortho Medical</span>. All rights
-            reserved.
+            <span className="text-white">Balm Ortho Medical Supplies</span>. All
+            rights reserved.
           </p>
 
           <div className="flex space-x-4 text-sm">
-            <Link to="/about" className="hover:text-teal-400">
+            <Link to="/about#about-policies" className="hover:text-teal-400">
               Privacy Policy
             </Link>
             <span className="opacity-40">|</span>
-            <Link to="/about" className="hover:text-teal-400">
+            <Link to="/about#about-policies" className="hover:text-teal-400">
               Terms of Service
             </Link>
           </div>

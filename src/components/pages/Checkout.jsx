@@ -152,9 +152,13 @@ Phone: ${form.phone}
       <header className="border-b bg-white/70 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-4xl mx-auto py-5 px-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={BalmOrthoLogo} className="h-[45px]" alt="Balm Ortho" />
+            <img
+              src={BalmOrthoLogo}
+              className="h-[45px]"
+              alt="Balm Ortho Medical Supplies"
+            />
             <h1 className="text-2xl font-bold text-gray-800">
-              Balm Ortho Medical
+              Balm Ortho Medical Supplies
             </h1>
           </div>
           <button

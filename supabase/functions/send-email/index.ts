@@ -15,7 +15,7 @@ serve(async (req) => {
     }
 
     const { data, error } = await resend.emails.send({
-     from: "Balm Ortho <quotes@balmorthomedical.com>",
+     from: "Balm Ortho Medical Supplies <quotes@balmorthomedical.com>",
       to,
       subject,
       html,

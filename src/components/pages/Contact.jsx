@@ -84,7 +84,10 @@ const Contact = () => {
   };
 
   return (
-    <div className="flex flex-col items-center mx-[0%] md:mx-[2%] lg:mx-[20%] text-center">
+    <div
+      className="flex flex-col items-center mx-[0%] md:mx-[2%] lg:mx-[20%] text-center"
+      id="contact-form"
+    >
       {/* Contact Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 w-full max-w-6xl px-4">
         <Link to="mailto:balmortho93@gmail.com">
@@ -181,8 +184,8 @@ const Contact = () => {
                 <option value="">Select Service Type</option>
                 <option value="Support">Support</option>
                 <option value="Feedback">Feedback</option>
-                <option value="Feedback">Complaint</option>
-                <option value="Feedback">Item Availability</option>
+                <option value="Complaint">Complaint</option>
+                <option value="Item Availability">Item Availability</option>
               </select>
               {errors.service && (
                 <p className="text-red-500 text-sm mt-1">{errors.service}</p>

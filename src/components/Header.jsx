@@ -63,8 +63,14 @@ export default function Header() {
   return (
     <nav className="relative flex justify-between items-center py-6 px-[4%] bg-white shadow-sm mx-[0%] md:mx-[5%] lg:mx-[10%] text-center">
       <div className="flex items-center space-x-2">
-        <img src={BalmOrthoLogo} className="h-[50px]" alt="Balm Ortho image" />
-        <span className="text-2xl font-semibold">Balm Ortho</span>
+        <img
+          src={BalmOrthoLogo}
+          className="h-[50px]"
+          alt="Balm Ortho Medical Supplies image"
+        />
+        <span className="text-2xl font-semibold">
+          Balm Ortho Medical Supplies
+        </span>
       </div>
 
       {/* Desktop Menu */}

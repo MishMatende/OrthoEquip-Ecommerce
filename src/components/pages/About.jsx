@@ -2,6 +2,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
+import { Link } from "react-router-dom";
 
 export default function About() {
   const policiesUrl = encodeURI(
@@ -28,7 +29,7 @@ export default function About() {
               <motion.img
                 variants={fadeUp}
                 src={BalmOrthoLogo}
-                alt="Balm Ortho Logo"
+                alt="Balm Ortho Medical Supplies Logo"
                 className="h-16 mb-2"
               />
 
@@ -166,7 +167,7 @@ export default function About() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-6 py-12">
+      <section className="max-w-6xl mx-auto px-6 py-12" id="about-policies">
         <motion.div
           initial="hidden"
           animate="visible"
@@ -231,7 +232,7 @@ export default function About() {
         </motion.div>
       </section>
 
-      <section className="bg-[#f8fafc] py-10">
+      <section className="bg-[#f8fafc] py-10" id="about-FAQs">
         <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
             <h3 className="text-xl font-semibold mb-2">Policies & Terms</h3>
@@ -307,9 +308,9 @@ export default function About() {
               Where can I buy medical supplies?
             </p>
             <p className="text-sm text-gray-600">
-              Balm Ortho is the leading ecommerce platform selling quality
-              medical items. Visit our Shop to browse categories and order
-              online.
+              Balm Ortho Medical Supplies is the leading ecommerce platform
+              selling quality medical items. Visit our Shop to browse categories
+              and order online.
             </p>
           </motion.div>
 
@@ -369,12 +370,12 @@ export default function About() {
             >
               Browse products
             </a>
-            <a
-              href="mailto:balmortho93@gmail.com"
+            <Link
+              to="/Contact#contact-form"
               className="px-5 py-3 rounded-lg border border-white/20 text-white hover:bg-white/5 transition"
             >
               Contact sales
-            </a>
+            </Link>
           </div>
         </div>
       </footer>

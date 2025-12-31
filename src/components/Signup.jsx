@@ -57,7 +57,7 @@ export default function Signup() {
           <img
             src={BalmOrthoLogo}
             className="h-[70px] mb-3"
-            alt="Balm Ortho logo"
+            alt="Balm Ortho Medical Supplies logo"
           />
           <h2 className="font-bold text-xl text-gray-800 mb-5">Sign up</h2>
         </div>

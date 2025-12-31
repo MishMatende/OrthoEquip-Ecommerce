@@ -16,11 +16,11 @@ function AuthLayout() {
       <header className="relative z-10 flex flex-col items-center mb-10 mt-6 md:mt-10">
         <img
           src={BalmOrthoLogo}
-          alt="Balm Ortho Logo"
+          alt="Balm Ortho Medical Supplies Logo"
           className="h-20 w-auto mb-3 drop-shadow-md"
         />
         <h1 className="text-2xl md:text-3xl font-bold text-[#4eb0e3] text-center drop-shadow-sm">
-          Balm Ortho
+          Balm Ortho Medical Supplies
         </h1>
       </header>
 

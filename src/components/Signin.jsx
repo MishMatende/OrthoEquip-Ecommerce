@@ -68,7 +68,11 @@ export default function Signin() {
         className="w-full max-w-[300px] px-5 py-6 rounded-2xl bg-white shadow-lg"
       >
         <div className="flex flex-col items-center mb-5">
-          <img src={BalmOrthoLogo} className="h-[70px]" alt="Balm Ortho" />
+          <img
+            src={BalmOrthoLogo}
+            className="h-[70px]"
+            alt="Balm Ortho Medical Supplies"
+          />
           <h2 className="font-bold text-xl text-gray-800 mt-3">Sign in</h2>
         </div>
 

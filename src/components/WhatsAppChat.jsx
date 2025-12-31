@@ -19,7 +19,7 @@ export default function WhatsAppChat({ productName, hidden }) {
   const productUrl = `${window.location.origin}${location.pathname}`;
 
   // ✅ Build message as ONE clean string
-  let message = "Hello Balm Ortho 👋";
+  let message = "Hello Balm Ortho Medical Supplies 👋";
 
   if (productName) {
     message += ` I'm interested in ${productName}.`;
