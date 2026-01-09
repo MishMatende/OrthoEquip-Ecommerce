@@ -74,8 +74,8 @@ export default function ResetPassword() {
       }
 
       // ✅ SUCCESS
-      toast.success("Password reset successfully. Please sign in.");
-      navigate("/signin", { replace: true });
+      toast.success("Password updated! Redirecting...");
+      setTimeout(() => navigate("/signin", { replace: true }), 800);
     } catch {
       toast.error("Network error. Please try again.");
     } finally {
@@ -84,12 +84,18 @@ export default function ResetPassword() {
   };
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        console.log("Recovery session active");
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_UPDATED") {
+        console.log("Password updated event received");
+        toast.success("Password updated successfully! Please sign in.");
+        navigate("/signin", { replace: true });
       }
     });
-  }, []);
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   return (
     <div className="flex justify-center py-20 px-4">
