@@ -126,12 +126,9 @@ export const AuthContextProvider = ({ children }) => {
       async (event, newSession) => {
         setSession(newSession);
 
-        if (newSession?.user) {
+        if (event === "SIGNED_IN" && newSession?.user) {
           const profile = await fetchUserProfile(newSession.user.id);
-
-          if (event === "SIGNED_IN" && profile?.is_admin) {
-            navigate("/admin");
-          }
+          if (profile?.is_admin) navigate("/admin");
         } else {
           setUserProfile(null);
           setShowPhoneModal(false);
@@ -153,22 +150,15 @@ export const AuthContextProvider = ({ children }) => {
 
   /* -------------------- SIGN OUT -------------------- */
   const signoutUser = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
+    // instant UI feedback
+    setUserProfile(null);
+    setSession(null);
+    setShowPhoneModal(false);
+    sessionStorage.removeItem("profileModalShown");
 
-      if (error) {
-        return { ok: false, error: error.message };
-      }
+    supabase.auth.signOut().catch(() => {});
 
-      setUserProfile(null);
-      setSession(null);
-      setShowPhoneModal(false);
-      sessionStorage.removeItem("profileModalShown");
-
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "NETWORK_ERROR" };
-    }
+    return { ok: true };
   };
 
   /* -------------------- FORGOT PASSWORD -------------------- */

@@ -81,9 +81,9 @@ export default function Home() {
       </section>
 
       <section className="bg-gray-100 py-10">
-        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between min-h-[70vh] lg:px-8 ">
+        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between max-h-[70vh] lg:px-8 ">
           {/* Left Image */}
-          <div className="flex-1 flex justify-center md:justify-start">
+          <div className="flex-1 flex justify-center md:justify-start pb-5 md:pb-0">
             <img
               src={MaskThermometer}
               alt="N95 Mask"
