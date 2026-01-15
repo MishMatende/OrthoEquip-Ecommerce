@@ -37,19 +37,24 @@ export const AuthContextProvider = ({ children }) => {
       });
 
       if (error) {
-        return { success: false, error: error.message };
+        // Normalize known Supabase error messages
+        const message = error.message?.toLowerCase() || "";
+
+        if (message.includes("invalid login credentials")) {
+          return { success: false, code: "INVALID_CREDENTIALS" };
+        }
+
+        if (message.includes("email not confirmed")) {
+          return { success: false, code: "EMAIL_NOT_CONFIRMED" };
+        }
+
+        return { success: false, code: "UNKNOWN", raw: error.message };
       }
 
       return { success: true, data };
     } catch (err) {
-      if (
-        err instanceof TypeError ||
-        err?.message?.toLowerCase().includes("network")
-      ) {
-        return { success: false, error: "NETWORK_ERROR" };
-      }
-
-      return { success: false, error: "Unexpected error occurred" };
+      // Catch network/browser issues
+      return { success: false, code: "NETWORK_ERROR" };
     }
   };
 

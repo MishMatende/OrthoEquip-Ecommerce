@@ -25,12 +25,24 @@ export default function Signin() {
 
     // ❌ FAILED SIGN IN
     if (!result.success) {
-      if (result.error === "NETWORK_ERROR") {
-        toast.warning(
-          "Network issue detected. Please check your internet connection and try again."
-        );
-      } else {
-        toast.error(result.error || "Invalid email or password");
+      switch (result.code) {
+        case "INVALID_CREDENTIALS":
+          toast.error("Incorrect email or password.");
+          break;
+
+        case "EMAIL_NOT_CONFIRMED":
+          toast.error("Please verify your email before signing in.");
+          break;
+
+        case "NETWORK_ERROR":
+          toast.warning(
+            "Connection issue. Please check your internet and try again."
+          );
+          break;
+
+        default:
+          toast.error("Something went wrong. Please try again.");
+          console.error("Login error:", result.raw);
       }
 
       setLoading(false);
