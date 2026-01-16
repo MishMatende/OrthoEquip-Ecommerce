@@ -172,3 +172,40 @@ body,
 #root {
   height: 100%;
 }
+
+.base-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: 1px solid #4eb0e3;
+  border-radius: 6px;
+  background-color: #4eb0e3;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.base-button:hover {
+  background-color: #056eb1;
+  border-color: #056eb1;
+}
+
+.base-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.base-button.outline {
+  background-color: white;
+  color: #056eb1;
+  border-color: #056eb1;
+}
+
+.base-button.outline:hover {
+  background-color: #056eb1;
+  color: white;
+}

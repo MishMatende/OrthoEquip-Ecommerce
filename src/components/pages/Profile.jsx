@@ -156,7 +156,12 @@ export default function Profile() {
         </div>
 
         <div className="pt-4">
-          <Button onClick={saveProfile} disabled={saving} className="w-full">
+          <Button
+            variant="solid"
+            onClick={saveProfile}
+            disabled={saving}
+            className="w-full"
+          >
             {saving ? "Saving..." : "Save"}
           </Button>
         </div>

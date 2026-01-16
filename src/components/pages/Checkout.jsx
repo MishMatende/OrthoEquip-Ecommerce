@@ -286,6 +286,7 @@ Phone: ${form.phone}
           <div className="flex justify-end pt-4 border-t">
             <Button
               type="submit"
+              variant="solid"
               disabled={loading}
               className="bg-gradient-to-r from-[#4eb0e3] to-[#0570b3] px-8 py-3 text-white rounded-xl cursor-pointer"
             >

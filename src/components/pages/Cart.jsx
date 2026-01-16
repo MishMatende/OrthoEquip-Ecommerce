@@ -215,6 +215,7 @@ export default function Cart() {
         </p>
 
         <Button
+          variant="solid"
           onClick={handleCheckout}
           className="
             bg-[#4eb0e3] hover:bg-[#0570b3]

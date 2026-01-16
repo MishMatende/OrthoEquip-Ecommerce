@@ -101,6 +101,7 @@ export default function Signup() {
 
           <Button
             type="submit"
+            variant="solid"
             disabled={loading}
             className="mt-3 w-full py-2.5 bg-[#4eb0e3] hover:bg-[#3ca0d4] text-white font-semibold rounded-lg transition-all text-sm cursor-pointer"
           >

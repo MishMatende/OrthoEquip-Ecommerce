@@ -62,7 +62,9 @@ export default function QuoteDetails() {
       <p className="font-bold">Total: {quote.total}</p>
 
       {quote.quote_status === "sent" && (
-        <Button onClick={acceptQuote}>Accept Quote</Button>
+        <Button variant="solid" onClick={acceptQuote}>
+          Accept Quote
+        </Button>
       )}
     </div>
   );

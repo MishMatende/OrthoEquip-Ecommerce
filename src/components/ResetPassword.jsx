@@ -155,6 +155,7 @@ export default function ResetPassword() {
 
         <Button
           type="submit"
+          variant="solid"
           disabled={loading}
           className="w-full bg-[#4eb0e3] hover:bg-[#3ca0d4] text-white"
         >

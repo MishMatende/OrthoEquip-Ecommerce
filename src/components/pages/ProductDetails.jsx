@@ -251,7 +251,7 @@ export default function ProductDetails() {
             </Button>
 
             <Button
-              variant="outline"
+              variant="solid"
               disabled={product.stock <= 0}
               onClick={() => {
                 if (!session) {

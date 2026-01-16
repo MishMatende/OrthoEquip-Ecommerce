@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import { UserAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { Button } from "./ui/button";
 
 export default function Navbar() {
   const [categories, setCategories] = useState([]);
@@ -151,17 +152,15 @@ export default function Navbar() {
     <div className="mx-[0%] md:mx-[7%] lg:mx-[15%] text-center pt-5">
       <nav className="w-full flex items-center justify-between px-4 py-3 bg-white relative">
         {/* Mobile toggle */}
-        <button
-          className="md:hidden flex items-center justify-center p-2 text-white bg-[#4eb0e3] border rounded-md"
+        <Button
+          variant="solid"
+          size="md"
+          className="md:hidden flex items-center gap-2 uppercase font-semibold"
           onClick={() => setOpenMobileMenu((prev) => !prev)}
         >
-          Categories
-          {openMobileMenu ? (
-            <ChevronUp className="ml-1" size={16} />
-          ) : (
-            <ChevronDown className="ml-1" size={16} />
-          )}
-        </button>
+          <Menu size={16} /> Categories{" "}
+          {openMobileMenu ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </Button>
 
         {/* Desktop Categories */}
         <div
@@ -170,15 +169,20 @@ export default function Navbar() {
           onMouseEnter={() => setOpenCategories(true)}
           onMouseLeave={() => setOpenCategories(false)}
         >
-          <button className="categories-button flex items-center gap-2 border text-white bg-[#4eb0e3] px-4 py-2 rounded-md hover:bg-white hover:text-black hover:border hover:border-black transition-all duration-200">
-            <Menu size={18} />
-            <span className="font-semibold uppercase">Categories</span>
+          <Button
+            variant="solid"
+            size="md"
+            className="flex items-center gap-2 uppercase font-semibold cursor-pointer"
+            onMouseEnter={() => setOpenCategories(true)}
+            onMouseLeave={() => setOpenCategories(false)}
+          >
+            <Menu size={18} /> Categories{" "}
             {openCategories ? (
               <ChevronUp size={16} />
             ) : (
               <ChevronDown size={16} />
             )}
-          </button>
+          </Button>
 
           <AnimatePresence>
             {openCategories && (
