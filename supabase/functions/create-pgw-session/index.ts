@@ -5,12 +5,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const UAT_AUTH_URL = "https://uat.finserve.africa/authentication/api/v3/authenticate/merchant";
 const UAT_STK_URL = "https://uat.finserve.africa/api/ussdpush/v3/express-payment";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+};
+
 serve(async (req: Request) => {
+
+  // 0️⃣ Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     const { order_id, amount, phone } = await req.json();
 
     if (!order_id || !amount || !phone) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     const supabase = createClient(
@@ -36,10 +51,7 @@ serve(async (req: Request) => {
         "Authorization": `Basic ${btoa(`${merchantCode}:${consumerSecret}`)}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ 
-        merchantCode,
-        apiKey 
-      })
+      body: JSON.stringify({ merchantCode, apiKey })
     });
 
     const authData = await authRes.json();
@@ -47,16 +59,19 @@ serve(async (req: Request) => {
 
     if (!token) {
       console.error("Auth failed:", authData);
-      return new Response(JSON.stringify({ error: "Jenga auth failed" }), { status: 500 });
+      return new Response(
+        JSON.stringify({ error: "Jenga authentication failed" }),
+        { status: 500, headers: corsHeaders }
+      );
     }
 
     // 3️⃣ Send STK Push
     const stkPayload = {
       customer: phone,
       amount: String(amount),
-      reference: reference,
-      till: "247247", // Paybill
-      account: "0710287051433" // Your account number mapped to your business
+      reference,
+      till: "247247", // Paybill number
+      account: "0710287051433" // account number mapped to your business
     };
 
     const stkRes = await fetch(UAT_STK_URL, {
@@ -65,16 +80,22 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(stkPayload)
+      body: JSON.stringify(stkPayload),
     });
 
-    // STK returns no JSON | no body | just HTTP code
     console.log("STK HTTP STATUS:", stkRes.status);
 
-    return new Response(null, { status: 204 });
+    // 4️⃣ Return success (NO JSON on STK)
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    });
 
   } catch (err) {
     console.error("STK Error:", err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: corsHeaders }
+    );
   }
 });
