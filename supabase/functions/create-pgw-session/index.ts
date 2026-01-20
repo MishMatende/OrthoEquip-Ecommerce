@@ -8,8 +8,10 @@ const UAT_STK_URL = "https://uat.finserve.africa/api/ussdpush/v3/express-payment
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, apikey, content-type, x-client-info",
 };
+
 
 serve(async (req: Request) => {
 
