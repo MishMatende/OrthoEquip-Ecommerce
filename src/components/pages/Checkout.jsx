@@ -118,8 +118,8 @@ Phone: ${form.phone}
       // 2️⃣ Call payment function
       toast.info("Sending payment...");
 
-      const { data } = await supabase.functions.invoke(
-        "create-payment-session",
+      const { data, fnError } = await supabase.functions.invoke(
+        "create-pgw-session",
         {
           body: {
             order_id: order.id,
@@ -129,7 +129,7 @@ Phone: ${form.phone}
         },
       );
 
-      console.log("STK Response:", data, error);
+      console.log("STK Response:", data, fnError);
 
       if (data?.status === "PENDING") {
         toast.success("Check your phone for M-PESA prompt");
@@ -274,8 +274,8 @@ Phone: ${form.phone}
               Secure payment via Jenga
             </p>
             <p className="text-blue-700 mt-1">
-              You’ll be redirected to Pesapal to complete payment using M-PESA,
-              Visa, Mastercard, or Airtel Money.
+              You will receive an M-PESA STK prompt on your phone to complete
+              payment.
             </p>
           </section>
 
