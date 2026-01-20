@@ -116,25 +116,22 @@ Phone: ${form.phone}
       if (error) throw error;
 
       // 2️⃣ Call payment function
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "create-pgw-session",
+      const { data } = await supabase.functions.invoke(
+        "create-payment-session",
         {
           body: {
             order_id: order.id,
             amount: total,
-            email: form.email,
             phone: form.phone,
           },
         },
       );
 
-      if (fnError) throw fnError;
-
-      // ✅ HARD GUARD (THIS WAS MISSING)
-      if (!data?.checkoutUrl) {
-        throw new Error("PGW Checkout URL not returned");
+      if (data?.status === "PENDING") {
+        toast.info("Check your phone for M-PESA prompt");
+      } else {
+        toast.error("Failed to initiate STK push");
       }
-      window.location.assign(data.checkoutUrl);
     } catch (err) {
       console.error("Checkout error:", err);
       toast.error("Unable to start payment. Please try again.");
