@@ -56,7 +56,7 @@ export default function Checkout() {
   const total = activeCart.reduce(
     (sum, item) =>
       sum + (item.products?.price || item.price_at_add) * item.quantity,
-    0
+    0,
   );
 
   const validateFields = () => {
@@ -106,7 +106,7 @@ Phone: ${form.phone}
           user_id: session.user.id,
           total_amount: total,
           status: "pending_payment",
-          payment_provider: "pesapal",
+          payment_provider: "jenga-pgw",
           tracking_stage: "placed",
           shipping_address: shippingAddress,
         })
@@ -117,28 +117,24 @@ Phone: ${form.phone}
 
       // 2️⃣ Call payment function
       const { data, error: fnError } = await supabase.functions.invoke(
-        "create-pesapal-payment",
+        "create-pgw-session",
         {
           body: {
             order_id: order.id,
             amount: total,
             email: form.email,
             phone: form.phone,
-            first_name: form.firstName,
-            last_name: form.lastName,
           },
-        }
+        },
       );
 
       if (fnError) throw fnError;
 
       // ✅ HARD GUARD (THIS WAS MISSING)
-      if (!data?.payment_url) {
-        throw new Error("Payment URL not returned");
+      if (!data?.checkoutUrl) {
+        throw new Error("PGW Checkout URL not returned");
       }
-
-      // 3️⃣ Redirect
-      window.location.assign(data.payment_url);
+      window.location.assign(data.checkoutUrl);
     } catch (err) {
       console.error("Checkout error:", err);
       toast.error("Unable to start payment. Please try again.");
@@ -274,7 +270,7 @@ Phone: ${form.phone}
           {/* Payment Notice */}
           <section className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm">
             <p className="font-medium text-blue-800">
-              Secure payment via Pesapal
+              Secure payment via Jenga
             </p>
             <p className="text-blue-700 mt-1">
               You’ll be redirected to Pesapal to complete payment using M-PESA,
