@@ -23,7 +23,7 @@ export default function OrderConfirmation() {
             price,
             products (name, image_url)
           )
-        `
+        `,
         )
         .eq("id", orderId)
         .single();
@@ -67,8 +67,11 @@ export default function OrderConfirmation() {
           </h1>
           <p className="text-gray-700">
             Your order <span className="font-semibold">#{order.id}</span> has
-            been placed successfully. You’ll receive an update once it’s
-            shipped.
+            been placed!
+          </p>
+          <p className="text-gray-600 mt-2">
+            You will receive an email confirmation once your payment is
+            verified.
           </p>
         </div>
 
