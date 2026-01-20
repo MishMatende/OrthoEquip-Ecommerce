@@ -116,6 +116,8 @@ Phone: ${form.phone}
       if (error) throw error;
 
       // 2️⃣ Call payment function
+      toast.info("Sending payment...");
+
       const { data } = await supabase.functions.invoke(
         "create-payment-session",
         {
@@ -127,10 +129,12 @@ Phone: ${form.phone}
         },
       );
 
+      console.log("STK Response:", data, error);
+
       if (data?.status === "PENDING") {
-        toast.info("Check your phone for M-PESA prompt");
-      } else {
-        toast.error("Failed to initiate STK push");
+        toast.success("Check your phone for M-PESA prompt");
+      } else if (error) {
+        toast.error("Failed to start payment");
       }
     } catch (err) {
       console.error("Checkout error:", err);
