@@ -1,5 +1,6 @@
 // deno-lint-ignore-file
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { importPrivateKeyPKCS8, signRSASHA256 } from "../_shared/rsa-utils.ts";
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -7,31 +8,28 @@ serve(async (req: Request) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers":
-          "Content-Type, Authorization, apikey, X-Client-Info",
+        "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
       },
     });
   }
 
   try {
-    const { payment_reference, amount, phone } = await req.json();
+    const { amount, phone, name, email } = await req.json();
 
-    if (!payment_reference || !amount || !phone) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+    if (!amount || !phone || !name || !email) {
+      return new Response(JSON.stringify({ error: "Missing fields" }), {
         status: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
       });
     }
 
-    // 🔐 ENV VARS
+    // ENV VARS
     const MERCHANT_CODE = Deno.env.get("JENGA_MERCHANT_CODE")!;
     const CONSUMER_SECRET = Deno.env.get("JENGA_CONSUMER_SECRET")!;
     const API_KEY = Deno.env.get("JENGA_API_KEY")!;
-    const MERCHANT_ACC = Deno.env.get("JENGA_ACCOUNT_NUMBER")!;
     const CALLBACK_URL = Deno.env.get("JENGA_CHECKOUT_CALLBACK_URL")!;
-    const PRIVATE_KEY_PEM = Deno.env.get("JENGA_PRIVATE_KEY_PEM")!; // <-- ADD THIS in env
+    const PRIVATE_KEY = Deno.env.get("JENGA_PRIVATE_KEY_PEM")!;
 
-    // 1️⃣ Generate Access Token
+    // 1. AUTH TOKEN
     const tokenRes = await fetch(
       "https://uat.finserve.africa/authentication/api/v3/authenticate/merchant",
       {
@@ -50,71 +48,53 @@ serve(async (req: Request) => {
     const tokenJson = await tokenRes.json();
     const accessToken = tokenJson.accessToken;
 
-    // 2️⃣ Build Signature String
-    const ref = payment_reference;
-    const mobile = phone;
-    const telco = "Safaricom";
-    const amt = amount.toString();
+    // 2. Generate Refs
+    const orderRef = `OR${Date.now()}`;
+    const payRef = `WRQ${Date.now()}`;
     const currency = "KES";
 
-    const sigString = MERCHANT_ACC + ref + mobile + telco + amt + currency;
+    // 3. Signature String (DOC SPEC)
+    const sigString = orderRef + currency + phone + amount;
 
-    // 3️⃣ PEM → CryptoKey Utility
-    function pemToBinary(pem: string) {
-      const b64 = pem
-        .replace(/-----BEGIN RSA PRIVATE KEY-----/g, "")
-        .replace(/-----END RSA PRIVATE KEY-----/g, "")
-        .replace(/\s+/g, "");
-      const raw = atob(b64);
-      const buffer = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) buffer[i] = raw.charCodeAt(i);
-      return buffer;
-    }
+    // 4. Sign RSA
+    const pk = await importPrivateKeyPKCS8(PRIVATE_KEY);
+    const signatureBase64 = await signRSASHA256(sigString, pk);
 
-    const privateKeyBinary = pemToBinary(PRIVATE_KEY_PEM);
-
-    const privateKey = await crypto.subtle.importKey(
-      "pkcs8",
-      privateKeyBinary.buffer,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-
-    // 4️⃣ Sign Using RSA-SHA256 → base64
-    const encoder = new TextEncoder();
-    const signatureBuffer = await crypto.subtle.sign(
-      { name: "RSASSA-PKCS1-v1_5" },
-      privateKey,
-      encoder.encode(sigString),
-    );
-
-    const signatureBase64 = btoa(
-      String.fromCharCode(...new Uint8Array(signatureBuffer)),
-    );
-
-    // 5️⃣ Payload
-    const stkPayload = {
-      merchant: {
-        accountNumber: MERCHANT_ACC,
+    // 5. Payload
+    const payload = {
+      order: {
+        orderReference: orderRef,
+        orderAmount: amount,
+        orderCurrency: currency,
+        source: "APICHECKOUT",
         countryCode: "KE",
-        name: "Sandbox Store",
+        description: "Purchase from Balm Ortho",
+      },
+      customer: {
+        name,
+        email,
+        phoneNumber: phone,
+        identityNumber: "000000",
+        firstAddress: "",
+        secondAddress: "",
       },
       payment: {
-        ref,
-        amount: amt,
-        currency,
-        telco,
-        mobileNumber: mobile,
-        date: new Date().toISOString().slice(0, 10),
-        callBackUrl: CALLBACK_URL,
-        pushType: "STK",
+        paymentReference: payRef,
+        paymentCurrency: currency,
+        channel: "MOBILE",
+        service: "MPESA",
+        provider: "JENGA",
+        callbackUrl: CALLBACK_URL,
+        details: {
+          msisdn: phone,
+          paymentAmount: amount,
+        },
       },
     };
 
-    // 6️⃣ Send STK Push Request
+    // 6. SEND STK
     const stkRes = await fetch(
-      "https://uat.finserve.africa/v3-apis/payment-api/v3.0/stkussdpush/initiate",
+      "https://uat.finserve.africa/api-checkout/mpesa-stk-push/v3.0/init",
       {
         method: "POST",
         headers: {
@@ -122,19 +102,17 @@ serve(async (req: Request) => {
           Authorization: `Bearer ${accessToken}`,
           Signature: signatureBase64,
         },
-        body: JSON.stringify(stkPayload),
+        body: JSON.stringify(payload),
       },
     );
 
     const stkJson = await stkRes.json();
-
     return new Response(JSON.stringify(stkJson), {
       headers: { "Access-Control-Allow-Origin": "*" },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
-      headers: { "Access-Control-Allow-Origin": "*" },
     });
   }
 });

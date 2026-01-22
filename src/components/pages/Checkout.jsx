@@ -120,30 +120,25 @@ Phone: ${form.phone}
       // 2️⃣ Call Supabase STK Function
       toast.info("Sending payment request...");
 
-      const { data, error: fnErr } = await supabase.functions.invoke(
+      const { data, error: fnError } = await supabase.functions.invoke(
         "initiate-stk",
         {
           body: {
-            payment_reference,
             amount: total,
             phone: form.phone,
+            name: `${form.firstName} ${form.lastName}`,
+            email: form.email,
           },
         },
       );
 
-      console.log("STK Response:", data ?? fnErr);
+      console.log("STK Response:", data);
 
-      if (fnErr) {
-        toast.error("Payment initiation failed.");
-        setLoading(false);
-        return;
+      if (data?.status === true) {
+        toast.success("Check your phone for M-PESA prompt!");
+      } else {
+        toast.error(data?.message || "Payment failed");
       }
-
-      // 3️⃣ Sandbox Notice
-      toast.success("Waiting for payment confirmation…");
-
-      // You may redirect to a status page if you want
-      // navigate(`/order-status/${order.id}`);
     } catch (err) {
       console.error("Checkout error:", err);
       toast.error("Unable to start payment. Please try again.");
