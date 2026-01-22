@@ -1,6 +1,5 @@
 // deno-lint-ignore-file
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createHash, Hmac } from "https://deno.land/std@0.224.0/hash/mod.ts";
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -24,13 +23,14 @@ serve(async (req: Request) => {
       });
     }
 
-    // 1️⃣ Load ENV Vars
+    // ENV VARS
     const MERCHANT_CODE = Deno.env.get("JENGA_MERCHANT_CODE")!;
     const CONSUMER_SECRET = Deno.env.get("JENGA_CONSUMER_SECRET")!;
     const API_KEY = Deno.env.get("JENGA_API_KEY")!;
-    const MERCHANT_ACC = Deno.env.get("JENGA_ACCOUNT_ACC")!;
+    const MERCHANT_ACC = Deno.env.get("JENGA_ACCOUNT_NUMBER")!;
+    const CALLBACK_URL = Deno.env.get("JENGA_CHECKOUT_CALLBACK_URL")!;
 
-    // 2️⃣ Get Access Token (sandbox)
+    // 1️⃣ Generate Access Token
     const tokenRes = await fetch(
       "https://uat.finserve.africa/authentication/api/v3/authenticate/merchant",
       {
@@ -49,57 +49,54 @@ serve(async (req: Request) => {
     const tokenJson = await tokenRes.json();
     const accessToken = tokenJson.accessToken;
 
-    // 3️⃣ Build Signature String
-    const merchantAcc = MERCHANT_ACC;
+    // 2️⃣ Build Signature String
     const ref = payment_reference;
     const mobile = phone;
     const telco = "Safaricom";
     const amt = amount.toString();
     const currency = "KES";
+    const sigString = MERCHANT_ACC + ref + mobile + telco + amt + currency;
 
-    const signatureString =
-      merchantAcc + ref + mobile + telco + amt + currency;
-
-    // 4️⃣ HMAC SHA256 Signature using consumerSecret
+    // 3️⃣ HMAC SHA256 Signature
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(CONSUMER_SECRET);
     const cryptoKey = await crypto.subtle.importKey(
       "raw",
-      keyData,
+      encoder.encode(CONSUMER_SECRET),
       { name: "HMAC", hash: "SHA-256" },
       false,
       ["sign"],
     );
 
-    const signatureData = await crypto.subtle.sign(
+    const signatureBytes = await crypto.subtle.sign(
       "HMAC",
       cryptoKey,
-      encoder.encode(signatureString),
+      encoder.encode(sigString),
     );
 
-    const signatureArray = Array.from(new Uint8Array(signatureData));
-    const signatureHex = signatureArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const signatureHex = Array.from(new Uint8Array(signatureBytes))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
-    // 5️⃣ STK Request Payload
+    // 4️⃣ Sandbox Payload
     const stkPayload = {
       merchant: {
-        accountNumber: merchantAcc,
+        accountNumber: MERCHANT_ACC,
         countryCode: "KE",
         name: "Sandbox Store",
       },
       payment: {
         ref,
         amount: amt,
-        currency: currency,
-        telco: telco,
+        currency,
+        telco,
         mobileNumber: mobile,
         date: new Date().toISOString().slice(0, 10),
-        callBackUrl: Deno.env.get("JENGA_CALLBACK_URL")!,
+        callBackUrl: CALLBACK_URL,
         pushType: "STK",
       },
     };
 
-    // 6️⃣ Send STK Push
+    // 5️⃣ Send STK Push
     const stkRes = await fetch(
       "https://uat.finserve.africa/v3-apis/payment-api/v3.0/stkussdpush/initiate",
       {
