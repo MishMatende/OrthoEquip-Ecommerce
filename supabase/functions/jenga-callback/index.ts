@@ -6,54 +6,59 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 serve(async (req: Request) => {
   try {
     const body = await req.json();
-    const { status, transactionId, reference, paymentMethod } = body;
+    console.log("Jenga Callback:", body);
+
+    const {
+      code,
+      status,
+      transactionReference,
+      telco,
+    } = body;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1️⃣ Fetch order by reference
+    // Find order by transaction reference
     const { data: order } = await supabase
       .from("orders")
-      .select("id, user_id, total_amount, payment_status")
-      .eq("payment_reference", reference)
+      .select("id, user_id, total_amount")
+      .eq("payment_reference", transactionReference)
       .single();
 
     if (!order) {
-      console.error("Order not found for reference:", reference);
+      console.warn("Order not found for reference:", transactionReference);
       return new Response("OK", { status: 200 });
     }
 
-    // 2️⃣ Update payment status
-    if (status === "SUCCESS") {
-      await supabase
-        .from("orders")
-        .update({
-          payment_status: "paid",
-          jenga_transaction_id: transactionId,
-          jenga_payment_method: paymentMethod,
-          tracking_stage: "paid",
-        })
-        .eq("id", order.id);
-    } else {
-      await supabase
-        .from("orders")
-        .update({ payment_status: "failed" })
-        .eq("id", order.id);
-    }
+    // Determine outcome from Jenga codes
+    let paymentStatus = "pending";
 
-    // 3️⃣ Fetch user email for receipts
+    if (code === 3) paymentStatus = "paid";
+    else if ([1,7,5,6].includes(code)) paymentStatus = "failed";
+
+    // Update order
+    await supabase
+      .from("orders")
+      .update({
+        payment_status: paymentStatus,
+        jenga_transaction_id: transactionReference,
+        jenga_payment_method: telco,
+        tracking_stage: paymentStatus,
+      })
+      .eq("id", order.id);
+
+    // Fetch customer email
     const { data: user } = await supabase
       .from("profiles")
       .select("email")
       .eq("id", order.user_id)
       .single();
 
-    // 4️⃣ Send Email via Resend
-    if (status === "SUCCESS" && user?.email) {
+    // Send success email if paid
+    if (paymentStatus === "paid" && user?.email) {
       const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
-
       await resend.emails.send({
         from: "Balm Ortho <orders@balmorthomedical.com>",
         to: user.email,
@@ -62,7 +67,7 @@ serve(async (req: Request) => {
           <h2>Payment Received</h2>
           <p>Your payment for order <strong>#${order.id}</strong> was successful.</p>
           <p>Amount: <strong>KES ${order.total_amount}</strong></p>
-          <p>Transaction ID: <strong>${transactionId}</strong></p>
+          <p>Reference: <strong>${transactionReference}</strong></p>
           <p>Thank you for shopping with Balm Ortho!</p>
         `,
       });
@@ -71,6 +76,6 @@ serve(async (req: Request) => {
     return new Response("OK", { status: 200 });
   } catch (err) {
     console.error("Callback Error:", err);
-    return new Response("OK", { status: 200 }); // ACK even if parsing fails
+    return new Response("OK", { status: 200 }); // ACK even if error
   }
 });

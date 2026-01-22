@@ -38,7 +38,6 @@ export default function Checkout() {
       ]
     : cart;
 
-  // Autofill email
   useEffect(() => {
     if (session?.user?.email) {
       setForm((prev) => ({ ...prev, email: session.user.email }));
@@ -97,17 +96,20 @@ ${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
 ${form.city}
 Postal code: ${form.postalCode}
 Phone: ${form.phone}
-    `.trim();
+      `.trim();
 
-      // 1️⃣ Create order
+      // 1️⃣ Create order in DB
+      const payment_reference = crypto.randomUUID().slice(0, 10).toUpperCase();
+
       const { data: order, error } = await supabase
         .from("orders")
         .insert({
           user_id: session.user.id,
           total_amount: total,
           status: "pending_payment",
-          payment_provider: "jenga-pgw",
+          payment_provider: "jenga",
           tracking_stage: "placed",
+          payment_reference,
           shipping_address: shippingAddress,
         })
         .select()
@@ -115,31 +117,38 @@ Phone: ${form.phone}
 
       if (error) throw error;
 
-      // 2️⃣ Call payment function
-      toast.info("Sending payment...");
+      // 2️⃣ Call Supabase STK Function
+      toast.info("Sending payment request...");
 
-      const { data, fnError } = await supabase.functions.invoke(
-        "create-pgw-session",
+      const { data, error: fnErr } = await supabase.functions.invoke(
+        "initiate-stk",
         {
           body: {
-            order_id: order.id,
+            payment_reference,
             amount: total,
             phone: form.phone,
           },
         },
       );
 
-      console.log("STK Response:", data, fnError);
+      console.log("STK Response:", data ?? fnErr);
 
-      if (data?.status === "PENDING") {
-        toast.success("Check your phone for M-PESA prompt");
-      } else if (error) {
-        toast.error("Failed to start payment");
+      if (fnErr) {
+        toast.error("Payment initiation failed.");
+        setLoading(false);
+        return;
       }
+
+      // 3️⃣ Sandbox Notice
+      toast.success("Waiting for payment confirmation…");
+
+      // You may redirect to a status page if you want
+      // navigate(`/order-status/${order.id}`);
     } catch (err) {
       console.error("Checkout error:", err);
       toast.error("Unable to start payment. Please try again.");
-      setLoading(false); // ✅ GUARANTEED RESET
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -193,7 +202,7 @@ Phone: ${form.phone}
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
-                placeholder="Phone number E.g 254712345678"
+                placeholder="Phone number e.g. 254712345678"
                 required
                 className="w-full border rounded-xl p-3"
               />
@@ -285,15 +294,15 @@ Phone: ${form.phone}
               type="submit"
               variant="solid"
               disabled={loading}
-              className="bg-gradient-to-r from-[#4eb0e3] to-[#0570b3] px-8 py-3 text-white rounded-xl cursor-pointer"
+              className="bg-gradient-to-r from-[#4eb0e3] to-[#0570b3] px-8 py-3 text-white rounded-xl"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              {loading ? "Redirecting…" : "Proceed to Payment"}
+              {loading ? "Processing…" : "Proceed to Payment"}
             </Button>
           </div>
         </form>
 
-        {/* RIGHT — Order Summary (unchanged logic) */}
+        {/* RIGHT — Order Summary */}
         <aside className="bg-white/90 border rounded-2xl shadow-lg p-6 h-fit">
           <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
 
