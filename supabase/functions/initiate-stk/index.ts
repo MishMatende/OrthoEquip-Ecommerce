@@ -4,14 +4,16 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 serve(async (req: Request) => {
   // 1️⃣ Handle OPTIONS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
-    });
-  }
+  return new Response("ok", {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, apikey, X-Client-Info",
+    },
+  });
+}
+
 
   try {
     const { payment_reference, amount, phone } = await req.json();
