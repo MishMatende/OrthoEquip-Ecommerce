@@ -77,7 +77,11 @@ export default function Checkout() {
   useEffect(() => {
     if (!orderId || paid) return;
 
-    const i = setInterval(async () => {
+    let attempts = 0;
+
+    const interval = setInterval(async () => {
+      attempts++;
+
       const { data } = await supabase
         .from("orders")
         .select("status")
@@ -85,13 +89,26 @@ export default function Checkout() {
         .single();
 
       if (data?.status === "paid") {
-        clearInterval(i);
+        clearInterval(interval);
         setPaid(true);
         toast.success("Payment successful 🎉");
+        return;
+      }
+
+      if (data?.status === "failed") {
+        clearInterval(interval);
+        toast.error("Payment failed or cancelled");
+        return;
+      }
+
+      // ⏱ stop after 2 minutes
+      if (attempts >= 30) {
+        clearInterval(interval);
+        toast.warning("Payment still pending. Check your phone.");
       }
     }, 4000);
 
-    return () => clearInterval(i);
+    return () => clearInterval(interval);
   }, [orderId, paid]);
 
   const handleChange = (e) =>
