@@ -5,7 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, FileDown } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Checkout() {
@@ -27,6 +27,8 @@ export default function Checkout() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [paid, setPaid] = useState(false);
 
   const activeCart = buyNowData
     ? [
@@ -40,7 +42,7 @@ export default function Checkout() {
 
   useEffect(() => {
     if (session?.user?.email) {
-      setForm((prev) => ({ ...prev, email: session.user.email }));
+      setForm((p) => ({ ...p, email: session.user.email }));
     }
   }, [session]);
 
@@ -48,8 +50,11 @@ export default function Checkout() {
     if (!activeCart.length) navigate("/cart");
   }, [activeCart, navigate]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const normalizePhone = (phone) => {
+    let p = phone.trim();
+    if (p.startsWith("0")) p = "254" + p.slice(1);
+    if (p.startsWith("+")) p = p.slice(1);
+    return p;
   };
 
   const total = activeCart.reduce(
@@ -59,31 +64,49 @@ export default function Checkout() {
   );
 
   const validateFields = () => {
-    const required = [
-      form.email,
-      form.phone,
-      form.firstName,
-      form.lastName,
-      form.shippingMethod,
-    ];
+    const required = [form.email, form.phone, form.firstName, form.lastName];
 
     if (form.shippingMethod === "Delivery") {
       required.push(form.address, form.city, form.postalCode);
     }
 
-    return required.every((field) => field.trim() !== "");
+    return required.every((f) => f.trim() !== "");
   };
+
+  // 🔁 Poll payment status
+  useEffect(() => {
+    if (!orderId || paid) return;
+
+    const i = setInterval(async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("status")
+        .eq("id", orderId)
+        .single();
+
+      if (data?.status === "paid") {
+        clearInterval(i);
+        setPaid(true);
+        toast.success("Payment successful 🎉");
+      }
+    }, 4000);
+
+    return () => clearInterval(i);
+  }, [orderId, paid]);
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
     if (!session) {
-      toast.error("Please sign in to complete your purchase.");
+      toast.error("Please sign in");
       return;
     }
 
     if (!validateFields()) {
-      toast.error("Please fill in all required fields.");
+      toast.error("Fill in all required fields");
       return;
     }
 
@@ -94,12 +117,9 @@ export default function Checkout() {
 ${form.firstName} ${form.lastName}
 ${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
 ${form.city}
-Postal code: ${form.postalCode}
+Postal: ${form.postalCode}
 Phone: ${form.phone}
-      `.trim();
-
-      // 1️⃣ Create order in DB
-      const payment_reference = crypto.randomUUID().slice(0, 10).toUpperCase();
+`.trim();
 
       const { data: order, error } = await supabase
         .from("orders")
@@ -107,9 +127,8 @@ Phone: ${form.phone}
           user_id: session.user.id,
           total_amount: total,
           status: "pending_payment",
-          payment_provider: "jenga",
-          tracking_stage: "placed",
-          payment_reference,
+          payment_provider: "intasend",
+          payment_reference: crypto.randomUUID().slice(0, 10),
           shipping_address: shippingAddress,
         })
         .select()
@@ -117,211 +136,170 @@ Phone: ${form.phone}
 
       if (error) throw error;
 
-      // 2️⃣ Call Supabase STK Function
-      toast.info("Sending payment request...");
+      setOrderId(order.id);
 
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "initiate-stk",
+      const { error: fnError } = await supabase.functions.invoke(
+        "intasend-stk",
         {
           body: {
+            order_id: order.id,
             amount: total,
-            phone: form.phone,
-            name: `${form.firstName} ${form.lastName}`,
+            phone: normalizePhone(form.phone),
             email: form.email,
+            name: `${form.firstName} ${form.lastName}`,
           },
         },
       );
 
-      console.log("STK Response:", data);
+      if (fnError) throw fnError;
 
-      if (data?.status === true) {
-        toast.success("Check your phone for M-PESA prompt!");
-      } else {
-        toast.error(data?.message || "Payment failed");
-      }
+      toast.info("Check your phone for M-PESA prompt");
     } catch (err) {
-      console.error("Checkout error:", err);
-      toast.error("Unable to start payment. Please try again.");
+      console.error(err);
+      toast.error("Payment initiation failed");
     } finally {
       setLoading(false);
     }
   };
 
+  const downloadInvoice = async () => {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-invoice`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ order_id: orderId }),
+      },
+    );
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Invoice-${orderId}.pdf`;
+    a.click();
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex flex-col">
-      {/* Header */}
-      <header className="border-b bg-white/70 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto py-5 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src={BalmOrthoLogo}
-              className="h-[45px]"
-              alt="Balm Ortho Medical Supplies"
-            />
-            <h1 className="text-2xl font-bold text-gray-800">
-              Balm Ortho Medical Supplies
-            </h1>
-          </div>
-          <button
-            onClick={() => navigate("/shop")}
-            className="flex items-center text-[#4eb0e3] hover:text-[#0570b3]"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" /> Go back
+    <div className="min-h-screen bg-blue-50">
+      <header className="bg-white border-b">
+        <div className="max-w-4xl mx-auto p-4 flex justify-between">
+          <img src={BalmOrthoLogo} className="h-10" />
+          <button onClick={() => navigate("/shop")}>
+            <ArrowLeft className="w-4 h-4 inline" /> Shop
           </button>
         </div>
       </header>
 
-      {/* Main */}
-      <main className="flex-grow max-w-5xl mx-auto py-12 px-4 grid lg:grid-cols-2 gap-10">
-        {/* LEFT */}
+      <main className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-10 p-6">
         <form
           onSubmit={handlePlaceOrder}
-          className="space-y-8 bg-white/90 p-8 rounded-2xl shadow-lg"
+          className="bg-white p-6 rounded-xl space-y-6"
         >
-          {/* Contact */}
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Contact</h2>
-            <div className="space-y-3">
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="Email"
-                required
-                readOnly={!!session}
-                className="w-full border rounded-xl p-3 bg-gray-100"
-              />
-              <input
-                type="tel"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="Phone number e.g. 254712345678"
-                required
-                className="w-full border rounded-xl p-3"
-              />
-            </div>
-          </section>
+          <h2 className="font-semibold text-lg">Contact</h2>
 
-          {/* Shipping */}
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Shipping Method</h2>
-            <select
-              name="shippingMethod"
-              value={form.shippingMethod}
+          <input
+            name="email"
+            value={form.email}
+            readOnly
+            className="w-full border p-3 rounded"
+          />
+
+          <input
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            placeholder="Phone e.g. 2547XXXXXXXX"
+            className="w-full border p-3 rounded"
+          />
+
+          <h2 className="font-semibold text-lg">Recipient</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              name="firstName"
+              value={form.firstName}
               onChange={handleChange}
-              className="w-full border rounded-xl p-3 mb-3"
-            >
-              <option value="Pick up (CBD)">Pick up (CBD)</option>
-              <option value="Delivery">Delivery</option>
-            </select>
-
-            {form.shippingMethod === "Delivery" && (
-              <div className="space-y-3">
-                <input
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  placeholder="Address"
-                  required
-                  className="w-full border rounded-xl p-3"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    name="city"
-                    value={form.city}
-                    onChange={handleChange}
-                    placeholder="City"
-                    required
-                    className="border rounded-xl p-3"
-                  />
-                  <input
-                    name="postalCode"
-                    value={form.postalCode}
-                    onChange={handleChange}
-                    placeholder="Postal code"
-                    required
-                    className="border rounded-xl p-3"
-                  />
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* Recipient */}
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Recipient</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                name="firstName"
-                value={form.firstName}
-                onChange={handleChange}
-                placeholder="First name"
-                required
-                className="border rounded-xl p-3"
-              />
-              <input
-                name="lastName"
-                value={form.lastName}
-                onChange={handleChange}
-                placeholder="Last name"
-                required
-                className="border rounded-xl p-3"
-              />
-            </div>
-          </section>
-
-          {/* Payment Notice */}
-          <section className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm">
-            <p className="font-medium text-blue-800">
-              Secure payment via Jenga
-            </p>
-            <p className="text-blue-700 mt-1">
-              You will receive an M-PESA STK prompt on your phone to complete
-              payment.
-            </p>
-          </section>
-
-          {/* Button */}
-          <div className="flex justify-end pt-4 border-t">
-            <Button
-              type="submit"
-              variant="solid"
-              disabled={loading}
-              className="bg-gradient-to-r from-[#4eb0e3] to-[#0570b3] px-8 py-3 text-white rounded-xl"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              {loading ? "Processing…" : "Proceed to Payment"}
-            </Button>
+              placeholder="First name"
+              className="border p-3 rounded"
+            />
+            <input
+              name="lastName"
+              value={form.lastName}
+              onChange={handleChange}
+              placeholder="Last name"
+              className="border p-3 rounded"
+            />
           </div>
+
+          <h2 className="font-semibold text-lg">Shipping</h2>
+          <select
+            name="shippingMethod"
+            value={form.shippingMethod}
+            onChange={handleChange}
+            className="border p-3 rounded w-full"
+          >
+            <option>Pick up (CBD)</option>
+            <option>Delivery</option>
+          </select>
+
+          {form.shippingMethod === "Delivery" && (
+            <>
+              <input
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                placeholder="Address"
+                className="border p-3 rounded w-full"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="city"
+                  value={form.city}
+                  onChange={handleChange}
+                  placeholder="City"
+                  className="border p-3 rounded"
+                />
+                <input
+                  name="postalCode"
+                  value={form.postalCode}
+                  onChange={handleChange}
+                  placeholder="Postal"
+                  className="border p-3 rounded"
+                />
+              </div>
+            </>
+          )}
+
+          {!paid ? (
+            <Button disabled={loading} type="submit">
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Pay with M-PESA
+            </Button>
+          ) : (
+            <Button type="button" onClick={downloadInvoice}>
+              <FileDown className="w-4 h-4 mr-2" />
+              Download Invoice
+            </Button>
+          )}
         </form>
 
-        {/* RIGHT — Order Summary */}
-        <aside className="bg-white/90 border rounded-2xl shadow-lg p-6 h-fit">
-          <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-
-          {activeCart.map((item) => {
-            const product = item.products || item.product;
-            return (
-              <div key={item.id} className="flex justify-between py-3">
-                <div>
-                  <p className="font-medium">{product?.name}</p>
-                  <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
-                </div>
-                <p className="font-semibold">
-                  KES{" "}
-                  {(
-                    (product?.price || item.price_at_add) * item.quantity
-                  ).toLocaleString()}
-                </p>
-              </div>
-            );
-          })}
-
-          <div className="border-t pt-4 mt-4 flex justify-between font-semibold">
-            <span>Total</span>
-            <span className="text-[#0570b3]">KES {total.toLocaleString()}</span>
+        <aside className="bg-white p-6 rounded-xl">
+          <h2 className="font-semibold mb-4">Order Summary</h2>
+          {activeCart.map((i) => (
+            <div key={i.product_id} className="flex justify-between">
+              <span>
+                {i.products.name} × {i.quantity}
+              </span>
+              <span>
+                KES {(i.products.price * i.quantity).toLocaleString()}
+              </span>
+            </div>
+          ))}
+          <div className="border-t mt-4 pt-4 font-bold">
+            Total: KES {total.toLocaleString()}
           </div>
         </aside>
       </main>
