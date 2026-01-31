@@ -36,12 +36,14 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phone_number: phone,
-          amount,
-          currency: "KES",
-          email,
-          metadata: { order_id, name },
-        }),
+  phone_number: phone,
+  amount,
+  currency: "KES",
+  email,
+  first_name: name.split(" ")[0],
+  last_name: name.split(" ").slice(1).join(" "),
+  api_ref: order_id, // 🔑 THIS IS THE KEY
+}),
       },
     );
 

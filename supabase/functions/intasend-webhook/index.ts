@@ -20,32 +20,17 @@ serve(async (req) => {
 
   const payload = await req.json();
 
-  console.log("INTASEND WEBHOOK:", JSON.stringify(payload, null, 2));
+  console.log("INTASEND WEBHOOK RECEIVED:", JSON.stringify(payload, null, 2));
 
-  // 🔐 Challenge validation
-  if (
-    payload.challenge !==
-    Deno.env.get("INTASEND_WEBHOOK_CHALLENGE")
-  ) {
-    return new Response("Unauthorized", {
-      status: 401,
-      headers: corsHeaders,
-    });
-  }
-
-  // ✅ Handle successful collection
   if (
     payload.event === "collection" &&
     payload.data?.state === "COMPLETE"
   ) {
-    const orderId = payload.data?.metadata?.order_id;
+    const orderId = payload.data?.api_ref; // 🔑 HERE
 
     if (!orderId) {
-      console.error("Missing order_id in metadata");
-      return new Response("Missing metadata", {
-        status: 400,
-        headers: corsHeaders,
-      });
+      console.error("Missing api_ref");
+      return new Response("Missing api_ref", { status: 400 });
     }
 
     await supabase
@@ -53,28 +38,23 @@ serve(async (req) => {
       .update({ status: "paid" })
       .eq("id", orderId);
 
-    console.log("Order marked as PAID:", orderId);
+    console.log("Order marked PAID:", orderId);
   }
 
-  // ❌ Handle failed payment
   if (
     payload.event === "collection" &&
     payload.data?.state === "FAILED"
   ) {
-    const orderId = payload.data?.metadata?.order_id;
-
+    const orderId = payload.data?.api_ref;
     if (orderId) {
       await supabase
         .from("orders")
         .update({ status: "failed" })
         .eq("id", orderId);
-
-      console.log("Order marked as FAILED:", orderId);
     }
   }
 
-  return new Response(
-    JSON.stringify({ received: true }),
-    { headers: corsHeaders },
-  );
+  return new Response(JSON.stringify({ received: true }), {
+    headers: corsHeaders,
+  });
 });
