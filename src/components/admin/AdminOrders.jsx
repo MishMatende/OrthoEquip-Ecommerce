@@ -43,7 +43,7 @@ export default function AdminOrders() {
             position: "top-right",
           });
           fetchOrders();
-        }
+        },
       )
       .subscribe();
 
@@ -84,7 +84,7 @@ export default function AdminOrders() {
           image_url,
           price
         )
-      `
+      `,
       )
       .eq("order_id", orderId);
 
@@ -152,6 +152,25 @@ export default function AdminOrders() {
                     </td>
                     <td className="p-3">
                       <select
+                        value={order.status || "pending"}
+                        onChange={(e) =>
+                          updateOrder(order.id, {
+                            status: e.target.value,
+                          })
+                        }
+                        className="border rounded-md px-2 py-1 text-sm w-full"
+                      >
+                        <option value="pending_verification">
+                          Pending Verification
+                        </option>
+                        <option value="payment_verified">
+                          Payment Verified
+                        </option>
+                        <option value="payment_failed">Payment Failed</option>
+                      </select>
+                    </td>
+                    <td className="p-3">
+                      <select
                         value={order.tracking_stage || "pending"}
                         onChange={(e) =>
                           updateOrder(order.id, {
@@ -160,7 +179,7 @@ export default function AdminOrders() {
                         }
                         className="border rounded-md px-2 py-1 text-sm w-full"
                       >
-                        <option value="pending">Pending</option>
+                        <option value="pending_verification">Pending</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="shipped">Shipped</option>
                         <option value="delivered">Delivered</option>

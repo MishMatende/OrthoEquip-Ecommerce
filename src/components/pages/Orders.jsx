@@ -33,7 +33,7 @@ export default function Orders() {
             price,
             products (name, image_url)
           )
-        `
+        `,
         )
         .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
@@ -179,11 +179,11 @@ export default function Orders() {
                       order.tracking_stage === "delivered"
                         ? "text-green-600"
                         : order.tracking_stage === "cancelled"
-                        ? "text-red-600"
-                        : "text-yellow-600"
+                          ? "text-red-600"
+                          : "text-yellow-600"
                     }`}
                   >
-                    {formatStage(order.tracking_stage)}
+                    {formatStage(order.status)}
                   </p>
                 </div>
               </div>
