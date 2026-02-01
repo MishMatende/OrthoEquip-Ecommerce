@@ -130,7 +130,7 @@ export default function AdminOrders() {
                 <th className="w-[10%] p-3 text-left">Total (KES)</th>
                 <th className="w-[10%] p-3 text-left">Status</th>
                 <th className="w-[12%] p-3 text-left">Delivery</th>
-                <th className="w-[10%] p-3 text-left">Payment</th>
+                <th className="w-[10%] p-3 text-left">Tracking</th>
                 <th className="w-[15%] p-3 text-left">Date</th>
                 <th className="w-[8%] p-3 text-left">Actions</th>
               </tr>
