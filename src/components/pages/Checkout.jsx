@@ -82,26 +82,37 @@ export default function Checkout() {
     const interval = setInterval(async () => {
       attempts++;
 
-      const { data } = await supabase
-        .from("orders")
-        .select("status")
-        .eq("id", orderId)
-        .single();
+      const { data, error } = await supabase.functions.invoke(
+        "check-intasend-status",
+        { body: { order_id: orderId } },
+      );
 
-      if (data?.status === "paid") {
+      if (error) return;
+
+      if (data?.state === "COMPLETE") {
+        await supabase
+          .from("orders")
+          .update({
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            intasend_invoice: data.invoice,
+            intasend_reference: data.reference,
+          })
+          .eq("id", orderId);
+
         clearInterval(interval);
         setPaid(true);
         toast.success("Payment successful 🎉");
-        return;
+
+        // ✅ ADD THIS LINE
+        navigate(`/order-confirmation/${orderId}`);
       }
 
-      if (data?.status === "failed") {
+      if (data?.state === "FAILED") {
         clearInterval(interval);
         toast.error("Payment failed or cancelled");
-        return;
       }
 
-      // ⏱ stop after 2 minutes
       if (attempts >= 30) {
         clearInterval(interval);
         toast.warning("Payment still pending. Check your phone.");
@@ -109,7 +120,7 @@ export default function Checkout() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [orderId, paid]);
+  }, [orderId, paid, navigate]);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
