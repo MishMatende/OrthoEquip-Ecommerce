@@ -156,7 +156,7 @@ Phone: ${form.phone}
       setOrderId(order.id);
 
       const { error: fnError } = await supabase.functions.invoke(
-        "intasend-stk",
+        "intasend-wallet-stk",
         {
           body: {
             order_id: order.id,

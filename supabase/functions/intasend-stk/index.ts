@@ -8,6 +8,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+    console.log("INTASEND STK FUNCTION HIT");
+
   // ✅ Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -47,7 +49,18 @@ serve(async (req) => {
       },
     );
 
-    const data = await res.json();
+    const rawText = await res.text();
+
+console.log("INTASEND RAW RESPONSE:", rawText);
+console.log("INTASEND STATUS:", res.status);
+
+let data;
+try {
+  data = JSON.parse(rawText);
+} catch {
+  data = { raw: rawText };
+}
+
 
     return new Response(JSON.stringify(data), {
       headers: {
