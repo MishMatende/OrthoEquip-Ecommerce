@@ -152,10 +152,10 @@ export default function AdminOrders() {
                     </td>
                     <td className="p-3">
                       <select
-                        value={order.status || "pending"}
+                        value={order.status || "pending_verification"}
                         onChange={(e) =>
                           updateOrder(order.id, {
-                            status: e.target.value,
+                            status: e.target.value, // ✅ CORRECT
                           })
                         }
                         className="border rounded-md px-2 py-1 text-sm w-full"
