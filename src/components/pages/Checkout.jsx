@@ -71,46 +71,6 @@ export default function Checkout() {
     return required.every((f) => f.trim() !== "");
   };
 
-  // 🔁 POLL PAYMENT STATUS
-  useEffect(() => {
-    if (!orderId || paid) return;
-
-    let attempts = 0;
-
-    const interval = setInterval(async () => {
-      attempts++;
-
-      const { data, error } = await supabase.functions.invoke(
-        "check-intasend-status",
-        { body: { order_id: orderId } },
-      );
-
-      if (error || !data) return;
-
-      if (data.billing_status === "COMPLETE") {
-        clearInterval(interval);
-        setPaid(true);
-        setLoading(false);
-        toast.success("Payment successful 🎉");
-        navigate(`/order-confirmation/${orderId}`);
-      }
-
-      if (data.billing_status === "FAILED") {
-        clearInterval(interval);
-        setLoading(false);
-        toast.error("Payment failed or cancelled");
-      }
-
-      if (attempts >= 30) {
-        clearInterval(interval);
-        setLoading(false);
-        toast.warning("Payment still pending. Check your phone.");
-      }
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [orderId, paid, navigate]);
-
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -143,7 +103,7 @@ Phone: ${form.phone}
         .insert({
           user_id: session.user.id,
           total_amount: total,
-          status: "pending_payment",
+          status: "pending_verification",
           payment_provider: "intasend",
           payment_reference: crypto.randomUUID().slice(0, 10),
           shipping_address: shippingAddress,
@@ -171,6 +131,8 @@ Phone: ${form.phone}
       if (fnError) throw fnError;
 
       toast.info("Check your phone for M-PESA prompt");
+      setLoading(false);
+      navigate(`/order-confirmation/${order.id}`);
     } catch (err) {
       console.error(err);
       setLoading(false);

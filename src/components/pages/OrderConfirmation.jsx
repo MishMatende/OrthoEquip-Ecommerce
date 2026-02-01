@@ -1,7 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
-import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
 import Confetti from "react-confetti";
 import { Loader2 } from "lucide-react";
 
@@ -33,16 +32,18 @@ export default function OrderConfirmation() {
       } else {
         console.error(error);
       }
+
       setLoading(false);
     }
+
     fetchOrder();
   }, [orderId]);
 
   if (loading)
     return (
-      <div className="flex flex-row items-center justify-center py-20 text-gray-500">
+      <div className="flex items-center justify-center py-20 text-gray-500">
         <Loader2 className="w-6 h-6 animate-spin mr-3" />
-        <span>Loading...</span>
+        <span>Loading order...</span>
       </div>
     );
 
@@ -56,28 +57,42 @@ export default function OrderConfirmation() {
       </div>
     );
 
+  const isPending = order.status === "pending_verification";
+  const isPaid = order.status === "paid";
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Main Content */}
       <main className="max-w-4xl mx-auto py-16 px-6">
-        <Confetti numberOfPieces={200} recycle={false} />
+        {isPaid && <Confetti numberOfPieces={200} recycle={false} />}
+
+        {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-[#4eb0e3] mb-3">
             🎉 Thank you for your order!
           </h1>
+
           <p className="text-gray-700">
             Your order <span className="font-semibold">#{order.id}</span> has
-            been placed!
+            been placed.
           </p>
-          <p className="text-gray-600 mt-2">
-            You will receive an email confirmation once your payment is
-            verified.
-          </p>
+
+          {isPending && (
+            <p className="mt-3 inline-block text-yellow-700 bg-yellow-50 border border-yellow-200 px-4 py-2 rounded-lg">
+              ⏳ Payment received. Awaiting verification.
+            </p>
+          )}
+
+          {isPaid && (
+            <p className="mt-3 inline-block text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-lg">
+              ✅ Payment verified. Your order is confirmed.
+            </p>
+          )}
         </div>
 
         {/* Order Summary */}
         <div className="bg-white border rounded-xl shadow-sm p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+
           <div className="divide-y">
             {order.order_items.map((item) => (
               <div
@@ -102,6 +117,7 @@ export default function OrderConfirmation() {
                     </p>
                   </div>
                 </div>
+
                 <p className="text-gray-800 font-semibold">
                   KES {(item.price * item.quantity).toLocaleString()}
                 </p>
@@ -114,10 +130,12 @@ export default function OrderConfirmation() {
               <span>Subtotal</span>
               <span>KES {Number(order.total_amount).toLocaleString()}</span>
             </div>
+
             <div className="flex justify-between">
               <span>Shipping</span>
               <span>Free</span>
             </div>
+
             <div className="border-t pt-3 flex justify-between font-semibold text-lg">
               <span>Total</span>
               <span className="text-[#4eb0e3]">
