@@ -65,15 +65,13 @@ export default function Checkout() {
 
   const validateFields = () => {
     const required = [form.email, form.phone, form.firstName, form.lastName];
-
     if (form.shippingMethod === "Delivery") {
       required.push(form.address, form.city, form.postalCode);
     }
-
     return required.every((f) => f.trim() !== "");
   };
 
-  // 🔁 Poll payment status
+  // 🔁 POLL PAYMENT STATUS
   useEffect(() => {
     if (!orderId || paid) return;
 
@@ -87,34 +85,25 @@ export default function Checkout() {
         { body: { order_id: orderId } },
       );
 
-      if (error) return;
+      if (error || !data) return;
 
-      if (data?.state === "COMPLETE") {
-        await supabase
-          .from("orders")
-          .update({
-            status: "paid",
-            paid_at: new Date().toISOString(),
-            intasend_invoice: data.invoice,
-            intasend_reference: data.reference,
-          })
-          .eq("id", orderId);
-
+      if (data.billing_status === "COMPLETE") {
         clearInterval(interval);
         setPaid(true);
+        setLoading(false);
         toast.success("Payment successful 🎉");
-
-        // ✅ ADD THIS LINE
         navigate(`/order-confirmation/${orderId}`);
       }
 
-      if (data?.state === "FAILED") {
+      if (data.billing_status === "FAILED") {
         clearInterval(interval);
+        setLoading(false);
         toast.error("Payment failed or cancelled");
       }
 
       if (attempts >= 30) {
         clearInterval(interval);
+        setLoading(false);
         toast.warning("Payment still pending. Check your phone.");
       }
     }, 4000);
@@ -184,9 +173,8 @@ Phone: ${form.phone}
       toast.info("Check your phone for M-PESA prompt");
     } catch (err) {
       console.error(err);
-      toast.error("Payment initiation failed");
-    } finally {
       setLoading(false);
+      toast.error("Payment initiation failed");
     }
   };
 

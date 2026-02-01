@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // ✅ CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -15,26 +17,64 @@ serve(async (req) => {
   try {
     const { order_id } = await req.json();
 
+    if (!order_id) {
+      return new Response("Missing order_id", {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // 1️⃣ Fetch order
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select("payment_reference")
+      .eq("id", order_id)
+      .single();
+
+    if (error || !order) {
+      return new Response("Order not found", {
+        status: 404,
+        headers: corsHeaders,
+      });
+    }
+
+    // 2️⃣ Check IntaSend billing status
     const res = await fetch(
-      "https://api.intasend.com/api/v1/payment/status/",
+      `https://api.intasend.com/api/v1/payment/status/?invoice=${order.payment_reference}`,
       {
-        method: "POST",
         headers: {
           Authorization: `Bearer ${Deno.env.get("INTASEND_SECRET_KEY")}`,
-          "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ api_ref: order_id }),
       }
     );
 
-    const data = await res.json();
+    const status = await res.json();
 
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // 3️⃣ Update DB if paid
+    if (status?.billing_status === "COMPLETE") {
+      await supabase
+        .from("orders")
+        .update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", order_id);
+    }
+
+    return new Response(JSON.stringify(status), {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     });
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error("STATUS CHECK ERROR:", err);
     return new Response("Status check failed", {
       status: 500,
       headers: corsHeaders,
