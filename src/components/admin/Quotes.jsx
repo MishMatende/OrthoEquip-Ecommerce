@@ -1,56 +1,86 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import { MessageCircle, Plus } from "lucide-react";
+import { MessageCircle, Plus, Loader2 } from "lucide-react";
 import { UserAuth } from "../../context/AuthContext";
+import toast from "react-hot-toast";
 
 export default function Quotes() {
   const [quotes, setQuotes] = useState([]);
   const [filter, setFilter] = useState("all");
   const { session } = UserAuth();
+  const [sendingEmailId, setSendingEmailId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase
-      .from("orders")
-      .select("id, total_amount, quote_status, valid_until, user_id")
-      .eq("order_type", "quote")
-      .order("created_at", { ascending: false })
-      .then(async ({ data, error }) => {
-        if (error) {
-          console.error("Quotes fetch error:", error);
-          return;
-        }
+  const fetchQuotes = useCallback(async () => {
+    try {
+      setLoading(true);
 
-        if (!data || data.length === 0) {
-          setQuotes([]);
-          return;
-        }
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, total, quote_status, valid_until, customer_id, created_at")
+        .eq("order_type", "quote")
+        .order("created_at", { ascending: false });
 
-        // Fetch related profiles manually
-        const userIds = [...new Set(data.map((q) => q.user_id))];
+      if (error) {
+        console.error("Quotes fetch error:", error);
+        toast.error("Failed to load quotations");
+        setQuotes([]);
+        return;
+      }
 
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, username, email, phone")
-          .in("id", userIds);
+      if (!data || data.length === 0) {
+        setQuotes([]);
+        return;
+      }
 
-        const profilesMap = Object.fromEntries(
-          (profiles || []).map((p) => [p.id, p])
-        );
+      // Fetch related profiles manually
+      const customerIds = [
+        ...new Set(data.map((q) => q.customer_id).filter(Boolean)),
+      ];
 
-        setQuotes(
-          data.map((q) => ({
-            ...q,
-            profile: profilesMap[q.user_id] || null,
-          }))
-        );
-      });
+      const { data: customers, error: customersError } = await supabase
+        .from("customers")
+        .select("id, name, email, phone")
+        .in("id", customerIds);
+
+      if (customersError) {
+        console.error("Customers fetch error:", customersError);
+      }
+
+      const customersMap = Object.fromEntries(
+        (customers || []).map((c) => [c.id, c]),
+      );
+
+      setQuotes(
+        data.map((q) => ({
+          ...q,
+          customer: customersMap[q.customer_id] || null,
+        })),
+      );
+    } catch (err) {
+      console.error("Fetch quotes failed:", err);
+      toast.error("Failed to load quotations");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchQuotes();
+  }, [fetchQuotes]);
+
+  // 🔥 refetch when user comes back to tab
+  useEffect(() => {
+    const onFocus = () => fetchQuotes();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchQuotes]);
+
   async function shareOnWhatsApp(quote) {
-    if (!quote.profile?.phone) {
-      alert("Customer phone number missing");
+    if (!quote.customer?.phone) {
+      toast.error("Customer phone number missing");
       return;
     }
 
@@ -59,10 +89,10 @@ export default function Quotes() {
 
     // Open WhatsApp immediately
     window.open(
-      `https://wa.me/${quote.profile.phone}?text=${encodeURIComponent(
-        message
+      `https://wa.me/${quote.customer.phone}?text=${encodeURIComponent(
+        message,
       )}`,
-      "_blank"
+      "_blank",
     );
 
     // Mark quote as SENT
@@ -74,49 +104,115 @@ export default function Quotes() {
     if (!error) {
       setQuotes((prev) =>
         prev.map((q) =>
-          q.id === quote.id ? { ...q, quote_status: "sent" } : q
-        )
+          q.id === quote.id ? { ...q, quote_status: "sent" } : q,
+        ),
       );
     }
   }
 
   async function sendQuoteEmail(quote) {
-    const email = quote.profile?.email;
+    const email = quote.customer?.email;
 
     if (!email) {
-      alert("Customer email missing");
+      toast.error("Customer email missing");
       return;
     }
 
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          to: email,
-          subject: "Your Quotation",
-          html: `
-          <h2>Your quotation is ready</h2>
-          <p>Please review it using the link below:</p>
-          <a href="${window.location.origin}/quote/${quote.id}">
-            View quotation
-          </a>
-        `,
-        }),
-      }
-    );
+    try {
+      setSendingEmailId(quote.id);
 
-    if (!res.ok) {
-      alert("Failed to send email");
-    } else {
-      alert("Email sent");
+      const link = `${window.location.origin}/quote/${quote.id}`;
+
+      const html = `
+  <div style="font-family: Arial, sans-serif; background:#f7f9fc; padding:30px;">
+    <div style="max-width:600px; margin:0 auto; background:white; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
+      
+      <div style="background:#4eb0e3; padding:20px; color:white;">
+        <h2 style="margin:0; font-size:20px;">Balm Ortho Medical Supplies</h2>
+        <p style="margin:5px 0 0; font-size:14px;">Your Quotation is Ready</p>
+      </div>
+
+      <div style="padding:25px; color:#111;">
+        <p style="font-size:15px; margin-top:0;">
+          Hello <strong>${quote?.customers?.name || "Customer"}</strong>,
+        </p>
+
+        <p style="font-size:14px; line-height:1.6;">
+          Thank you for choosing <strong>Balm Ortho Medical Supplies</strong>.
+          Your quotation has been prepared and is ready for review.
+        </p>
+
+        <div style="background:#f3f4f6; padding:15px; border-radius:10px; margin:20px 0;">
+          <p style="margin:0; font-size:14px;">
+            <strong>Quotation ID:</strong> ${quote.id}
+          </p>
+          <p style="margin:6px 0 0; font-size:14px;">
+            <strong>Total Amount:</strong> KES ${Number(quote.total || 0).toLocaleString()}
+          </p>
+        </div>
+
+        <p style="font-size:14px; margin-bottom:20px;">
+          Click the button below to view your quotation:
+        </p>
+
+        <a href="${link}"
+          style="
+            display:inline-block;
+            background:#4eb0e3;
+            color:white;
+            padding:12px 18px;
+            text-decoration:none;
+            border-radius:8px;
+            font-weight:bold;
+            font-size:14px;
+          ">
+          View Quotation
+        </a>
+
+        <p style="font-size:12px; color:#6b7280; margin-top:25px;">
+          If the button doesn’t work, copy and paste this link into your browser:
+          <br/>
+          <a href="${link}" style="color:#4eb0e3;">${link}</a>
+        </p>
+      </div>
+
+      <div style="padding:15px; background:#f9fafb; border-top:1px solid #e5e7eb; font-size:12px; color:#6b7280; text-align:center;">
+        Balm Ortho Medical Supplies • Nairobi, Kenya <br/>
+        Need help? Reply to this email.
+      </div>
+
+    </div>
+  </div>
+`;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            to: email,
+            subject: `Quotation from Balm Ortho Medical Supplies`,
+            html,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        toast.error("Failed to send email");
+      } else {
+        toast.success("Email sent");
+      }
+    } catch (err) {
+      console.error("Email send error:", err);
+      toast.error("Failed to send email");
+    } finally {
+      setSendingEmailId(null);
     }
   }
-
   // 🔎 Filter logic
   const filteredQuotes = quotes.filter((q) => {
     if (filter === "all") return true;
@@ -133,12 +229,18 @@ export default function Quotes() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Quotations</h1>
 
-        <Link to="/admin/quotes/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-1" />
-            Create Quotation
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchQuotes}>
+            Refresh
           </Button>
-        </Link>
+
+          <Link to="/admin/quotes/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-1" />
+              Create Quotation
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* 🎛 FILTERS */}
@@ -155,55 +257,77 @@ export default function Quotes() {
         ))}
       </div>
 
-      {/* 📋 QUOTE LIST */}
-      {filteredQuotes.length === 0 && (
+      {loading && (
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading quotations...
+        </div>
+      )}
+
+      {!loading && filteredQuotes.length === 0 && (
         <p className="text-sm text-gray-500">
           No quotations found for this filter.
         </p>
       )}
 
-      {filteredQuotes.map((q) => {
-        const expired = isExpired(q);
+      {!loading &&
+        filteredQuotes.map((q) => {
+          const expired = isExpired(q);
 
-        return (
-          <div
-            key={q.id}
-            className={`border p-4 rounded flex justify-between items-center ${
-              expired ? "border-red-400 bg-red-50" : ""
-            }`}
-          >
-            <div className="space-y-1">
-              <p className="font-semibold">
-                {q.profile?.username || q.profile?.email || "Guest"}
-              </p>
-              <p className="font-semibold">Quote ID: {q.id}</p>
-              <p>Status: {q.quote_status}</p>
-              <p>Total: {q.total_amount}</p>
-              <p>
-                Valid until:{" "}
-                <span className={expired ? "text-red-600 font-medium" : ""}>
-                  {q.valid_until || "—"}
-                </span>
-              </p>
+          return (
+            <div
+              key={q.id}
+              className={`border p-4 rounded flex justify-between items-center ${
+                expired ? "border-red-400 bg-red-50" : ""
+              }`}
+            >
+              <div className="space-y-1">
+                <p className="font-semibold">
+                  {q.customer?.name || q.customer?.email || "Guest"}
+                </p>
+                <p className="font-semibold">Quote ID: {q.id}</p>
+                <p>Status: {q.quote_status}</p>
+                <p>
+                  Total:{" "}
+                  <span className="font-semibold">
+                    KES {Number(q.total || 0).toLocaleString()}
+                  </span>
+                </p>
+                <p>
+                  Valid until:{" "}
+                  <span className={expired ? "text-red-600 font-medium" : ""}>
+                    {q.valid_until || "—"}
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                {/* ✅ ADMIN VIEW */}
+                <Link to={`/admin/quotes/${q.id}`}>
+                  <Button variant="outline">View</Button>
+                </Link>
+
+                <Button variant="outline" onClick={() => shareOnWhatsApp(q)}>
+                  <MessageCircle className="w-4 h-4 mr-1" />
+                  WhatsApp
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => sendQuoteEmail(q)}
+                  disabled={sendingEmailId === q.id}
+                >
+                  {sendingEmailId === q.id ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    </>
+                  ) : (
+                    "Email"
+                  )}
+                </Button>
+              </div>
             </div>
-
-            <div className="flex gap-2">
-              {/* ✅ ADMIN VIEW */}
-              <Link to={`/admin/quotes/${q.id}`}>
-                <Button variant="outline">View</Button>
-              </Link>
-
-              <Button variant="outline" onClick={() => shareOnWhatsApp(q)}>
-                <MessageCircle className="w-4 h-4 mr-1" />
-                WhatsApp
-              </Button>
-              <Button variant="outline" onClick={() => sendQuoteEmail(q)}>
-                Email
-              </Button>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { UserAuth } from "./AuthContext";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 const CartContext = createContext();
 
@@ -200,7 +200,7 @@ export function CartProvider({ children }) {
 
     if (!session) {
       const updatedCart = cart.map((item) =>
-        item.product_id === itemId ? { ...item, quantity: newQuantity } : item
+        item.product_id === itemId ? { ...item, quantity: newQuantity } : item,
       );
       setCart(updatedCart);
       localStorage.setItem("cart", JSON.stringify(updatedCart));

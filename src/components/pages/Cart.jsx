@@ -4,7 +4,7 @@ import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import { Minus, Plus, Trash2, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function Cart() {
   const { session } = UserAuth();
@@ -29,7 +29,7 @@ export default function Cart() {
     const totalAmount = cart.reduce(
       (sum, item) =>
         sum + (item.product?.price || item.price_at_add) * item.quantity,
-      0
+      0,
     );
 
     const { data: order, error: orderError } = await supabase
@@ -78,7 +78,7 @@ export default function Cart() {
   const total = cart.reduce(
     (sum, item) =>
       sum + (item.product?.price || item.price_at_add) * item.quantity,
-    0
+    0,
   );
 
   if (!cart.length) {
@@ -154,7 +154,7 @@ export default function Cart() {
                     onClick={() =>
                       updateQuantity(
                         item.id || item.product_id,
-                        item.quantity - 1
+                        item.quantity - 1,
                       )
                     }
                     disabled={isLoading || item.quantity <= 1}
@@ -172,7 +172,7 @@ export default function Cart() {
                     onClick={() =>
                       updateQuantity(
                         item.id || item.product_id,
-                        item.quantity + 1
+                        item.quantity + 1,
                       )
                     }
                     disabled={isLoading}

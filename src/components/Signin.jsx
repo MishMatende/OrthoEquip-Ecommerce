@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { UserAuth } from "../context/AuthContext";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { supabase } from "../supabaseClient";
 
 export default function Signin() {
@@ -36,7 +36,7 @@ export default function Signin() {
 
         case "NETWORK_ERROR":
           toast.warning(
-            "Connection issue. Please check your internet and try again."
+            "Connection issue. Please check your internet and try again.",
           );
           break;
 
@@ -66,7 +66,7 @@ export default function Signin() {
       navigate(profile?.is_admin ? "/admin" : "/", { replace: true });
     } catch (err) {
       toast.warning(
-        "Signed in, but we couldn't verify your profile due to a network issue."
+        "Signed in, but we couldn't verify your profile due to a network issue.",
       );
     } finally {
       setLoading(false);

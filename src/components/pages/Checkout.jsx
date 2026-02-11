@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { useCart } from "../../context/CartContext";
 import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
-import { Loader2, ArrowLeft, FileDown } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, ArrowLeft, Info, FileDown } from "lucide-react";
+import toast from "react-hot-toast";
+
+const FORM_STORAGE_KEY = "checkout_form";
 
 export default function Checkout() {
   const { cart } = useCart();
@@ -40,15 +42,62 @@ export default function Checkout() {
       ]
     : cart;
 
+  /* ------------------ FORM PERSISTENCE ------------------ */
+
+  useEffect(() => {
+    const saved = localStorage.getItem(FORM_STORAGE_KEY);
+    if (saved) setForm(JSON.parse(saved));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
+  }, [form]);
+
+  /* ------------------ SESSION ------------------ */
+
   useEffect(() => {
     if (session?.user?.email) {
       setForm((p) => ({ ...p, email: session.user.email }));
     }
   }, [session]);
 
+  /* ------------------ LOAD PROFILE ------------------ */
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!session?.user?.id) return;
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("phone, username")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!data) return;
+
+      setForm((p) => {
+        const updated = { ...p };
+
+        if (!p.phone && data.phone) updated.phone = data.phone;
+
+        if ((!p.firstName || !p.lastName) && data.username) {
+          const parts = data.username.trim().split(" ");
+          updated.firstName = p.firstName || parts[0] || "";
+          updated.lastName = p.lastName || parts.slice(1).join(" ") || "";
+        }
+
+        return updated;
+      });
+    };
+
+    loadProfile();
+  }, [session]);
+
   useEffect(() => {
     if (!activeCart.length) navigate("/cart");
   }, [activeCart, navigate]);
+
+  /* ------------------ HELPERS ------------------ */
 
   const normalizePhone = (phone) => {
     let p = phone.trim();
@@ -74,6 +123,8 @@ export default function Checkout() {
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+  /* ------------------ PLACE ORDER ------------------ */
+
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
@@ -90,6 +141,17 @@ export default function Checkout() {
     setLoading(true);
 
     try {
+      const username = `${form.firstName} ${form.lastName}`.trim();
+
+      await supabase.from("profiles").upsert(
+        {
+          id: session.user.id,
+          phone: form.phone,
+          username,
+        },
+        { onConflict: "id" },
+      );
+
       const shippingAddress = `
 ${form.firstName} ${form.lastName}
 ${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
@@ -123,14 +185,15 @@ Phone: ${form.phone}
             amount: total,
             phone: normalizePhone(form.phone),
             email: form.email,
-            name: `${form.firstName} ${form.lastName}`,
+            name: username,
           },
         },
       );
 
       if (fnError) throw fnError;
 
-      toast.info("Check your phone for M-PESA prompt");
+      toast.info("Check your phone for the M-PESA STK prompt");
+      localStorage.removeItem(FORM_STORAGE_KEY);
       setLoading(false);
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {
@@ -140,32 +203,22 @@ Phone: ${form.phone}
     }
   };
 
-  const downloadInvoice = async () => {
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-invoice`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ order_id: orderId }),
-      },
-    );
-
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Invoice-${orderId}.pdf`;
-    a.click();
-  };
+  /* ------------------ UI ------------------ */
 
   return (
     <div className="min-h-screen bg-blue-50">
       <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto p-4 flex justify-between">
-          <img src={BalmOrthoLogo} className="h-10" />
+        <div className="max-w-5xl mx-auto p-4 flex justify-between">
+          <div className="flex items-center space-x-2">
+            <img
+              src={BalmOrthoLogo}
+              className="h-[50px]"
+              alt="Balm Ortho Medical Supplies image"
+            />
+            <Link to="/" className="text-xl font-semibold md:text-2xl">
+              Balm Ortho Medical Supplies
+            </Link>
+          </div>
           <button onClick={() => navigate("/shop")}>
             <ArrowLeft className="w-4 h-4 inline" /> Shop
           </button>
@@ -173,9 +226,10 @@ Phone: ${form.phone}
       </header>
 
       <main className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-10 p-6">
+        {/* ------------------ FORM ------------------ */}
         <form
           onSubmit={handlePlaceOrder}
-          className="bg-white p-6 rounded-xl space-y-6"
+          className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border space-y-6"
         >
           <h2 className="font-semibold text-lg">Contact</h2>
 
@@ -183,7 +237,7 @@ Phone: ${form.phone}
             name="email"
             value={form.email}
             readOnly
-            className="w-full border p-3 rounded"
+            className="w-full border rounded-lg px-4 py-3"
           />
 
           <input
@@ -191,8 +245,28 @@ Phone: ${form.phone}
             value={form.phone}
             onChange={handleChange}
             placeholder="Phone e.g. 2547XXXXXXXX"
-            className="w-full border p-3 rounded"
+            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500"
           />
+
+          {/* INFO NOTE */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+            <div className="flex gap-3">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+              <div className="text-sm text-blue-800 space-y-1">
+                <p className="font-medium">
+                  Secure M-PESA payment via IntaSend
+                </p>
+                <p>
+                  We use <span className="font-semibold">IntaSend</span> to
+                  initiate an M-PESA STK push.
+                </p>
+                <p>
+                  Please confirm the phone number above is the number you’ll use
+                  to complete payment.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <h2 className="font-semibold text-lg">Recipient</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -201,14 +275,14 @@ Phone: ${form.phone}
               value={form.firstName}
               onChange={handleChange}
               placeholder="First name"
-              className="border p-3 rounded"
+              className="border rounded-lg px-4 py-3"
             />
             <input
               name="lastName"
               value={form.lastName}
               onChange={handleChange}
               placeholder="Last name"
-              className="border p-3 rounded"
+              className="border rounded-lg px-4 py-3"
             />
           </div>
 
@@ -217,7 +291,7 @@ Phone: ${form.phone}
             name="shippingMethod"
             value={form.shippingMethod}
             onChange={handleChange}
-            className="border p-3 rounded w-full"
+            className="border rounded-lg px-4 py-3 w-full"
           >
             <option>Pick up (CBD)</option>
             <option>Delivery</option>
@@ -230,7 +304,7 @@ Phone: ${form.phone}
                 value={form.address}
                 onChange={handleChange}
                 placeholder="Address"
-                className="border p-3 rounded w-full"
+                className="border rounded-lg px-4 py-3 w-full"
               />
               <div className="grid grid-cols-2 gap-3">
                 <input
@@ -238,46 +312,63 @@ Phone: ${form.phone}
                   value={form.city}
                   onChange={handleChange}
                   placeholder="City"
-                  className="border p-3 rounded"
+                  className="border rounded-lg px-4 py-3"
                 />
                 <input
                   name="postalCode"
                   value={form.postalCode}
                   onChange={handleChange}
                   placeholder="Postal"
-                  className="border p-3 rounded"
+                  className="border rounded-lg px-4 py-3"
                 />
               </div>
             </>
           )}
 
-          {!paid ? (
-            <Button disabled={loading} type="submit">
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Pay with M-PESA
-            </Button>
-          ) : (
-            <Button type="button" onClick={downloadInvoice}>
-              <FileDown className="w-4 h-4 mr-2" />
-              Download Invoice
-            </Button>
-          )}
+          <Button disabled={loading} type="submit" className="w-full">
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Pay with M-PESA (STK Push)
+          </Button>
         </form>
 
-        <aside className="bg-white p-6 rounded-xl">
-          <h2 className="font-semibold mb-4">Order Summary</h2>
-          {activeCart.map((i) => (
-            <div key={i.product_id} className="flex justify-between">
-              <span>
-                {i.products.name} × {i.quantity}
-              </span>
-              <span>
-                KES {(i.products.price * i.quantity).toLocaleString()}
-              </span>
-            </div>
-          ))}
-          <div className="border-t mt-4 pt-4 font-bold">
-            Total: KES {total.toLocaleString()}
+        {/* ------------------ SUMMARY ------------------ */}
+        <aside className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border">
+          <h2 className="font-semibold mb-6 text-lg">Order Summary</h2>
+
+          <div className="space-y-4">
+            {activeCart.map((i) => (
+              <div
+                key={i.product_id}
+                className="flex items-center gap-4 border-b pb-4 last:border-b-0"
+              >
+                <img
+                  src={i.products.image_url}
+                  alt={i.products.name}
+                  className="w-16 h-16 rounded-lg object-cover border"
+                />
+
+                <div className="flex-1">
+                  <p className="font-medium">{i.products.name}</p>
+                  <p className="text-sm text-gray-500">
+                    KES {i.products.price.toLocaleString()} each
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-flex bg-gray-100 rounded-full px-3 py-1 text-sm font-medium">
+                    × {i.quantity}
+                  </span>
+                  <p className="mt-2 font-semibold">
+                    KES {(i.products.price * i.quantity).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t mt-6 pt-6 flex justify-between text-lg font-bold">
+            <span>Total</span>
+            <span>KES {total.toLocaleString()}</span>
           </div>
         </aside>
       </main>

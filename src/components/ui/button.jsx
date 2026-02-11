@@ -13,11 +13,12 @@ export function Button({
     "inline-flex items-center justify-center font-medium rounded-md transition-colors select-none disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
-    solid: "bg-[#4eb0e3] text-white hover:bg-[#056eb1] border border-[#4eb0e3]",
+    solid:
+      "bg-[#4eb0e3] text-white hover:bg-[#056eb1] border border-[#4eb0e3] hover:cursor-pointer",
     outline:
-      "bg-white text-[#056eb1] border border-[#056eb1] hover:bg-[#056eb1] hover:text-white",
+      "bg-white text-[#056eb1] border border-[#056eb1] hover:bg-[#4eb0e3] hover:text-black hover:cursor-pointer",
     ghost:
-      "bg-transparent text-[#056eb1] hover:bg-[#4eb0e3]/10 hover:text-[#056eb1] border border-transparent",
+      "bg-transparent text-[#056eb1] hover:bg-[#4eb0e3]/10 hover:text-[#056eb1] border border-transparent hover:cursor-pointer",
   };
 
   const sizes = {

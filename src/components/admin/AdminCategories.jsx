@@ -3,7 +3,7 @@ import { supabase } from "../../supabaseClient";
 import { Loader2, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
@@ -42,7 +42,7 @@ export default function AdminCategories() {
       `Category "${newCategory}" added! You can now assign products to it.`,
       {
         position: "top-right",
-      }
+      },
     );
     setCategories([...categories, newCategory.trim()]);
     setNewCategory("");
@@ -73,7 +73,7 @@ export default function AdminCategories() {
   const handleDelete = async (cat) => {
     if (
       !confirm(
-        `Delete category "${cat}"? Products will be set to Uncategorized.`
+        `Delete category "${cat}"? Products will be set to Uncategorized.`,
       )
     )
       return;

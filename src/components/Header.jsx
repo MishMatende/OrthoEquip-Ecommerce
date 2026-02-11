@@ -68,9 +68,9 @@ export default function Header() {
           className="h-[50px]"
           alt="Balm Ortho Medical Supplies image"
         />
-        <span className="text-xl font-semibold md:text-2xl">
+        <Link to="/" className="text-xl font-semibold md:text-2xl">
           Balm Ortho Medical Supplies
-        </span>
+        </Link>
       </div>
 
       {/* Desktop Menu */}

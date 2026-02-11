@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { UserAuth } from "../context/AuthContext";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 

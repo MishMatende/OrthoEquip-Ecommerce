@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../supabaseClient";
 import { Plus, Pencil, Trash2, Loader2, ArrowUpDown } from "lucide-react";
 import ProductForm from "../../components/admin/ProductForm";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useProductsServer } from "../../hooks/useProductsServer";

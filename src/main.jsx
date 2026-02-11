@@ -21,6 +21,7 @@ import CreateQuote from "./components/admin/CreateQuote";
 import CheckoutFromQuote from "./components/pages/CheckoutFromQuote";
 import Profile from "./components/pages/Profile";
 import QuoteDetailsAdmin from "./components/admin/QuoteDetailsAdmin";
+import { Buffer } from "buffer";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
@@ -33,8 +34,8 @@ const AuthLayout = lazy(() => import("./components/AuthLayout"));
 const Cart = lazy(() => import("./components/pages/Cart"));
 const Checkout = lazy(() => import("./components/pages/Checkout"));
 const CheckoutLayout = lazy(() => import("./components/CheckoutLayout"));
-const OrderConfirmation = lazy(() =>
-  import("./components/pages/OrderConfirmation")
+const OrderConfirmation = lazy(
+  () => import("./components/pages/OrderConfirmation"),
 );
 const Orders = lazy(() => import("./components/pages/Orders"));
 const OrderTracking = lazy(() => import("./components/pages/OrderTracking"));
@@ -52,6 +53,8 @@ const LoadingScreen = () => (
     <p className="text-gray-600 font-medium">Loading...</p>
   </div>
 );
+
+window.Buffer = Buffer;
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -121,5 +124,5 @@ createRoot(document.getElementById("root")).render(
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
-  </StrictMode>
+  </StrictMode>,
 );

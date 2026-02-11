@@ -3,7 +3,7 @@ import { supabase } from "../../supabaseClient";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Plus, Trash2, Lock, Unlock } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { UserAuth } from "../../context/AuthContext";
 
 export default function CreateQuote() {
@@ -22,6 +22,9 @@ export default function CreateQuote() {
   // Guest
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestAddress, setGuestAddress] = useState("");
+  const [guestCity, setGuestCity] = useState("");
 
   // Pricing
   const [discountType, setDiscountType] = useState("none");
@@ -44,20 +47,31 @@ export default function CreateQuote() {
   }, []);
 
   async function fetchCustomers() {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, username, email, phone")
-      .eq("role", "customer")
-      .order("email");
+    const { data, error } = await supabase
+      .from("customers")
+      .select("id, name, phone, email, address, city")
+      .order("name");
+
+    console.log("[fetchCustomers] result:", { data, error });
+
+    if (error) {
+      toast.error("Failed to fetch customers");
+      return;
+    }
 
     setCustomers(data || []);
   }
-
   async function fetchProducts() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("products")
       .select("id, name, price, image_url")
       .order("name");
+
+    if (error) {
+      console.error("[fetchProducts] error:", error);
+      toast.error("Failed to fetch products");
+      return;
+    }
 
     setProducts(data || []);
   }
@@ -79,6 +93,9 @@ export default function CreateQuote() {
       setCustomerId(draft.customerId || "");
       setGuestName(draft.guestName || "");
       setGuestPhone(draft.guestPhone || "");
+      setGuestEmail(draft.guestEmail || "");
+      setGuestAddress(draft.guestAddress || "");
+      setGuestCity(draft.guestCity || "");
       setItems(draft.items || []);
       setDiscountType(draft.discountType || "none");
       setDiscountValue(draft.discountValue || 0);
@@ -101,6 +118,9 @@ export default function CreateQuote() {
       customerId,
       guestName,
       guestPhone,
+      guestEmail,
+      guestAddress,
+      guestCity,
       items,
       discountType,
       discountValue,
@@ -114,6 +134,9 @@ export default function CreateQuote() {
     customerId,
     guestName,
     guestPhone,
+    guestEmail,
+    guestAddress,
+    guestCity,
     items,
     discountType,
     discountValue,
@@ -160,8 +183,16 @@ export default function CreateQuote() {
   /* ---------------- GUEST CUSTOMER ---------------- */
 
   async function createGuestCustomer() {
-    if (!guestName || !guestPhone) {
-      toast.error("Guest name and phone required");
+    console.log("[createGuestCustomer] START", { guestName, guestPhone });
+
+    if (
+      !guestName ||
+      !guestPhone ||
+      !guestEmail ||
+      !guestAddress ||
+      !guestCity
+    ) {
+      toast.error("Guest name, phone, email, address and city are required");
       return null;
     }
 
@@ -170,23 +201,52 @@ export default function CreateQuote() {
       return null;
     }
 
+    // check if phone already exists
+    const { data: existingList, error: existingError } = await supabase
+      .from("customers")
+      .select("id, name, phone")
+      .eq("phone", guestPhone);
+
+    if (existingError) {
+      console.error("[createGuestCustomer] existingError:", existingError);
+      toast.error("Failed to validate guest phone");
+      return null;
+    }
+
+    const existing = existingList?.[0];
+
+    if (existing) {
+      console.log("[createGuestCustomer] Guest exists:", existing);
+      setCustomerId(existing.id);
+      return existing.id;
+    }
+
+    // Insert new guest
     const { data, error } = await supabase
-      .from("profiles")
+      .from("customers")
       .insert({
-        username: guestName,
+        name: guestName,
         phone: guestPhone,
-        role: "customer",
+        email: guestEmail,
+        address: guestAddress,
+        city: guestCity,
       })
       .select()
       .single();
 
+    console.log("[createGuestCustomer] Insert result:", { data, error });
+
     if (error) {
-      toast.error("Failed to create guest");
+      console.error("[createGuestCustomer] insert error:", error);
+      toast.error(`Failed to create guest: ${error.message}`);
       return null;
     }
 
     setCustomers((prev) => [...prev, data]);
     setCustomerId(data.id);
+
+    toast.success("Guest customer created");
+
     return data.id;
   }
 
@@ -195,7 +255,7 @@ export default function CreateQuote() {
   const subtotal = useMemo(
     () =>
       items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.price), 0),
-    [items]
+    [items],
   );
 
   const discountAmount = useMemo(() => {
@@ -210,61 +270,134 @@ export default function CreateQuote() {
   /* ---------------- SAVE ---------------- */
 
   async function saveQuote() {
-    let finalCustomerId = customerId;
+    console.log("[saveQuote] START", {
+      customerId,
+      guestName,
+      guestPhone,
+      guestEmail,
+      guestAddress,
+      guestCity,
+      itemsCount: items.length,
+      subtotal,
+      discountType,
+      discountValue,
+      discountAmount,
+      total,
+      validUntil,
+    });
+    console.log("[saveQuote] session:", session);
 
-    if (!finalCustomerId) {
-      finalCustomerId = await createGuestCustomer();
-      if (!finalCustomerId) return;
-    }
+    try {
+      let finalCustomerId = customerId;
 
-    if (items.length === 0) {
-      toast.error("Add at least one product");
-      return;
-    }
+      if (!finalCustomerId) {
+        console.log("[saveQuote] No customer selected -> creating guest...");
+        finalCustomerId = await createGuestCustomer();
 
-    const { data: quote, error } = await supabase
-      .from("orders")
-      .insert({
-        user_id: finalCustomerId,
+        console.log(
+          "[saveQuote] createGuestCustomer returned:",
+          finalCustomerId,
+        );
+
+        if (!finalCustomerId) {
+          console.log(
+            "[saveQuote] Guest creation failed -> aborting quote save",
+          );
+          return;
+        }
+      }
+
+      if (items.length === 0) {
+        toast.error("Add at least one product");
+        console.log("[saveQuote] No items selected -> aborting");
+        return;
+      }
+
+      const validUntilDate = new Date();
+      validUntilDate.setDate(validUntilDate.getDate() + 30);
+
+      // Supabase expects YYYY-MM-DD
+      const validUntil30Days = validUntilDate.toISOString().split("T")[0];
+
+      const payload = {
+        customer_id: finalCustomerId,
+        created_by: userId,
         order_type: "quote",
+        status: "pending_verification",
         quote_status: "draft",
-        valid_until: validUntil,
+        valid_until: validUntil30Days || null,
         total,
         payment_status: "unpaid",
-      })
-      .select()
-      .single();
+      };
 
-    if (error) {
-      toast.error("Failed to save quote");
-      return;
-    }
+      console.log("[saveQuote] Inserting order payload:", payload);
 
-    await supabase.from("order_items").insert(
-      items.map((i) => ({
+      const { data: quote, error: quoteError } = await supabase
+        .from("orders")
+        .insert(payload)
+        .select()
+        .single();
+
+      console.log("[saveQuote] Insert order result:", { quote, quoteError });
+
+      if (quoteError) {
+        console.error("[saveQuote] Failed to insert quote:", quoteError);
+        toast.error(`Failed to save quote: ${quoteError.message}`);
+        return;
+      }
+
+      const orderItemsPayload = items.map((i) => ({
         order_id: quote.id,
         product_id: i.product_id,
-        quantity: i.quantity,
-        price: i.price,
-      }))
-    );
+        quantity: Number(i.quantity),
+        price: Number(i.price),
+      }));
 
-    toast.success("Quotation created");
+      console.log(
+        "[saveQuote] Inserting order_items payload:",
+        orderItemsPayload,
+      );
 
-    if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
+      const { data: insertedItems, error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItemsPayload)
+        .select();
 
-    setItems([]);
-    setCustomerId("");
-    setGuestName("");
-    setGuestPhone("");
-    setDiscountType("none");
-    setDiscountValue(0);
-    setValidUntil("");
+      console.log("[saveQuote] Insert order_items result:", {
+        insertedItems,
+        itemsError,
+      });
+
+      if (itemsError) {
+        console.error("[saveQuote] Failed to insert order_items:", itemsError);
+        toast.error(`Quote saved but items failed: ${itemsError.message}`);
+        return;
+      }
+
+      toast.success("Quotation created");
+
+      console.log("[saveQuote] SUCCESS quote created:", quote);
+
+      if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
+
+      setItems([]);
+      setCustomerId("");
+      setGuestName("");
+      setGuestPhone("");
+      setDiscountType("none");
+      setDiscountValue(0);
+      setValidUntil("");
+
+      console.log("[saveQuote] Reset form done");
+    } catch (err) {
+      console.error("[saveQuote] UNHANDLED ERROR:", err);
+      toast.error("Unexpected error while saving quotation");
+    }
   }
 
   const filteredProducts = useMemo(() => {
     const list = products.filter((p) =>
-      p.name.toLowerCase().includes(search.toLowerCase())
+      p.name.toLowerCase().includes(search.toLowerCase()),
     );
     return list.slice(0, visibleCount);
   }, [products, search, visibleCount]);
@@ -286,7 +419,7 @@ export default function CreateQuote() {
           <option value="">Select customer</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.username || c.email}
+              {c.name}
               {c.phone ? ` — ${c.phone}` : ""}
             </option>
           ))}
@@ -306,6 +439,23 @@ export default function CreateQuote() {
             placeholder="2547XXXXXXXX"
             value={guestPhone}
             onChange={(e) => setGuestPhone(e.target.value)}
+          />
+          <Input
+            placeholder="Email address"
+            value={guestEmail}
+            onChange={(e) => setGuestEmail(e.target.value)}
+          />
+
+          <Input
+            placeholder="Address"
+            value={guestAddress}
+            onChange={(e) => setGuestAddress(e.target.value)}
+          />
+
+          <Input
+            placeholder="City"
+            value={guestCity}
+            onChange={(e) => setGuestCity(e.target.value)}
           />
         </div>
       )}

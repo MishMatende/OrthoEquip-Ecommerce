@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function Card({ product }) {
   const { addToCart } = useCart();

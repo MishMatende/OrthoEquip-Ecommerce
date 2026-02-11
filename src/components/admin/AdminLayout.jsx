@@ -16,7 +16,7 @@ import {
   Loader2,
   MessageCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const { userProfile, signoutUser } = UserAuth();
@@ -85,7 +85,7 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50 items-stretch">
       <AnimatePresence>
         {sidebarOpen && (
           <motion.button
@@ -109,7 +109,8 @@ export default function AdminLayout() {
             animate={{ x: 0 }}
             exit={{ x: -320 }}
             transition={{ type: "spring", stiffness: 120, damping: 18 }}
-            className="fixed md:static z-30 top-0 left-0 h-screen w-64 bg-white text-gray-800 flex flex-col shadow-lg border-r border-gray-200"
+            className="fixed md:sticky z-30 top-0 left-0 min-h-screen
+ w-64 bg-white text-gray-800 flex flex-col shadow-lg border-r border-gray-200"
             aria-label="Admin sidebar"
           >
             <div className="px-5 py-4 text-2xl font-bold border-b border-gray-100 flex justify-between items-center">

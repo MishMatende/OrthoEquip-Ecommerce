@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { UserAuth } from "../context/AuthContext";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { Loader2, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 

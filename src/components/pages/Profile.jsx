@@ -3,7 +3,7 @@ import { supabase } from "../../supabaseClient";
 import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function Profile() {
   const { userProfile } = UserAuth();
@@ -52,7 +52,7 @@ export default function Profile() {
   const isFormValid = useMemo(
     () =>
       isValidName(firstName) && isValidName(lastName) && isValidPhone(phone),
-    [firstName, lastName, phone]
+    [firstName, lastName, phone],
   );
 
   /* ---------------- SAVE PROFILE ---------------- */

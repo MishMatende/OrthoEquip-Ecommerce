@@ -6,6 +6,9 @@ import path from "path";
 export default defineConfig({
   base: "/", // <- ADD THIS
   plugins: [react(), tailwindcss()],
+  define: {
+    global: "globalThis",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

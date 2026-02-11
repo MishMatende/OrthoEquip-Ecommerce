@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { Button } from "../../components/ui/button";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trash2 } from "lucide-react";
 
@@ -73,7 +73,7 @@ export default function ProductForm({ onClose, onSaved, editingProduct }) {
   async function uploadFileToStorage(file) {
     if (!file) {
       console.log(
-        "[ProductForm] uploadFileToStorage called with no file -> returning null"
+        "[ProductForm] uploadFileToStorage called with no file -> returning null",
       );
       return null;
     }

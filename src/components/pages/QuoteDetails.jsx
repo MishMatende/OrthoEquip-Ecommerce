@@ -18,16 +18,30 @@ export default function QuoteDetails() {
       .select(
         `
         *,
+    customers (
+      id,
+      name,
+      phone,
+      email,
+      address,
+      city
+    ),
         order_items (
           quantity,
           price,
           products (name)
         )
-      `
+      `,
       )
       .eq("id", id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Quote fetch error:", error);
+          setLoading(false);
+          return;
+        }
+
         setQuote(data);
         setLoading(false);
       });
@@ -43,6 +57,7 @@ export default function QuoteDetails() {
   }
 
   if (loading) return <Loader2 className="animate-spin" />;
+  if (!quote) return <p className="text-center mt-10">Quotation not found.</p>;
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -62,7 +77,8 @@ export default function QuoteDetails() {
       <p className="font-bold">Total: {quote.total}</p>
 
       {quote.quote_status === "sent" && (
-        <Button variant="solid" onClick={acceptQuote}>
+        <Button variant="default" onClick={acceptQuote}>
+          {" "}
           Accept Quote
         </Button>
       )}

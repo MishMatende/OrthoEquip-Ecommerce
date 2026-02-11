@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Card, CardContent } from "../../components/ui/card";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function AdminSettings() {
   // profile
@@ -35,7 +35,7 @@ export default function AdminSettings() {
 
   // local policies path from uploaded file (encoded)
   const policiesUrl = encodeURI(
-    "/mnt/data/BALM ORTHO MEDICAL SUPPLIES - POLICIES.docx"
+    "/mnt/data/BALM ORTHO MEDICAL SUPPLIES - POLICIES.docx",
   );
 
   // ---------- Fetch profile ----------
@@ -202,7 +202,7 @@ export default function AdminSettings() {
         "Admin record created. Send invite to the email to create an account.",
         {
           position: "top-right",
-        }
+        },
       );
 
       // reset form

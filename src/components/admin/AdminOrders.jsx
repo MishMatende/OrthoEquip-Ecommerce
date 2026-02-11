@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { Loader2, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
