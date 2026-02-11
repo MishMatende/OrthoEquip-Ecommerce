@@ -4,7 +4,6 @@ import { Outlet } from "react-router-dom";
 import Footer from "./components/Footer";
 import FooterInfoBanner from "./components/FooterInfoBanner";
 import Header from "./components/Header";
-import { Toaster } from "react-hot-toast";
 import TopBar from "./components/TopBar";
 import WhatsAppChat from "./components/WhatsAppChat";
 import PhoneRequiredModal from "./components/PhoneRequiredModal";
@@ -14,23 +13,6 @@ function App() {
     <div className="min-h-screen flex flex-col">
       <main className="flex-1">
         <PhoneRequiredModal />
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            success: {
-              style: {
-                background: "#000",
-                color: "#fff",
-              },
-            },
-            error: {
-              style: {
-                background: "#fee2e2",
-                color: "#991b1b",
-              },
-            },
-          }}
-        />
         <TopBar />
         <Header />
         <Navbar />

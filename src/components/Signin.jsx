@@ -1,6 +1,6 @@
 // src/components/Signin.jsx
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { UserAuth } from "../context/AuthContext";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
@@ -9,6 +9,8 @@ import toast from "react-hot-toast";
 import { supabase } from "../supabaseClient";
 
 export default function Signin() {
+  const location = useLocation();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,6 +74,12 @@ export default function Signin() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (location.state?.message) {
+      toast.success(location.state.message);
+    }
+  }, [location.state]);
 
   return (
     <div className="w-full flex justify-center px-4 py-8">

@@ -22,6 +22,8 @@ import CheckoutFromQuote from "./components/pages/CheckoutFromQuote";
 import Profile from "./components/pages/Profile";
 import QuoteDetailsAdmin from "./components/admin/QuoteDetailsAdmin";
 import { Buffer } from "buffer";
+import ProtectedAdminRoute from "./components/admin/ProtectedAdminRoute";
+import { Toaster } from "react-hot-toast";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
@@ -57,72 +59,88 @@ const LoadingScreen = () => (
 window.Buffer = Buffer;
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthContextProvider>
-          <CartProvider>
-            <Suspense fallback={<LoadingScreen />}>
-              <Routes>
-                {/* 🌐 Public Site Layout */}
-                <Route path="/" element={<App />}>
-                  <Route index element={<Home />} />
-                  <Route path="shop" element={<Shop />} />
-                  <Route path="shop/:id" element={<ProductDetails />} />
-                  <Route path="contact" element={<Contact />} />
-                  <Route path="cart" element={<Cart />} />
-                  <Route path="track/:orderId" element={<OrderTracking />} />
-                  <Route path="orders" element={<Orders />} />
-                  <Route path="about" element={<About />} />
-                  <Route
-                    path="order-confirmation/:orderId"
-                    element={<OrderConfirmation />}
-                  />
-                  <Route
-                    path="/payment-callback"
-                    element={<PaymentCallback />}
-                  />
-                  <Route path="/quote/:id" element={<QuoteDetails />} />
-                  <Route
-                    path="/checkout-from-quote/:id"
-                    element={<CheckoutFromQuote />}
-                  />
-                  <Route path="profile" element={<Profile />} />
-                </Route>
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <AuthContextProvider>
+        <CartProvider>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              success: {
+                style: {
+                  background: "#000",
+                  color: "#fff",
+                },
+              },
+              error: {
+                style: {
+                  background: "#fee2e2",
+                  color: "#991b1b",
+                },
+              },
+            }}
+          />
+          <Suspense fallback={<LoadingScreen />}>
+            <Routes>
+              {/* 🌐 Public Site Layout */}
+              <Route path="/" element={<App />}>
+                <Route index element={<Home />} />
+                <Route path="shop" element={<Shop />} />
+                <Route path="shop/:id" element={<ProductDetails />} />
+                <Route path="contact" element={<Contact />} />
+                <Route path="cart" element={<Cart />} />
+                <Route path="track/:orderId" element={<OrderTracking />} />
+                <Route path="orders" element={<Orders />} />
+                <Route path="about" element={<About />} />
+                <Route
+                  path="order-confirmation/:orderId"
+                  element={<OrderConfirmation />}
+                />
+                <Route path="/payment-callback" element={<PaymentCallback />} />
+                <Route path="/quote/:id" element={<QuoteDetails />} />
+                <Route
+                  path="/checkout-from-quote/:id"
+                  element={<CheckoutFromQuote />}
+                />
+                <Route path="profile" element={<Profile />} />
+              </Route>
 
-                {/* 🛒 Checkout Flow */}
-                <Route element={<CheckoutLayout />}>
-                  <Route path="checkout" element={<Checkout />} />
-                </Route>
+              {/* 🛒 Checkout Flow */}
+              <Route element={<CheckoutLayout />}>
+                <Route path="checkout" element={<Checkout />} />
+              </Route>
 
-                {/* 🔐 Auth Pages */}
-                <Route element={<AuthLayout />}>
-                  <Route path="signin" element={<Signin />} />
-                  <Route path="signup" element={<Signup />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                </Route>
+              {/* 🔐 Auth Pages */}
+              <Route element={<AuthLayout />}>
+                <Route path="signin" element={<Signin />} />
+                <Route path="signup" element={<Signup />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+              </Route>
 
-                {/* ⚙️ Admin Section */}
-                <Route element={<AdminLayout />}>
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/products" element={<AdminProducts />} />
-                  <Route path="/admin/orders" element={<AdminOrders />} />
-                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                  <Route path="/admin/settings" element={<AdminSettings />} />
-                  <Route path="/admin/quotes" element={<Quotes />} />
-                  <Route path="/admin/quotes/new" element={<CreateQuote />} />
-                  <Route
-                    path="/admin/quotes/:id"
-                    element={<QuoteDetailsAdmin />}
-                  />
-                </Route>
-              </Routes>
-            </Suspense>
-          </CartProvider>
-        </AuthContextProvider>
-      </BrowserRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </StrictMode>,
+              {/* ⚙️ Admin Section */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedAdminRoute>
+                    <AdminLayout />
+                  </ProtectedAdminRoute>
+                }
+              >
+                <Route index element={<AdminDashboard />} />
+                <Route path="products" element={<AdminProducts />} />
+                <Route path="orders" element={<AdminOrders />} />
+                <Route path="analytics" element={<AdminAnalytics />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="quotes" element={<Quotes />} />
+                <Route path="quotes/new" element={<CreateQuote />} />
+                <Route path="quotes/:id" element={<QuoteDetailsAdmin />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </CartProvider>
+      </AuthContextProvider>
+    </BrowserRouter>
+    <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>,
 );

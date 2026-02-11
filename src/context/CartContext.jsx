@@ -7,13 +7,16 @@ import toast from "react-hot-toast";
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const { session, loadingAuth } = UserAuth(); // include loadingAuth
+  const auth = UserAuth();
+  const session = auth?.session;
+  const loadingAuth = auth?.loadingAuth;
+
   const [cart, setCart] = useState([]);
   const [cartId, setCartId] = useState(null);
   const [loadingItemId, setLoadingItemId] = useState(null);
 
   useEffect(() => {
-    if (loadingAuth) return;
+    if (loadingAuth === true) return;
 
     if (session) {
       fetchOrCreateCart().catch((e) => console.error(e));

@@ -61,24 +61,25 @@ export default function AdminLayout() {
           } catch (e) {
             console.warn("clearCart failed during signout:", e);
           }
-
-          toast.success("Signed out");
           setSidebarOpen(false);
-          navigate("/signin");
+          navigate("/signin", {
+            state: { message: "Signed out successfully" },
+          });
         } else {
           console.error("signout failed", res?.error);
           toast.error("Sign out failed — please try again");
           // fallback navigate
-          navigate("/signin");
+          navigate("/signin", {
+            state: { message: "Signed out successfully" },
+          });
         }
       } else {
-        toast("Signed out");
-        navigate("/signin");
+        navigate("/signin", { state: { message: "Signed out successfully" } });
       }
     } catch (err) {
       console.error("Sign out failed:", err);
       toast.error("Sign out failed — please try again");
-      navigate("/signin");
+      navigate("/signin", { state: { message: "Signed out successfully" } });
     } finally {
       setSigningOut(false);
     }

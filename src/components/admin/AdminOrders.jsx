@@ -1,28 +1,52 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../supabaseClient";
-import { Loader2, ChevronDown } from "lucide-react";
+import {
+  Loader2,
+  ChevronDown,
+  Search,
+  Package,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+
+function formatKES(amount) {
+  return `KES ${Number(amount || 0).toLocaleString()}`;
+}
+
+function getStatusBadge(status) {
+  const base =
+    "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium";
+
+  if (status === "payment_verified")
+    return `${base} bg-green-100 text-green-700`;
+  if (status === "payment_failed") return `${base} bg-red-100 text-red-700`;
+  return `${base} bg-yellow-100 text-yellow-700`;
+}
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [orderItems, setOrderItems] = useState({});
+  const [search, setSearch] = useState("");
 
   // Fetch orders
   const fetchOrders = async () => {
     setLoading(true);
+
     const { data, error } = await supabase
       .from("orders")
       .select("*")
+      .neq("order_type", "quote") // optional: only show real orders
       .order("created_at", { ascending: false });
 
-    if (error)
-      toast.error("Failed to fetch orders", {
-        position: "top-right",
-      });
-    else setOrders(data || []);
+    if (error) {
+      toast.error("Failed to fetch orders", { position: "top-right" });
+    } else {
+      setOrders(data || []);
+    }
 
     setLoading(false);
   };
@@ -38,8 +62,8 @@ export default function AdminOrders() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
-        (payload) => {
-          toast.success(`🆕 New order received! ID: ${payload.new.id}`, {
+        () => {
+          toast.success(`🆕 New order received!`, {
             position: "top-right",
           });
           fetchOrders();
@@ -48,7 +72,7 @@ export default function AdminOrders() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, []);
 
@@ -56,17 +80,13 @@ export default function AdminOrders() {
   const updateOrder = async (id, updates) => {
     const { error } = await supabase
       .from("orders")
-      .update({ ...updates })
+      .update(updates)
       .eq("id", id);
 
-    if (error)
-      toast.error("Failed to update order", {
-        position: "top-right",
-      });
-    else {
-      toast.success("Order updated", {
-        position: "top-right",
-      });
+    if (error) {
+      toast.error("Failed to update order", { position: "top-right" });
+    } else {
+      toast.success("Order updated", { position: "top-right" });
       fetchOrders();
     }
   };
@@ -88,224 +108,487 @@ export default function AdminOrders() {
       )
       .eq("order_id", orderId);
 
-    if (!error) {
-      setOrderItems((prev) => ({ ...prev, [orderId]: data }));
-    } else {
-      toast.error("Failed to load order details", {
-        position: "top-right",
-      });
+    if (error) {
+      toast.error("Failed to load order details", { position: "top-right" });
+      return;
     }
+
+    setOrderItems((prev) => ({ ...prev, [orderId]: data }));
   };
 
   const toggleExpand = (orderId) => {
-    if (expandedOrder === orderId) setExpandedOrder(null);
-    else {
+    if (expandedOrder === orderId) {
+      setExpandedOrder(null);
+    } else {
       setExpandedOrder(orderId);
       fetchOrderItems(orderId);
     }
   };
 
+  // Search filter
+  const filteredOrders = useMemo(() => {
+    if (!search.trim()) return orders;
+
+    return orders.filter((o) => {
+      return (
+        o.id?.toLowerCase().includes(search.toLowerCase()) ||
+        o.user_id?.toLowerCase().includes(search.toLowerCase()) ||
+        o.payment_method?.toLowerCase().includes(search.toLowerCase())
+      );
+    });
+  }, [orders, search]);
+
+  // Quick stats
+  const stats = useMemo(() => {
+    const total = orders.length;
+    const verified = orders.filter(
+      (o) => o.status === "payment_verified",
+    ).length;
+    const pending = orders.filter(
+      (o) => o.status === "pending_verification",
+    ).length;
+
+    return { total, verified, pending };
+  }, [orders]);
+
   return (
-    <div className="p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Orders</h1>
+    <div className="space-y-6">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            Orders
+          </h1>
+          <p className="text-sm text-gray-500">
+            Manage all customer orders and track deliveries.
+          </p>
+        </div>
+
+        {/* Search */}
+        <div className="relative w-full md:w-80">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search order ID, user ID..."
+            className="w-full pl-9 pr-3 py-2 border rounded-xl text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#4eb0e3]"
+          />
+        </div>
       </div>
 
-      {/* Loading or empty states */}
+      {/* STATS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-2xl border bg-white p-4 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+            <Package className="w-5 h-5 text-[#4eb0e3]" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Total Orders</p>
+            <p className="text-xl font-bold text-gray-900">{stats.total}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-4 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Verified</p>
+            <p className="text-xl font-bold text-gray-900">{stats.verified}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-4 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center">
+            <Clock className="w-5 h-5 text-yellow-600" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Pending</p>
+            <p className="text-xl font-bold text-gray-900">{stats.pending}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* TABLE */}
       {loading ? (
-        <div className="flex justify-center items-center h-32 text-gray-500">
+        <div className="flex justify-center items-center h-48 text-gray-500 bg-white border rounded-2xl shadow-sm">
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
           Loading orders...
         </div>
-      ) : orders.length === 0 ? (
-        <div className="text-gray-500 text-center py-10">No orders found.</div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="text-gray-500 text-center py-16 bg-white border rounded-2xl shadow-sm">
+          No orders found.
+        </div>
       ) : (
-        <div className="overflow-x-auto bg-white shadow-sm rounded-lg border">
-          <table className="min-w-full table-fixed border-collapse">
-            <thead className="bg-gray-100 text-gray-700 text-sm uppercase">
-              <tr>
-                <th className="w-[15%] p-3 text-left">Order ID</th>
-                <th className="w-[15%] p-3 text-left">User ID</th>
-                <th className="w-[10%] p-3 text-left">Total (KES)</th>
-                <th className="w-[10%] p-3 text-left">Status</th>
-                <th className="w-[12%] p-3 text-left">Delivery</th>
-                <th className="w-[10%] p-3 text-left">Tracking</th>
-                <th className="w-[15%] p-3 text-left">Date</th>
-                <th className="w-[8%] p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {orders.map((order) => (
-                <React.Fragment key={order.id}>
-                  {/* Order row */}
-                  <tr className="border-t hover:bg-gray-50 transition">
-                    <td className="p-3 font-mono text-sm truncate">
+        <>
+          {/* ✅ MOBILE VIEW */}
+          <div className="space-y-4 md:hidden">
+            {filteredOrders.map((order) => (
+              <div
+                key={order.id}
+                className="bg-white border rounded-2xl shadow-sm p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Order ID</p>
+                    <p className="font-mono text-sm text-gray-800 break-all">
                       {order.id}
-                    </td>
-                    <td className="p-3 font-mono text-sm truncate">
-                      {order.user_id}
-                    </td>
-                    <td className="p-3 font-semibold text-gray-800">
-                      {order.total_amount}
-                    </td>
-                    <td className="p-3">
-                      <select
-                        value={order.status || "pending_verification"}
-                        onChange={(e) =>
-                          updateOrder(order.id, {
-                            status: e.target.value, // ✅ CORRECT
-                          })
-                        }
-                        className="border rounded-md px-2 py-1 text-sm w-full"
-                      >
-                        <option value="pending_verification">
-                          Pending Verification
-                        </option>
-                        <option value="payment_verified">
-                          Payment Verified
-                        </option>
-                        <option value="payment_failed">Payment Failed</option>
-                      </select>
-                    </td>
-                    <td className="p-3">
-                      <select
-                        value={order.tracking_stage || "pending"}
-                        onChange={(e) =>
-                          updateOrder(order.id, {
-                            tracking_stage: e.target.value,
-                          })
-                        }
-                        className="border rounded-md px-2 py-1 text-sm w-full"
-                      >
-                        <option value="pending_verification">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                    </td>
-                    <td className="p-3">
-                      <select
-                        value={order.delivery_status || "not started"}
-                        onChange={(e) =>
-                          updateOrder(order.id, {
-                            delivery_status: e.target.value,
-                          })
-                        }
-                        className="border rounded-md px-2 py-1 text-sm w-full"
-                      >
-                        <option value="not started">Not Started</option>
-                        <option value="in transit">In Transit</option>
-                        <option value="delivered">Delivered</option>
-                      </select>
-                    </td>
-                    <td className="p-3 text-sm text-start">
-                      {order.payment_method || "N/A"}
-                    </td>
-                    <td className="p-3 text-sm text-gray-500 text-start">
-                      {new Date(order.created_at).toLocaleString()}
-                    </td>
-                    <td className="p-3">
-                      <button
-                        onClick={() => toggleExpand(order.id)}
-                        className="flex items-center gap-1 text-[#4eb0e3] text-sm"
-                      >
-                        Details
-                        <ChevronDown
-                          className={`w-4 h-4 transform transition-transform ${
-                            expandedOrder === order.id ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
-                    </td>
-                  </tr>
+                    </p>
+                  </div>
 
-                  {/* Expanded row */}
-                  <AnimatePresence>
-                    {expandedOrder === order.id && (
-                      <motion.tr
-                        key={`${order.id}-details`}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="bg-gray-50 border-t"
-                      >
-                        <td colSpan={8} className="p-4">
-                          <motion.div
-                            initial={{ y: 10, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: -10, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="space-y-4"
+                  <span className={getStatusBadge(order.status)}>
+                    {order.status || "pending_verification"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">Total</p>
+                    <p className="font-bold text-gray-900">
+                      {formatKES(order.total_amount)}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Date</p>
+                    <p className="text-xs text-gray-700">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Status</p>
+                    <select
+                      value={order.status || "pending_verification"}
+                      onChange={(e) =>
+                        updateOrder(order.id, { status: e.target.value })
+                      }
+                      className="w-full border rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                    >
+                      <option value="pending_verification">
+                        Pending Verification
+                      </option>
+                      <option value="payment_verified">Payment Verified</option>
+                      <option value="payment_failed">Payment Failed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-500">Tracking</p>
+                    <select
+                      value={order.tracking_stage || "pending"}
+                      onChange={(e) =>
+                        updateOrder(order.id, {
+                          tracking_stage: e.target.value,
+                        })
+                      }
+                      className="w-full border rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-500">Delivery</p>
+                    <select
+                      value={order.delivery_status || "not started"}
+                      onChange={(e) =>
+                        updateOrder(order.id, {
+                          delivery_status: e.target.value,
+                        })
+                      }
+                      className="w-full border rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                    >
+                      <option value="not started">Not Started</option>
+                      <option value="in transit">In Transit</option>
+                      <option value="delivered">Delivered</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => toggleExpand(order.id)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium text-[#4eb0e3] hover:bg-[#4eb0e3]/10 transition"
+                >
+                  {expandedOrder === order.id ? "Hide Details" : "View Details"}
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${
+                      expandedOrder === order.id ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {expandedOrder === order.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 bg-gray-50 border rounded-xl overflow-hidden">
+                        <div className="px-4 py-3 border-b bg-white">
+                          <p className="font-semibold text-gray-800 text-sm">
+                            Order Items
+                          </p>
+                        </div>
+
+                        <div className="divide-y">
+                          {Array.isArray(orderItems[order.id]) &&
+                          orderItems[order.id].length > 0 ? (
+                            orderItems[order.id].map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between px-4 py-3"
+                              >
+                                <div>
+                                  <p className="font-semibold text-gray-900 text-sm">
+                                    {item.products?.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Qty: {item.quantity}
+                                  </p>
+                                </div>
+
+                                <p className="font-bold text-gray-900 text-sm">
+                                  {formatKES(
+                                    Number(item.price) * Number(item.quantity),
+                                  )}
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-sm text-gray-400">
+                              {orderItems[order.id]
+                                ? "No items found."
+                                : "Loading items..."}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+
+          {/* ✅ DESKTOP VIEW */}
+          <div className="hidden md:block bg-white border rounded-2xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                  <tr>
+                    <th className="p-4 text-left">Order</th>
+                    <th className="p-4 text-left">User</th>
+                    <th className="p-4 text-left">Total</th>
+                    <th className="p-4 text-left">Status</th>
+                    <th className="p-4 text-left">Tracking</th>
+                    <th className="p-4 text-left">Delivery</th>
+                    <th className="p-4 text-left">Date</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredOrders.map((order) => (
+                    <React.Fragment key={order.id}>
+                      {/* Order row */}
+                      <tr className="border-t hover:bg-gray-50 transition">
+                        <td className="p-4 font-mono text-xs text-gray-800">
+                          {order.id.slice(0, 12)}...
+                        </td>
+
+                        <td className="p-4 font-mono text-xs text-gray-600">
+                          {order.user_id?.slice(0, 10) || "N/A"}...
+                        </td>
+
+                        <td className="p-4 font-semibold text-gray-900">
+                          {formatKES(order.total_amount)}
+                        </td>
+
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <span className={getStatusBadge(order.status)}>
+                              {order.status || "pending_verification"}
+                            </span>
+
+                            <select
+                              value={order.status || "pending_verification"}
+                              onChange={(e) =>
+                                updateOrder(order.id, {
+                                  status: e.target.value,
+                                })
+                              }
+                              className="border rounded-lg px-2 py-1 text-xs bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                            >
+                              <option value="pending_verification">
+                                Pending Verification
+                              </option>
+                              <option value="payment_verified">
+                                Payment Verified
+                              </option>
+                              <option value="payment_failed">
+                                Payment Failed
+                              </option>
+                            </select>
+                          </div>
+                        </td>
+
+                        <td className="p-4">
+                          <select
+                            value={order.tracking_stage || "pending"}
+                            onChange={(e) =>
+                              updateOrder(order.id, {
+                                tracking_stage: e.target.value,
+                              })
+                            }
+                            className="border rounded-lg px-2 py-1 text-xs w-full bg-white focus:ring-2 focus:ring-[#4eb0e3]"
                           >
-                            {/* Order items */}
-                            <div className="border-t-0">
-                              {Array.isArray(orderItems[order.id]) &&
-                              orderItems[order.id].length > 0 ? (
-                                orderItems[order.id].map((item, i) => (
-                                  <div
-                                    key={item.id}
-                                    className={`flex items-center justify-between py-3 px-6 ${
-                                      i < orderItems[order.id].length - 1
-                                        ? "border-b border-gray-100"
-                                        : ""
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <img
-                                        src={
-                                          item.products?.image_url ||
-                                          "https://via.placeholder.com/80"
-                                        }
-                                        alt={item.products?.name}
-                                        className="w-14 h-14 object-cover rounded-lg border"
-                                      />
-                                      <div>
-                                        <p className="text-gray-800 font-medium">
-                                          {item.products?.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                          Qty: {item.quantity}
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </td>
+
+                        <td className="p-4">
+                          <select
+                            value={order.delivery_status || "not started"}
+                            onChange={(e) =>
+                              updateOrder(order.id, {
+                                delivery_status: e.target.value,
+                              })
+                            }
+                            className="border rounded-lg px-2 py-1 text-xs w-full bg-white focus:ring-2 focus:ring-[#4eb0e3]"
+                          >
+                            <option value="not started">Not Started</option>
+                            <option value="in transit">In Transit</option>
+                            <option value="delivered">Delivered</option>
+                          </select>
+                        </td>
+
+                        <td className="p-4 text-xs text-gray-500">
+                          {new Date(order.created_at).toLocaleString()}
+                        </td>
+
+                        <td className="p-4 text-right">
+                          <button
+                            onClick={() => toggleExpand(order.id)}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium text-[#4eb0e3] hover:bg-[#4eb0e3]/10 transition"
+                          >
+                            Details
+                            <ChevronDown
+                              className={`w-4 h-4 transition-transform ${
+                                expandedOrder === order.id ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* EXPANDED */}
+                      <AnimatePresence>
+                        {expandedOrder === order.id && (
+                          <motion.tr
+                            key={`${order.id}-details`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="bg-gray-50 border-t"
+                          >
+                            <td colSpan={8} className="p-5">
+                              <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                                <div className="px-5 py-3 border-b bg-gray-50">
+                                  <p className="font-semibold text-gray-800">
+                                    Order Items
+                                  </p>
+                                </div>
+
+                                <div className="divide-y">
+                                  {Array.isArray(orderItems[order.id]) &&
+                                  orderItems[order.id].length > 0 ? (
+                                    orderItems[order.id].map((item) => (
+                                      <div
+                                        key={item.id}
+                                        className="flex items-center justify-between px-5 py-4"
+                                      >
+                                        <div className="flex items-center gap-4">
+                                          <img
+                                            src={
+                                              item.products?.image_url ||
+                                              "/placeholder.png"
+                                            }
+                                            alt={item.products?.name}
+                                            className="w-14 h-14 object-cover rounded-xl border"
+                                          />
+
+                                          <div>
+                                            <p className="font-semibold text-gray-900">
+                                              {item.products?.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                              Qty: {item.quantity} • Unit:{" "}
+                                              {formatKES(item.price)}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        <p className="font-bold text-gray-900">
+                                          {formatKES(
+                                            Number(item.price) *
+                                              Number(item.quantity),
+                                          )}
                                         </p>
                                       </div>
+                                    ))
+                                  ) : (
+                                    <div className="p-5 text-sm text-gray-400">
+                                      {orderItems[order.id]
+                                        ? "No items found."
+                                        : "Loading items..."}
                                     </div>
-                                    <p className="font-semibold text-gray-700">
-                                      KES{" "}
-                                      {(
-                                        item.price * item.quantity
-                                      ).toLocaleString()}
-                                    </p>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-gray-400 text-sm py-3">
-                                  {orderItems[order.id]
-                                    ? "No items found."
-                                    : "Loading items..."}
+                                  )}
                                 </div>
-                              )}
-                            </div>
-
-                            {/* Shipping + Summary */}
-                            <div className="pt-4 text-sm text-gray-700 space-y-1 border-t border-gray-200">
-                              <div>
-                                <span className="font-semibold">Shipping:</span>{" "}
-                                {order.shipping_address || "N/A"}
                               </div>
-                            </div>
-                          </motion.div>
-                        </td>
-                      </motion.tr>
-                    )}
-                  </AnimatePresence>
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+                              <div className="mt-4 bg-white rounded-2xl border shadow-sm p-5 text-sm text-gray-700">
+                                <p className="font-semibold text-gray-900 mb-2">
+                                  Shipping Details
+                                </p>
+
+                                <p>
+                                  <span className="font-medium">Address:</span>{" "}
+                                  {order.shipping_address || "N/A"}
+                                </p>
+
+                                <p>
+                                  <span className="font-medium">
+                                    Payment Method:
+                                  </span>{" "}
+                                  {order.payment_method || "N/A"}
+                                </p>
+                              </div>
+                            </td>
+                          </motion.tr>
+                        )}
+                      </AnimatePresence>
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

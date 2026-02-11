@@ -22,6 +22,7 @@ import { supabase } from "../supabaseClient";
 import { UserAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { Button } from "./ui/button";
+import toast from "react-hot-toast";
 
 export default function Navbar() {
   const [categories, setCategories] = useState([]);
@@ -111,7 +112,7 @@ export default function Navbar() {
       .from("products")
       .select("id, name, price, image_url, brand, category")
       .or(
-        `name.ilike.%${value}%,brand.ilike.%${value}%,category.ilike.%${value}%`
+        `name.ilike.%${value}%,brand.ilike.%${value}%,category.ilike.%${value}%`,
       );
     if (error) console.error(error);
     setSearchResults(data || []);
@@ -200,7 +201,7 @@ export default function Navbar() {
                         key={i}
                         onClick={() => {
                           navigate(
-                            `/shop?category=${encodeURIComponent(category)}`
+                            `/shop?category=${encodeURIComponent(category)}`,
                           );
                           setOpenCategories(false);
                         }}
@@ -356,7 +357,7 @@ export default function Navbar() {
                         onClick={async () => {
                           if (!signoutUser) {
                             console.error(
-                              "signoutUser is not available from AuthContext"
+                              "signoutUser is not available from AuthContext",
                             );
                             return;
                           }
@@ -364,6 +365,7 @@ export default function Navbar() {
                             await signoutUser();
                             setOpenUserMenu(false);
                             navigate("/");
+                            toast.success("signed out successfully");
                           } catch (err) {
                             console.error("Sign out failed:", err);
                           }
@@ -471,7 +473,7 @@ export default function Navbar() {
                       key={i}
                       onClick={() => {
                         navigate(
-                          `/shop?category=${encodeURIComponent(category)}`
+                          `/shop?category=${encodeURIComponent(category)}`,
                         );
                         setOpenMobileMenu(false);
                       }}
