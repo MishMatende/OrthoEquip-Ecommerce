@@ -5,30 +5,74 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
+
+function jsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    },
+  });
+}
 
 serve(async (req) => {
   // ✅ CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    const bodyText = await req.text();
-    if (!bodyText) {
-      return new Response("Empty body", {
-        status: 400,
-        headers: corsHeaders,
-      });
+    if (req.method !== "POST") {
+      return jsonResponse({ success: false, error: "Method not allowed" }, 405);
     }
 
-    const { phone, amount, order_id } = JSON.parse(bodyText);
+    const bodyText = await req.text();
+
+    if (!bodyText) {
+      return jsonResponse({ success: false, error: "Empty body" }, 400);
+    }
+
+    let body;
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      return jsonResponse({ success: false, error: "Invalid JSON body" }, 400);
+    }
+
+    const { phone, amount, order_id } = body;
 
     if (!phone || !amount || !order_id) {
-      return new Response("Missing fields", {
-        status: 400,
-        headers: corsHeaders,
-      });
+      return jsonResponse(
+        {
+          success: false,
+          error: "Missing fields",
+          required: ["phone", "amount", "order_id"],
+        },
+        400
+      );
+    }
+
+    const secretKey = Deno.env.get("INTASEND_SECRET_KEY");
+    const walletId = Deno.env.get("INTASEND_WALLET_ID");
+
+    if (!secretKey || !walletId) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "Missing environment variables",
+          details: {
+            INTASEND_SECRET_KEY: !!secretKey,
+            INTASEND_WALLET_ID: !!walletId,
+          },
+        },
+        500
+      );
     }
 
     const res = await fetch(
@@ -44,7 +88,7 @@ serve(async (req) => {
           phone_number: phone,
           amount,
           currency: "KES",
-          wallet_id: Deno.env.get("INTASEND_WALLET_ID"),
+          wallet_id: walletId,
           api_ref: order_id,
         }),
       }
@@ -59,19 +103,35 @@ serve(async (req) => {
       data = { raw: text };
     }
 
-    console.log("INTASEND:", res.status, data);
+    console.log("INTASEND RESPONSE:", res.status, data);
 
-    return new Response(JSON.stringify({ status: res.status, data }), {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (e) {
+    // ❌ If IntaSend returned error
+    if (!res.ok) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "IntaSend STK push failed",
+          intasend_status: res.status,
+          intasend_response: data,
+    },
+        res.status
+      );
+}
+
+    // ✅ If IntaSend succeeded
+    return jsonResponse(
+      {
+        success: true,
+        message: "STK push initiated successfully",
+        intasend_response: data,
+  },
+      200
+    );
+  } catch (e: any) {
     console.error("STK ERROR:", e);
-    return new Response("STK failed", {
-      status: 500,
-      headers: corsHeaders,
-    });
+    return jsonResponse(
+      { success: false, error: e.message || "STK failed" },
+      500
+    );
   }
 });

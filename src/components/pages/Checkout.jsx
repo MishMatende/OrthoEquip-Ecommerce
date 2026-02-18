@@ -177,7 +177,7 @@ Phone: ${form.phone}
 
       setOrderId(order.id);
 
-      const { error: fnError } = await supabase.functions.invoke(
+      const { data, fnError } = await supabase.functions.invoke(
         "intasend-wallet-stk",
         {
           body: {
@@ -190,7 +190,11 @@ Phone: ${form.phone}
         },
       );
 
-      if (fnError) throw fnError;
+      if (fnError) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.fnError || "STK failed");
+      }
 
       toast.info("Check your phone for the M-PESA STK prompt");
       localStorage.removeItem(FORM_STORAGE_KEY);
