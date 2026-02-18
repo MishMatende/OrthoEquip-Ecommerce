@@ -1,256 +1,256 @@
-// src/context/AuthContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
-import { useNavigate } from "react-router-dom";
+// src/components/admin/AdminLayout.jsx
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { UserAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import {
+  LogOut,
+  Menu,
+  X,
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  BarChart2,
+  Settings,
+  Loader2,
+  MessageCircle,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
-const AuthContext = createContext();
+export default function AdminLayout() {
+  const { userProfile, signoutUser } = UserAuth();
+  const { clearCart } = useCart();
 
-export const AuthContextProvider = ({ children }) => {
-  const [session, setSession] = useState(undefined);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
-  const [userProfile, setUserProfile] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-
-  const [showPhoneModal, setShowPhoneModal] = useState(false);
-
+  const location = useLocation();
   const navigate = useNavigate();
 
-  /* -------------------- SIGN UP -------------------- */
-  const signupNewUser = async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data };
-    } catch {
-      return { success: false, error: "NETWORK_ERROR" };
-    }
-  };
-
-  /* -------------------- SIGN IN -------------------- */
-  const signinUser = async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        const message = error.message?.toLowerCase() || "";
-
-        if (message.includes("invalid login credentials")) {
-          return { success: false, code: "INVALID_CREDENTIALS" };
-        }
-
-        if (message.includes("email not confirmed")) {
-          return { success: false, code: "EMAIL_NOT_CONFIRMED" };
-        }
-
-        return { success: false, code: "UNKNOWN", raw: error.message };
-      }
-
-      return { success: true, data };
-    } catch {
-      return { success: false, code: "NETWORK_ERROR" };
-    }
-  };
-
-  /* -------------------- FETCH PROFILE -------------------- */
-  const fetchUserProfile = async (userId) => {
-    if (!userId) {
-      setUserProfile(null);
-      setLoadingProfile(false);
-      return null;
-    }
-
-    setLoadingProfile(true);
-
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, email, is_admin, phone, username")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        console.error("Fetch profile error:", error);
-        setUserProfile(null);
-        return null;
-      }
-
-      setUserProfile(data);
-
-      /* 🔔 Require phone AND username (non-admins only) */
-      const needsProfileCompletion =
-        (!data.phone || !data.username) &&
-        !data.is_admin &&
-        !sessionStorage.getItem("profileModalShown");
-
-      if (needsProfileCompletion) {
-        sessionStorage.setItem("profileModalShown", "true");
-        setShowPhoneModal(true);
-      }
-
-      return data;
-    } catch (err) {
-      console.error("fetchUserProfile failed:", err);
-      setUserProfile(null);
-      return null;
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
-
-  /* -------------------- SESSION HANDLING -------------------- */
   useEffect(() => {
-    let mounted = true;
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
-    const loadSession = async () => {
-      try {
-        const {
-          data: { session: initialSession },
-          error,
-        } = await supabase.auth.getSession();
+  const navItems = [
+    { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={18} /> },
+    { name: "Products", path: "/admin/products", icon: <Package size={18} /> },
+    { name: "Orders", path: "/admin/orders", icon: <ShoppingCart size={18} /> },
+    {
+      name: "Quotations",
+      path: "/admin/quotes",
+      icon: <MessageCircle size={18} />,
+    },
+    {
+      name: "Analytics",
+      path: "/admin/analytics",
+      icon: <BarChart2 size={18} />,
+    },
+    { name: "Settings", path: "/admin/settings", icon: <Settings size={18} /> },
+  ];
 
-        if (!mounted) return;
-
-        if (error) {
-          console.error("Get session error:", error);
-        }
-
-        setSession(initialSession);
-
-        if (initialSession?.user) {
-          await fetchUserProfile(initialSession.user.id);
-        } else {
-          setUserProfile(null);
-          setLoadingProfile(false);
-        }
-      } catch (err) {
-        console.error("Get session crash:", err);
-        setSession(null);
-        setUserProfile(null);
-        setLoadingProfile(false);
-      } finally {
-        if (mounted) setLoadingAuth(false);
-      }
-    };
-
-    loadSession();
-
-    const { data } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!mounted) return;
-
-        setSession(newSession);
-
-        if (newSession?.user) {
-          const profile = await fetchUserProfile(newSession.user.id);
-
-          if (event === "SIGNED_IN" && profile?.is_admin) {
-            navigate("/admin");
-          }
-        } else {
-          setUserProfile(null);
-          setShowPhoneModal(false);
-          sessionStorage.removeItem("profileModalShown");
-          setLoadingProfile(false);
-        }
-
-        setLoadingAuth(false);
-      },
-    );
-
-    return () => {
-      mounted = false;
-
-      try {
-        if (data?.subscription?.unsubscribe) {
-          data.subscription.unsubscribe();
-        } else if (typeof data?.unsubscribe === "function") {
-          data.unsubscribe();
-        }
-      } catch {}
-    };
-  }, [navigate]);
-
-  /* -------------------- SIGN OUT -------------------- */
-  const signoutUser = async () => {
+  async function handleSignOut() {
     try {
-      // instant UI feedback
-      setSession(null);
-      setUserProfile(null);
-      setShowPhoneModal(false);
-      setLoadingProfile(false);
-      sessionStorage.removeItem("profileModalShown");
+      setSigningOut(true);
 
-      await supabase.auth.signOut();
-      return { ok: true };
+      const res = await signoutUser();
+
+      if (res?.ok) {
+        try {
+          await clearCart();
+        } catch (err) {
+          console.warn("clearCart failed:", err);
+        }
+
+        toast.success("Signed out successfully");
+        setSidebarOpen(false);
+
+        navigate("/signin", { replace: true });
+      } else {
+        toast.error("Sign out failed — please try again");
+        navigate("/signin", { replace: true });
+      }
     } catch (err) {
       console.error("Sign out failed:", err);
-      return { ok: false, error: err.message };
+      toast.error("Sign out failed — please try again");
+      navigate("/signin", { replace: true });
+    } finally {
+      setSigningOut(false);
     }
-  };
-
-  /* -------------------- FORGOT PASSWORD -------------------- */
-  const forgotPassword = async (email) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (err) {
-      console.error("FORGOT PASSWORD CRASH:", err);
-      return { success: false, error: "Unexpected error occurred" };
-    }
-  };
-
-  /* -------------------- UPDATE PASSWORD -------------------- */
-  const updatePassword = async (newPassword) => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch {
-      return { success: false, error: "NETWORK_ERROR" };
-    }
-  };
+  }
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        loadingAuth,
-        userProfile,
-        loadingProfile,
-        showPhoneModal,
-        setShowPhoneModal,
-        signupNewUser,
-        signinUser,
-        signoutUser,
-        forgotPassword,
-        updatePassword,
-        fetchUserProfile,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
+    <div className="min-h-screen flex bg-gray-50">
+      {/* BACKDROP (mobile only) */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.button
+            type="button"
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 z-20 bg-black/40 md:hidden"
+          />
+        )}
+      </AnimatePresence>
 
-export const UserAuth = () => useContext(AuthContext);
+      {/* SIDEBAR (desktop always visible) */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col shadow-sm sticky top-0 h-screen">
+        <div className="px-5 py-4 text-xl font-bold border-b border-gray-100">
+          Admin Panel
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-4 px-2">
+          <ul className="space-y-2">
+            {navItems.map((item) => (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  end={item.path === "/admin"}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2 rounded-xl transition-colors duration-150 ${
+                      isActive
+                        ? "bg-[#4eb0e3] text-white shadow-sm"
+                        : "text-gray-700 hover:bg-gray-100 hover:text-[#4eb0e3]"
+                    }`
+                  }
+                >
+                  {item.icon}
+                  <span className="text-sm font-medium truncate">
+                    {item.name}
+                  </span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
+          <span className="truncate text-xs max-w-[140px]">
+            {userProfile?.email || "No email"}
+          </span>
+
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 text-gray-600 hover:text-red-500 p-2 rounded-xl transition-colors"
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : (
+              <LogOut size={16} />
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {/* MOBILE SIDEBAR */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.aside
+            key="mobile-sidebar"
+            initial={{ x: -320 }}
+            animate={{ x: 0 }}
+            exit={{ x: -320 }}
+            transition={{ type: "spring", stiffness: 120, damping: 18 }}
+            className="fixed z-30 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg md:hidden"
+          >
+            <div className="px-5 py-4 text-xl font-bold border-b border-gray-100 flex justify-between items-center">
+              <span className="truncate">Admin Panel</span>
+
+              <button
+                className="text-gray-600 hover:text-[#4eb0e3]"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto py-4 px-2">
+              <ul className="space-y-2">
+                {navItems.map((item) => (
+                  <li key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      end={item.path === "/admin"}
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2 rounded-xl transition-colors duration-150 ${
+                          isActive
+                            ? "bg-[#4eb0e3] text-white shadow-sm"
+                            : "text-gray-700 hover:bg-gray-100 hover:text-[#4eb0e3]"
+                        }`
+                      }
+                    >
+                      {item.icon}
+                      <span className="text-sm font-medium truncate">
+                        {item.name}
+                      </span>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
+              <span className="truncate text-xs max-w-[140px]">
+                {userProfile?.email || "No email"}
+              </span>
+
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 text-gray-600 hover:text-red-500 p-2 rounded-xl transition-colors"
+                disabled={signingOut}
+              >
+                {signingOut ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <LogOut size={16} />
+                )}
+              </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* MAIN */}
+      <main className="flex-1 flex flex-col">
+        {/* MOBILE HEADER */}
+        <header className="w-full bg-white border-b border-gray-100 p-3 md:hidden flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              className="p-2 rounded-xl bg-[#4eb0e3] text-white hover:bg-[#3ca0d4]"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={18} />
+            </button>
+
+            <div className="text-lg font-semibold">Admin Panel</div>
+          </div>
+
+          <button
+            onClick={handleSignOut}
+            className="p-2 rounded-xl hover:bg-gray-100"
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <LogOut size={18} />
+            )}
+          </button>
+        </header>
+
+        {/* PAGE BODY */}
+        <div className="p-3 md:p-6 flex-1 overflow-auto">
+          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 min-h-[80vh] overflow-x-auto">
+            <Outlet />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

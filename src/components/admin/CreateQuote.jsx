@@ -35,16 +35,14 @@ export default function CreateQuote() {
   const PRODUCT_LIMIT = 10;
   const [visibleCount] = useState(PRODUCT_LIMIT);
 
+  // Loading states
+  const [loadingData, setLoadingData] = useState(true);
+
   // Draft persistence
   const DRAFT_KEY = userId ? `quote_draft_${userId}` : null;
   const [draftReady, setDraftReady] = useState(false);
 
   /* ---------------- FETCH DATA ---------------- */
-
-  useEffect(() => {
-    fetchCustomers();
-    fetchProducts();
-  }, []);
 
   async function fetchCustomers() {
     const { data, error } = await supabase
@@ -52,15 +50,15 @@ export default function CreateQuote() {
       .select("id, name, phone, email, address, city")
       .order("name");
 
-    console.log("[fetchCustomers] result:", { data, error });
-
     if (error) {
+      console.error("[fetchCustomers] error:", error);
       toast.error("Failed to fetch customers");
-      return;
+      return [];
     }
 
-    setCustomers(data || []);
+    return data || [];
   }
+
   async function fetchProducts() {
     const { data, error } = await supabase
       .from("products")
@@ -70,11 +68,39 @@ export default function CreateQuote() {
     if (error) {
       console.error("[fetchProducts] error:", error);
       toast.error("Failed to fetch products");
-      return;
+      return [];
     }
 
-    setProducts(data || []);
+    return data || [];
   }
+
+  useEffect(() => {
+    if (!session) return;
+
+    let isMounted = true;
+
+    async function loadData() {
+      setLoadingData(true);
+
+      const [customersData, productsData] = await Promise.all([
+        fetchCustomers(),
+        fetchProducts(),
+      ]);
+
+      if (!isMounted) return;
+
+      setCustomers(customersData);
+      setProducts(productsData);
+
+      setLoadingData(false);
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session]);
 
   /* ---------------- DRAFT RESTORE ---------------- */
 
@@ -82,6 +108,7 @@ export default function CreateQuote() {
     if (!DRAFT_KEY) return;
 
     const saved = localStorage.getItem(DRAFT_KEY);
+
     if (!saved) {
       setDraftReady(true);
       return;
@@ -101,8 +128,9 @@ export default function CreateQuote() {
       setDiscountValue(draft.discountValue || 0);
       setValidUntil(draft.validUntil || "");
 
-      toast.message("Draft restored");
-    } catch {
+      toast.success("Draft restored");
+    } catch (err) {
+      console.error("[Draft Restore] Failed:", err);
       localStorage.removeItem(DRAFT_KEY);
     } finally {
       setDraftReady(true);
@@ -165,15 +193,19 @@ export default function CreateQuote() {
   }
 
   function updateItem(index, field, value) {
-    const copy = [...items];
-    copy[index][field] = value;
-    setItems(copy);
+    setItems((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
   }
 
   function toggleLock(index) {
-    const copy = [...items];
-    copy[index].locked = !copy[index].locked;
-    setItems(copy);
+    setItems((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], locked: !copy[index].locked };
+      return copy;
+    });
   }
 
   function removeItem(index) {
@@ -183,8 +215,6 @@ export default function CreateQuote() {
   /* ---------------- GUEST CUSTOMER ---------------- */
 
   async function createGuestCustomer() {
-    console.log("[createGuestCustomer] START", { guestName, guestPhone });
-
     if (
       !guestName ||
       !guestPhone ||
@@ -216,7 +246,6 @@ export default function CreateQuote() {
     const existing = existingList?.[0];
 
     if (existing) {
-      console.log("[createGuestCustomer] Guest exists:", existing);
       setCustomerId(existing.id);
       return existing.id;
     }
@@ -233,8 +262,6 @@ export default function CreateQuote() {
       })
       .select()
       .single();
-
-    console.log("[createGuestCustomer] Insert result:", { data, error });
 
     if (error) {
       console.error("[createGuestCustomer] insert error:", error);
@@ -270,46 +297,16 @@ export default function CreateQuote() {
   /* ---------------- SAVE ---------------- */
 
   async function saveQuote() {
-    console.log("[saveQuote] START", {
-      customerId,
-      guestName,
-      guestPhone,
-      guestEmail,
-      guestAddress,
-      guestCity,
-      itemsCount: items.length,
-      subtotal,
-      discountType,
-      discountValue,
-      discountAmount,
-      total,
-      validUntil,
-    });
-    console.log("[saveQuote] session:", session);
-
     try {
       let finalCustomerId = customerId;
 
       if (!finalCustomerId) {
-        console.log("[saveQuote] No customer selected -> creating guest...");
         finalCustomerId = await createGuestCustomer();
-
-        console.log(
-          "[saveQuote] createGuestCustomer returned:",
-          finalCustomerId,
-        );
-
-        if (!finalCustomerId) {
-          console.log(
-            "[saveQuote] Guest creation failed -> aborting quote save",
-          );
-          return;
-        }
+        if (!finalCustomerId) return;
       }
 
       if (items.length === 0) {
         toast.error("Add at least one product");
-        console.log("[saveQuote] No items selected -> aborting");
         return;
       }
 
@@ -330,15 +327,11 @@ export default function CreateQuote() {
         payment_status: "unpaid",
       };
 
-      console.log("[saveQuote] Inserting order payload:", payload);
-
       const { data: quote, error: quoteError } = await supabase
         .from("orders")
         .insert(payload)
         .select()
         .single();
-
-      console.log("[saveQuote] Insert order result:", { quote, quoteError });
 
       if (quoteError) {
         console.error("[saveQuote] Failed to insert quote:", quoteError);
@@ -353,20 +346,9 @@ export default function CreateQuote() {
         price: Number(i.price),
       }));
 
-      console.log(
-        "[saveQuote] Inserting order_items payload:",
-        orderItemsPayload,
-      );
-
-      const { data: insertedItems, error: itemsError } = await supabase
+      const { error: itemsError } = await supabase
         .from("order_items")
-        .insert(orderItemsPayload)
-        .select();
-
-      console.log("[saveQuote] Insert order_items result:", {
-        insertedItems,
-        itemsError,
-      });
+        .insert(orderItemsPayload);
 
       if (itemsError) {
         console.error("[saveQuote] Failed to insert order_items:", itemsError);
@@ -376,19 +358,18 @@ export default function CreateQuote() {
 
       toast.success("Quotation created");
 
-      console.log("[saveQuote] SUCCESS quote created:", quote);
-
       if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
 
       setItems([]);
       setCustomerId("");
       setGuestName("");
       setGuestPhone("");
+      setGuestEmail("");
+      setGuestAddress("");
+      setGuestCity("");
       setDiscountType("none");
       setDiscountValue(0);
       setValidUntil("");
-
-      console.log("[saveQuote] Reset form done");
     } catch (err) {
       console.error("[saveQuote] UNHANDLED ERROR:", err);
       toast.error("Unexpected error while saving quotation");
@@ -402,6 +383,32 @@ export default function CreateQuote() {
     return list.slice(0, visibleCount);
   }, [products, search, visibleCount]);
 
+  /* ---------------- UI LOADING GUARD ---------------- */
+
+  if (!session) {
+    return (
+      <div className="max-w-5xl mx-auto px-3 md:px-0 py-10 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto" />
+          <p className="text-gray-500 text-sm">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadingData) {
+    return (
+      <div className="max-w-5xl mx-auto px-3 md:px-0 py-10 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto" />
+          <p className="text-gray-500 text-sm">
+            Loading products & customers...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   /* ---------------- UI ---------------- */
 
   return (
@@ -412,7 +419,7 @@ export default function CreateQuote() {
       <div className="space-y-2">
         <label className="text-sm font-medium">Customer</label>
         <select
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded-xl px-3 py-2 bg-white"
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
         >
@@ -428,8 +435,9 @@ export default function CreateQuote() {
 
       {/* GUEST */}
       {!customerId && (
-        <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
+        <div className="border rounded-2xl p-4 space-y-3 bg-gray-50">
           <p className="font-medium">Guest customer</p>
+
           <Input
             placeholder="Guest name"
             value={guestName}
@@ -479,67 +487,249 @@ export default function CreateQuote() {
 
       {/* SELECTED ITEMS */}
       <div className="space-y-4">
+        {/* HEADER */}
+        <div
+          className="hidden md:grid grid-cols-[80px_1fr_110px_140px_90px] items-center gap-4 
+    px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide"
+        >
+          <div></div>
+          <div>Product</div>
+          <div className="text-center">Qty</div>
+          <div className="text-center">Unit Price</div>
+          <div className="text-right">Actions</div>
+        </div>
+
         {items.map((item, i) => (
-          <div
-            key={i}
-            className="border rounded-lg p-3 flex flex-col md:flex-row gap-4"
-          >
-            <div className="relative w-full md:w-20 h-40 md:h-20">
-              <img
-                src={
-                  item.image_url
-                    ? encodeURI(item.image_url)
-                    : "/placeholder.png"
-                }
-                alt={item.name}
-                onError={(e) => {
-                  e.currentTarget.src = "/placeholder.png";
-                }}
-                className="w-full h-full object-cover rounded border"
-              />
+          <div key={i}>
+            {/* ===================== DESKTOP LAYOUT ===================== */}
+            <div
+              className="hidden md:grid grid-cols-[80px_1fr_140px_160px_90px] items-center gap-4 
+      rounded-2xl border bg-white p-4 shadow-sm hover:shadow-md transition"
+            >
+              {/* IMAGE */}
+              <div className="w-16 h-16 rounded-xl overflow-hidden border bg-gray-50 flex items-center justify-center">
+                <img
+                  src={item.image_url || "/placeholder.png"}
+                  alt={item.name}
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.png";
+                  }}
+                  className="w-full h-full object-contain"
+                />
+              </div>
 
-              {!item.image_url && (
-                <span className="absolute bottom-1 right-1 text-[10px] bg-gray-700 text-white px-1 rounded">
-                  No image
-                </span>
-              )}
+              {/* NAME + TOTAL */}
+              <div className="space-y-1">
+                <p className="font-semibold text-gray-900">{item.name}</p>
+                <p className="text-sm text-gray-500">
+                  Total:{" "}
+                  <span className="font-semibold text-gray-900">
+                    KES{" "}
+                    {(
+                      Number(item.price) * Number(item.quantity)
+                    ).toLocaleString()}
+                  </span>
+                </p>
+              </div>
+
+              {/* QTY */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden h-10">
+                  <button
+                    type="button"
+                    className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition font-bold"
+                    onClick={() =>
+                      updateItem(
+                        i,
+                        "quantity",
+                        Math.max(1, Number(item.quantity) - 1),
+                      )
+                    }
+                  >
+                    −
+                  </button>
+
+                  <input
+                    type="text"
+                    value={item.quantity}
+                    readOnly
+                    className="w-12 h-10 text-center bg-transparent outline-none font-semibold text-gray-900"
+                  />
+
+                  <button
+                    type="button"
+                    className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition font-bold"
+                    onClick={() =>
+                      updateItem(i, "quantity", Number(item.quantity) + 1)
+                    }
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* PRICE */}
+              <div className="flex flex-col items-center">
+                <Input
+                  type="number"
+                  value={item.price}
+                  disabled={item.locked}
+                  onChange={(e) => updateItem(i, "price", e.target.value)}
+                  className={`w-36 h-10 rounded-xl text-center font-semibold border-gray-200 transition
+            focus:ring-2 focus:ring-blue-200 focus:border-blue-400
+            ${
+              item.locked
+                ? "bg-gray-100 cursor-not-allowed opacity-70"
+                : "bg-gray-50 focus:bg-white"
+            }
+          `}
+                />
+              </div>
+
+              {/* ACTIONS */}
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  className="rounded-full hover:bg-gray-100"
+                  onClick={() => toggleLock(i)}
+                >
+                  {item.locked ? <Lock size={18} /> : <Unlock size={18} />}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="rounded-full hover:bg-red-50 hover:text-red-600"
+                  onClick={() => removeItem(i)}
+                >
+                  <Trash2 size={18} />
+                </Button>
+              </div>
             </div>
 
-            <div className="flex-1 space-y-1">
-              <p className="font-medium">{item.name}</p>
-              <p className="text-sm text-gray-500">Unit price: {item.price}</p>
-            </div>
+            {/* ===================== MOBILE LAYOUT ===================== */}
+            <div className="md:hidden rounded-2xl border bg-white p-4 shadow-sm space-y-4">
+              {/* TOP ROW */}
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-xl overflow-hidden border bg-gray-50 flex items-center justify-center shrink-0">
+                  <img
+                    src={item.image_url || "/placeholder.png"}
+                    alt={item.name}
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.png";
+                    }}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
-              <Input
-                type="number"
-                value={item.quantity}
-                onChange={(e) => updateItem(i, "quantity", e.target.value)}
-              />
-              <Input
-                type="number"
-                disabled={item.locked}
-                value={item.price}
-                onChange={(e) => updateItem(i, "price", e.target.value)}
-              />
-            </div>
+                <div className="flex-1 space-y-1">
+                  <p className="font-semibold text-gray-900 leading-snug">
+                    {item.name}
+                  </p>
 
-            <div className="flex md:flex-col gap-2">
-              <Button variant="ghost" onClick={() => toggleLock(i)}>
-                {item.locked ? <Lock size={16} /> : <Unlock size={16} />}
-              </Button>
-              <Button variant="ghost" onClick={() => removeItem(i)}>
-                <Trash2 size={16} />
-              </Button>
+                  <p className="text-sm text-gray-500">
+                    Total:{" "}
+                    <span className="font-semibold text-gray-900">
+                      KES{" "}
+                      {(
+                        Number(item.price) * Number(item.quantity)
+                      ).toLocaleString()}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* QTY + PRICE */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* QTY */}
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">Qty</label>
+
+                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden h-10 justify-between">
+                    <button
+                      type="button"
+                      className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition font-bold"
+                      onClick={() =>
+                        updateItem(
+                          i,
+                          "quantity",
+                          Math.max(1, Number(item.quantity) - 1),
+                        )
+                      }
+                    >
+                      −
+                    </button>
+
+                    <input
+                      type="text"
+                      value={item.quantity}
+                      readOnly
+                      className="w-full h-10 text-center bg-transparent outline-none font-semibold text-gray-900"
+                    />
+
+                    <button
+                      type="button"
+                      className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition font-bold"
+                      onClick={() =>
+                        updateItem(i, "quantity", Number(item.quantity) + 1)
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* PRICE */}
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">
+                    Unit Price
+                  </label>
+
+                  <Input
+                    type="number"
+                    value={item.price}
+                    disabled={item.locked}
+                    onChange={(e) => updateItem(i, "price", e.target.value)}
+                    className={`w-full h-10 rounded-xl text-center font-semibold border-gray-200 transition
+              focus:ring-2 focus:ring-blue-200 focus:border-blue-400
+              ${
+                item.locked
+                  ? "bg-gray-100 cursor-not-allowed opacity-70"
+                  : "bg-gray-50 focus:bg-white"
+              }
+            `}
+                  />
+                </div>
+              </div>
+
+              {/* ACTIONS */}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  className="rounded-full hover:bg-gray-100"
+                  onClick={() => toggleLock(i)}
+                >
+                  {item.locked ? <Lock size={18} /> : <Unlock size={18} />}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="rounded-full hover:bg-red-50 hover:text-red-600"
+                  onClick={() => removeItem(i)}
+                >
+                  <Trash2 size={18} />
+                </Button>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       {/* TOTALS */}
-      <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
-        <p>Subtotal: {subtotal.toFixed(2)}</p>
-        <p className="text-lg font-bold">Total: {total.toFixed(2)}</p>
+      <div className="border rounded-2xl p-4 bg-gray-50">
+        <p className="text-gray-700">Subtotal: {subtotal.toFixed(2)}</p>
+        <p className="text-xl font-bold text-gray-900">
+          Total: {total.toFixed(2)}
+        </p>
       </div>
 
       <Button size="lg" className="w-full md:w-auto" onClick={saveQuote}>

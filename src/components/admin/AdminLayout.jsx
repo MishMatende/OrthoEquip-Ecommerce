@@ -3,7 +3,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/CartContext"; // <-- make sure path matches your project
+import { useCart } from "../../context/CartContext";
 import {
   LogOut,
   Menu,
@@ -20,9 +20,11 @@ import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const { userProfile, signoutUser } = UserAuth();
-  const { clearCart } = useCart(); // call to clear cart on logout
+  const { clearCart } = useCart();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false); // spinner state
+  const [signingOut, setSigningOut] = useState(false);
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -47,46 +49,39 @@ export default function AdminLayout() {
     { name: "Settings", path: "/admin/settings", icon: <Settings size={18} /> },
   ];
 
-  // sign out handler: shows spinner, clears cart, shows toast
   async function handleSignOut() {
     try {
       setSigningOut(true);
 
-      if (typeof signoutUser === "function") {
-        const res = await signoutUser();
-        if (res?.ok) {
-          // clear client & server cart if available
-          try {
-            await clearCart(); // best-effort; clearCart should handle auth/no-auth internally
-          } catch (e) {
-            console.warn("clearCart failed during signout:", e);
-          }
-          setSidebarOpen(false);
-          navigate("/signin", {
-            state: { message: "Signed out successfully" },
-          });
-        } else {
-          console.error("signout failed", res?.error);
-          toast.error("Sign out failed — please try again");
-          // fallback navigate
-          navigate("/signin", {
-            state: { message: "Signed out successfully" },
-          });
+      const res = await signoutUser();
+
+      if (res?.ok) {
+        try {
+          await clearCart();
+        } catch (err) {
+          console.warn("clearCart failed:", err);
         }
+
+        toast.success("Signed out successfully");
+        setSidebarOpen(false);
+
+        navigate("/signin", { replace: true });
       } else {
-        navigate("/signin", { state: { message: "Signed out successfully" } });
+        toast.error("Sign out failed — please try again");
+        navigate("/signin", { replace: true });
       }
     } catch (err) {
       console.error("Sign out failed:", err);
       toast.error("Sign out failed — please try again");
-      navigate("/signin", { state: { message: "Signed out successfully" } });
+      navigate("/signin", { replace: true });
     } finally {
       setSigningOut(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50 items-stretch">
+    <div className="min-h-screen flex bg-gray-50">
+      {/* BACKDROP (mobile only) */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.button
@@ -101,25 +96,73 @@ export default function AdminLayout() {
         )}
       </AnimatePresence>
 
+      {/* SIDEBAR (desktop always visible) */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col shadow-sm sticky top-0 h-screen">
+        <div className="px-5 py-4 text-xl font-bold border-b border-gray-100">
+          Admin Panel
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-4 px-2">
+          <ul className="space-y-2">
+            {navItems.map((item) => (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  end={item.path === "/admin"}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2 rounded-xl transition-colors duration-150 ${
+                      isActive
+                        ? "bg-[#4eb0e3] text-white shadow-sm"
+                        : "text-gray-700 hover:bg-gray-100 hover:text-[#4eb0e3]"
+                    }`
+                  }
+                >
+                  {item.icon}
+                  <span className="text-sm font-medium truncate">
+                    {item.name}
+                  </span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
+          <span className="truncate text-xs max-w-[140px]">
+            {userProfile?.email || "No email"}
+          </span>
+
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 text-gray-600 hover:text-red-500 p-2 rounded-xl transition-colors"
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : (
+              <LogOut size={16} />
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {/* MOBILE SIDEBAR */}
       <AnimatePresence>
-        {(sidebarOpen ||
-          (typeof window !== "undefined" && window.innerWidth >= 768)) && (
+        {sidebarOpen && (
           <motion.aside
-            key="admin-sidebar"
+            key="mobile-sidebar"
             initial={{ x: -320 }}
             animate={{ x: 0 }}
             exit={{ x: -320 }}
             transition={{ type: "spring", stiffness: 120, damping: 18 }}
-            className="fixed md:sticky z-30 top-0 left-0 min-h-screen
- w-64 bg-white text-gray-800 flex flex-col shadow-lg border-r border-gray-200"
-            aria-label="Admin sidebar"
+            className="fixed z-30 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg md:hidden"
           >
-            <div className="px-5 py-4 text-2xl font-bold border-b border-gray-100 flex justify-between items-center">
+            <div className="px-5 py-4 text-xl font-bold border-b border-gray-100 flex justify-between items-center">
               <span className="truncate">Admin Panel</span>
+
               <button
-                className="md:hidden text-gray-600 hover:text-[#4eb0e3]"
+                className="text-gray-600 hover:text-[#4eb0e3]"
                 onClick={() => setSidebarOpen(false)}
-                aria-label="Close sidebar"
               >
                 <X size={20} />
               </button>
@@ -134,7 +177,7 @@ export default function AdminLayout() {
                       end={item.path === "/admin"}
                       onClick={() => setSidebarOpen(false)}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors duration-150 ${
+                        `flex items-center gap-3 px-4 py-2 rounded-xl transition-colors duration-150 ${
                           isActive
                             ? "bg-[#4eb0e3] text-white shadow-sm"
                             : "text-gray-700 hover:bg-gray-100 hover:text-[#4eb0e3]"
@@ -152,17 +195,13 @@ export default function AdminLayout() {
             </nav>
 
             <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex-1 truncate text-xs">
-                  {userProfile?.email || "No email"}
-                </div>
-              </div>
+              <span className="truncate text-xs max-w-[140px]">
+                {userProfile?.email || "No email"}
+              </span>
 
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 text-gray-600 hover:text-red-500 p-2 rounded-md transition-colors"
-                title="Sign out"
-                aria-label="Sign out"
+                className="flex items-center gap-2 text-gray-600 hover:text-red-500 p-2 rounded-xl transition-colors"
                 disabled={signingOut}
               >
                 {signingOut ? (
@@ -170,18 +209,19 @@ export default function AdminLayout() {
                 ) : (
                   <LogOut size={16} />
                 )}
-                <span className="hidden md:inline text-xs">Sign out</span>
               </button>
             </div>
           </motion.aside>
         )}
       </AnimatePresence>
 
+      {/* MAIN */}
       <main className="flex-1 flex flex-col">
+        {/* MOBILE HEADER */}
         <header className="w-full bg-white border-b border-gray-100 p-3 md:hidden flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              className="p-2 rounded-md bg-[#4eb0e3] text-white hover:bg-[#3ca0d4]"
+              className="p-2 rounded-xl bg-[#4eb0e3] text-white hover:bg-[#3ca0d4]"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open menu"
             >
@@ -191,22 +231,20 @@ export default function AdminLayout() {
             <div className="text-lg font-semibold">Admin Panel</div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSignOut}
-              className="p-2 rounded-md hover:bg-gray-100"
-              aria-label="Sign out"
-              disabled={signingOut}
-            >
-              {signingOut ? (
-                <Loader2 className="animate-spin" size={18} />
-              ) : (
-                <LogOut size={18} />
-              )}
-            </button>
-          </div>
+          <button
+            onClick={handleSignOut}
+            className="p-2 rounded-xl hover:bg-gray-100"
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <LogOut size={18} />
+            )}
+          </button>
         </header>
 
+        {/* PAGE BODY */}
         <div className="p-3 md:p-6 flex-1 overflow-auto">
           <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 min-h-[80vh] overflow-x-auto">
             <Outlet />

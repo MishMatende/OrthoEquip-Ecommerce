@@ -1,12 +1,12 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext();
 
 export const AuthContextProvider = ({ children }) => {
-  const [session, setSession] = useState(undefined);
+  const [session, setSession] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   const [userProfile, setUserProfile] = useState(null);
@@ -15,6 +15,9 @@ export const AuthContextProvider = ({ children }) => {
   const [showPhoneModal, setShowPhoneModal] = useState(false);
 
   const navigate = useNavigate();
+
+  // prevents double profile fetch race conditions
+  const profileFetchLock = useRef(false);
 
   /* -------------------- SIGN UP -------------------- */
   const signupNewUser = async (email, password) => {
@@ -68,6 +71,10 @@ export const AuthContextProvider = ({ children }) => {
       return null;
     }
 
+    // prevents multiple fetch calls stacking
+    if (profileFetchLock.current) return userProfile;
+
+    profileFetchLock.current = true;
     setLoadingProfile(true);
 
     try {
@@ -78,14 +85,7 @@ export const AuthContextProvider = ({ children }) => {
         .single();
 
       if (error) {
-        if (
-          error.message?.toLowerCase().includes("fetch") ||
-          error.message?.toLowerCase().includes("network")
-        ) {
-          throw new TypeError("Network error while fetching profile");
-        }
-
-        console.error("Fetch profile error:", error);
+        console.error("[fetchUserProfile] error:", error);
         setUserProfile(null);
         return null;
       }
@@ -105,10 +105,11 @@ export const AuthContextProvider = ({ children }) => {
 
       return data;
     } catch (err) {
-      console.error("fetchUserProfile failed:", err);
+      console.error("[fetchUserProfile] crash:", err);
       setUserProfile(null);
       return null;
     } finally {
+      profileFetchLock.current = false;
       setLoadingProfile(false);
     }
   };
@@ -117,19 +118,19 @@ export const AuthContextProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    const loadSession = async () => {
+    async function initAuth() {
+      setLoadingAuth(true);
+
       try {
-        const {
-          data: { session: initialSession },
-          error,
-        } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
         if (error) {
-          console.error("Get session error:", error);
+          console.error("[AuthContext] getSession error:", error);
         }
 
+        const initialSession = data?.session || null;
         setSession(initialSession);
 
         if (initialSession?.user) {
@@ -139,55 +140,44 @@ export const AuthContextProvider = ({ children }) => {
           setLoadingProfile(false);
         }
       } catch (err) {
-        console.error("Get session crash:", err);
+        console.error("[AuthContext] getSession crash:", err);
         setSession(null);
         setUserProfile(null);
         setLoadingProfile(false);
       } finally {
         if (mounted) setLoadingAuth(false);
       }
-    };
+    }
 
-    loadSession();
+    initAuth();
 
-    const { data } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mounted) return;
 
+        console.log("[AuthContext] Auth event:", event);
+
+        // important: show loading during refresh events
         setSession(newSession);
+        setLoadingAuth(false);
 
         if (newSession?.user) {
-          const profile = await fetchUserProfile(newSession.user.id);
-
-          if (event === "SIGNED_IN" && profile?.is_admin) {
-            navigate("/admin");
-          }
-        } else {
-          setUserProfile(null);
-          setShowPhoneModal(false);
-          sessionStorage.removeItem("profileModalShown");
-          setLoadingProfile(false);
+          fetchUserProfile(newSession.user.id);
         }
-
-        setLoadingAuth(false);
       },
     );
 
     return () => {
       mounted = false;
-      try {
-        if (data?.subscription?.unsubscribe) {
-          data.subscription.unsubscribe();
-        } else if (typeof data?.unsubscribe === "function") {
-          data.unsubscribe();
-        }
-      } catch {}
+      authListener?.subscription?.unsubscribe();
     };
   }, [navigate]);
 
   /* -------------------- SIGN OUT -------------------- */
   const signoutUser = async () => {
     try {
+      setLoadingAuth(true);
+
       // instant UI feedback
       setSession(null);
       setUserProfile(null);
@@ -196,9 +186,12 @@ export const AuthContextProvider = ({ children }) => {
       sessionStorage.removeItem("profileModalShown");
 
       await supabase.auth.signOut();
+
+      setLoadingAuth(false);
       return { ok: true };
     } catch (err) {
       console.error("Sign out failed:", err);
+      setLoadingAuth(false);
       return { ok: false, error: err.message };
     }
   };

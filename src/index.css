@@ -1,8 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 @custom-variant dark (&:is(.dark *));
 
@@ -186,7 +183,9 @@ body,
   color: white;
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .base-button:hover {
@@ -208,4 +207,17 @@ body,
 .base-button.outline:hover {
   background-color: #056eb1;
   color: white;
+}
+
+/* Remove number input arrows (Chrome, Safari, Edge) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Remove number input arrows (Firefox) */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
 }
