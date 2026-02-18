@@ -1,255 +1,440 @@
-// src/components/admin/AdminLayout.jsx
-import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { UserAuth } from "../../context/AuthContext";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { supabase } from "../../supabaseClient";
 import { useCart } from "../../context/CartContext";
-import {
-  LogOut,
-  Menu,
-  X,
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  BarChart2,
-  Settings,
-  Loader2,
-  MessageCircle,
-} from "lucide-react";
+import { UserAuth } from "../../context/AuthContext";
+import { Button } from "../../components/ui/button";
+import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
+import { Loader2, ArrowLeft, Info } from "lucide-react";
 import toast from "react-hot-toast";
 
-export default function AdminLayout() {
-  const { userProfile, signoutUser } = UserAuth();
-  const { clearCart } = useCart();
+const FORM_STORAGE_KEY = "checkout_form";
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-
-  const location = useLocation();
+export default function Checkout() {
+  const { cart } = useCart();
+  const { session } = UserAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const buyNowData = location.state?.buyNow ? location.state : null;
+
+  const [form, setForm] = useState({
+    email: "",
+    phone: "",
+    firstName: "",
+    lastName: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    shippingMethod: "Pick up (CBD)",
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  const activeCart = buyNowData
+    ? [
+        {
+          product_id: buyNowData.product.id,
+          products: buyNowData.product,
+          quantity: buyNowData.quantity,
+        },
+      ]
+    : cart;
+
+  /* ------------------ FORM PERSISTENCE ------------------ */
 
   useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+    const saved = localStorage.getItem(FORM_STORAGE_KEY);
+    if (saved) setForm(JSON.parse(saved));
+  }, []);
 
-  const navItems = [
-    { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={18} /> },
-    { name: "Products", path: "/admin/products", icon: <Package size={18} /> },
-    { name: "Orders", path: "/admin/orders", icon: <ShoppingCart size={18} /> },
-    {
-      name: "Quotations",
-      path: "/admin/quotes",
-      icon: <MessageCircle size={18} />,
-    },
-    {
-      name: "Analytics",
-      path: "/admin/analytics",
-      icon: <BarChart2 size={18} />,
-    },
-    { name: "Settings", path: "/admin/settings", icon: <Settings size={18} /> },
-  ];
+  useEffect(() => {
+    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
+  }, [form]);
 
-  async function handleSignOut() {
-    try {
-      setSigningOut(true);
+  /* ------------------ SESSION ------------------ */
 
-      const res = await signoutUser();
+  useEffect(() => {
+    if (session?.user?.email) {
+      setForm((p) => ({ ...p, email: session.user.email }));
+    }
+  }, [session]);
 
-      if (res?.ok) {
-        try {
-          await clearCart();
-        } catch (err) {
-          console.warn("clearCart failed:", err);
+  /* ------------------ LOAD PROFILE ------------------ */
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!session?.user?.id) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("phone, username")
+        .eq("id", session.user.id)
+        .single();
+
+      if (error) {
+        console.warn("PROFILE LOAD ERROR:", error.message);
+        return;
+      }
+
+      if (!data) return;
+
+      setForm((p) => {
+        const updated = { ...p };
+
+        if (!p.phone && data.phone) updated.phone = data.phone;
+
+        if ((!p.firstName || !p.lastName) && data.username) {
+          const parts = data.username.trim().split(" ");
+          updated.firstName = p.firstName || parts[0] || "";
+          updated.lastName = p.lastName || parts.slice(1).join(" ") || "";
         }
 
-        toast.success("Signed out successfully");
-        setSidebarOpen(false);
+        return updated;
+      });
+    };
 
-        navigate("/signin", { replace: true });
-      } else {
-        toast.error("Sign out failed — please try again");
-        navigate("/signin", { replace: true });
-      }
-    } catch (err) {
-      console.error("Sign out failed:", err);
-      toast.error("Sign out failed — please try again");
-      navigate("/signin", { replace: true });
-    } finally {
-      setSigningOut(false);
+    loadProfile();
+  }, [session]);
+
+  useEffect(() => {
+    if (!activeCart.length) navigate("/cart");
+  }, [activeCart, navigate]);
+
+  /* ------------------ HELPERS ------------------ */
+
+  const normalizePhone = (phone) => {
+    let p = phone.trim();
+
+    if (p.startsWith("0")) p = "254" + p.slice(1);
+    if (p.startsWith("+")) p = p.slice(1);
+
+    return p;
+  };
+
+  const total = activeCart.reduce((sum, item) => {
+    const price = item.products?.price || item.price_at_add || 0;
+    return sum + price * item.quantity;
+  }, 0);
+
+  const validateFields = () => {
+    const required = [form.email, form.phone, form.firstName, form.lastName];
+
+    if (form.shippingMethod === "Delivery") {
+      required.push(form.address, form.city, form.postalCode);
     }
-  }
+
+    return required.every((f) => f.trim() !== "");
+  };
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  /* ------------------ PLACE ORDER ------------------ */
+
+  const handlePlaceOrder = async (e) => {
+    e.preventDefault();
+
+    if (!session) {
+      toast.error("Please sign in");
+      return;
+    }
+
+    if (!validateFields()) {
+      toast.error("Fill in all required fields");
+      return;
+    }
+
+    if (!activeCart.length) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const username = `${form.firstName} ${form.lastName}`.trim();
+
+      // Save profile phone + username
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: session.user.id,
+          phone: form.phone,
+          username: username || null,
+        },
+        { onConflict: "id" },
+      );
+
+      if (profileError) {
+        console.error("PROFILE UPSERT ERROR:", profileError);
+        throw profileError;
+      }
+
+      // Build shipping address
+      const shippingAddress = `
+${form.firstName} ${form.lastName}
+${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
+${form.city || ""}
+Postal: ${form.postalCode || ""}
+Phone: ${form.phone}
+`.trim();
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: session.user.id,
+          total_amount: total,
+          status: "pending_verification",
+          payment_provider: "intasend",
+          payment_reference: crypto.randomUUID().slice(0, 10),
+          shipping_address: shippingAddress,
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error("ORDER INSERT ERROR:", orderError);
+        throw orderError;
+      }
+
+      // Insert order items
+      const itemsToInsert = activeCart.map((item) => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.products?.price || item.price_at_add || 0,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(itemsToInsert);
+
+      if (itemsError) {
+        console.error("ORDER ITEMS ERROR:", itemsError);
+        throw itemsError;
+      }
+
+      // Call Edge Function for STK Push
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "intasend-wallet-stk",
+        {
+          body: {
+            order_id: order.id,
+            amount: total,
+            phone: normalizePhone(form.phone),
+            email: form.email,
+            name: username || "Customer",
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      );
+
+      console.log("FUNCTION DATA:", data);
+      console.log("FUNCTION ERROR:", fnError);
+
+      // Handle Supabase edge function weirdness:
+      // Sometimes fnError exists but response is actually okay.
+      if (!data?.success) {
+        const msg =
+          data?.error ||
+          fnError?.message ||
+          "STK Push failed. Please try again.";
+
+        throw new Error(msg);
+      }
+
+      toast.success("Check your phone for the M-PESA STK prompt");
+
+      localStorage.removeItem(FORM_STORAGE_KEY);
+
+      setLoading(false);
+
+      // Redirect to confirmation page
+      navigate(`/order-confirmation/${order.id}`);
+    } catch (err) {
+      console.error("CHECKOUT ERROR:", err);
+      setLoading(false);
+      toast.error(err.message || "Payment initiation failed");
+    }
+  };
+
+  /* ------------------ UI ------------------ */
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* BACKDROP (mobile only) */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.button
-            type="button"
-            aria-hidden
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-20 bg-black/40 md:hidden"
+    <div className="min-h-screen bg-blue-50">
+      <header className="bg-white border-b">
+        <div className="max-w-5xl mx-auto p-4 flex justify-between">
+          <div className="flex items-center space-x-2">
+            <img
+              src={BalmOrthoLogo}
+              className="h-[50px]"
+              alt="Balm Ortho Medical Supplies"
+            />
+            <Link to="/" className="text-xl font-semibold md:text-2xl">
+              Balm Ortho Medical Supplies
+            </Link>
+          </div>
+
+          <button onClick={() => navigate("/shop")}>
+            <ArrowLeft className="w-4 h-4 inline" /> Shop
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-10 p-6">
+        {/* ------------------ FORM ------------------ */}
+        <form
+          onSubmit={handlePlaceOrder}
+          className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border space-y-6"
+        >
+          <h2 className="font-semibold text-lg">Contact</h2>
+
+          <input
+            name="email"
+            value={form.email}
+            readOnly
+            className="w-full border rounded-lg px-4 py-3 bg-gray-50"
           />
-        )}
-      </AnimatePresence>
 
-      {/* SIDEBAR (desktop always visible) */}
-      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col shadow-sm sticky top-0 h-screen">
-        <div className="px-5 py-4 text-xl font-bold border-b border-gray-100">
-          Admin Panel
-        </div>
+          <input
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            placeholder="Phone e.g. 2547XXXXXXXX"
+            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500"
+          />
 
-        <nav className="flex-1 overflow-y-auto py-4 px-2">
-          <ul className="space-y-2">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  end={item.path === "/admin"}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-2 rounded-xl transition-colors duration-150 ${
-                      isActive
-                        ? "bg-[#4eb0e3] text-white shadow-sm"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-[#4eb0e3]"
-                    }`
+          {/* INFO NOTE */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+            <div className="flex gap-3">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+              <div className="text-sm text-blue-800 space-y-1">
+                <p className="font-medium">
+                  Secure M-PESA payment via IntaSend
+                </p>
+                <p>
+                  We use <span className="font-semibold">IntaSend</span> to
+                  initiate an M-PESA STK push.
+                </p>
+                <p>
+                  Please confirm the phone number above is the number you’ll use
+                  to complete payment.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <h2 className="font-semibold text-lg">Recipient</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              name="firstName"
+              value={form.firstName}
+              onChange={handleChange}
+              placeholder="First name"
+              className="border rounded-lg px-4 py-3"
+            />
+            <input
+              name="lastName"
+              value={form.lastName}
+              onChange={handleChange}
+              placeholder="Last name"
+              className="border rounded-lg px-4 py-3"
+            />
+          </div>
+
+          <h2 className="font-semibold text-lg">Shipping</h2>
+          <select
+            name="shippingMethod"
+            value={form.shippingMethod}
+            onChange={handleChange}
+            className="border rounded-lg px-4 py-3 w-full"
+          >
+            <option>Pick up (CBD)</option>
+            <option>Delivery</option>
+          </select>
+
+          {form.shippingMethod === "Delivery" && (
+            <>
+              <input
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                placeholder="Address"
+                className="border rounded-lg px-4 py-3 w-full"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="city"
+                  value={form.city}
+                  onChange={handleChange}
+                  placeholder="City"
+                  className="border rounded-lg px-4 py-3"
+                />
+                <input
+                  name="postalCode"
+                  value={form.postalCode}
+                  onChange={handleChange}
+                  placeholder="Postal"
+                  className="border rounded-lg px-4 py-3"
+                />
+              </div>
+            </>
+          )}
+
+          <Button disabled={loading} type="submit" className="w-full">
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Pay with M-PESA (STK Push)
+          </Button>
+        </form>
+
+        {/* ------------------ SUMMARY ------------------ */}
+        <aside className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border">
+          <h2 className="font-semibold mb-6 text-lg">Order Summary</h2>
+
+          <div className="space-y-4">
+            {activeCart.map((i) => (
+              <div
+                key={i.product_id}
+                className="flex items-center gap-4 border-b pb-4 last:border-b-0"
+              >
+                <img
+                  src={
+                    i.products?.image_url ||
+                    "https://via.placeholder.com/80?text=No+Image"
                   }
-                >
-                  {item.icon}
-                  <span className="text-sm font-medium truncate">
-                    {item.name}
+                  alt={i.products?.name || "Product"}
+                  className="w-16 h-16 rounded-lg object-cover border"
+                />
+
+                <div className="flex-1">
+                  <p className="font-medium">{i.products?.name}</p>
+                  <p className="text-sm text-gray-500">
+                    KES {Number(i.products?.price || 0).toLocaleString()} each
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-flex bg-gray-100 rounded-full px-3 py-1 text-sm font-medium">
+                    × {i.quantity}
                   </span>
-                </NavLink>
-              </li>
+                  <p className="mt-2 font-semibold">
+                    KES{" "}
+                    {(
+                      Number(i.products?.price || 0) * Number(i.quantity || 0)
+                    ).toLocaleString()}
+                  </p>
+                </div>
+              </div>
             ))}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
-          <span className="truncate text-xs max-w-[140px]">
-            {userProfile?.email || "No email"}
-          </span>
-
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 text-gray-600 hover:text-red-500 p-2 rounded-xl transition-colors"
-            disabled={signingOut}
-          >
-            {signingOut ? (
-              <Loader2 className="animate-spin" size={16} />
-            ) : (
-              <LogOut size={16} />
-            )}
-          </button>
-        </div>
-      </aside>
-
-      {/* MOBILE SIDEBAR */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.aside
-            key="mobile-sidebar"
-            initial={{ x: -320 }}
-            animate={{ x: 0 }}
-            exit={{ x: -320 }}
-            transition={{ type: "spring", stiffness: 120, damping: 18 }}
-            className="fixed z-30 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg md:hidden"
-          >
-            <div className="px-5 py-4 text-xl font-bold border-b border-gray-100 flex justify-between items-center">
-              <span className="truncate">Admin Panel</span>
-
-              <button
-                className="text-gray-600 hover:text-[#4eb0e3]"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <nav className="flex-1 overflow-y-auto py-4 px-2">
-              <ul className="space-y-2">
-                {navItems.map((item) => (
-                  <li key={item.path}>
-                    <NavLink
-                      to={item.path}
-                      end={item.path === "/admin"}
-                      onClick={() => setSidebarOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-2 rounded-xl transition-colors duration-150 ${
-                          isActive
-                            ? "bg-[#4eb0e3] text-white shadow-sm"
-                            : "text-gray-700 hover:bg-gray-100 hover:text-[#4eb0e3]"
-                        }`
-                      }
-                    >
-                      {item.icon}
-                      <span className="text-sm font-medium truncate">
-                        {item.name}
-                      </span>
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
-              <span className="truncate text-xs max-w-[140px]">
-                {userProfile?.email || "No email"}
-              </span>
-
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 text-gray-600 hover:text-red-500 p-2 rounded-xl transition-colors"
-                disabled={signingOut}
-              >
-                {signingOut ? (
-                  <Loader2 className="animate-spin" size={16} />
-                ) : (
-                  <LogOut size={16} />
-                )}
-              </button>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      {/* MAIN */}
-      <main className="flex-1 flex flex-col">
-        {/* MOBILE HEADER */}
-        <header className="w-full bg-white border-b border-gray-100 p-3 md:hidden flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              className="p-2 rounded-xl bg-[#4eb0e3] text-white hover:bg-[#3ca0d4]"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open menu"
-            >
-              <Menu size={18} />
-            </button>
-
-            <div className="text-lg font-semibold">Admin Panel</div>
           </div>
 
-          <button
-            onClick={handleSignOut}
-            className="p-2 rounded-xl hover:bg-gray-100"
-            disabled={signingOut}
-          >
-            {signingOut ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <LogOut size={18} />
-            )}
-          </button>
-        </header>
-
-        {/* PAGE BODY */}
-        <div className="p-3 md:p-6 flex-1 overflow-auto">
-          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 min-h-[80vh] overflow-x-auto">
-            <Outlet />
+          <div className="border-t mt-6 pt-6 flex justify-between text-lg font-bold">
+            <span>Total</span>
+            <span>KES {total.toLocaleString()}</span>
           </div>
-        </div>
+        </aside>
       </main>
     </div>
   );

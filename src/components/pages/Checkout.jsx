@@ -5,7 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
 import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
-import { Loader2, ArrowLeft, Info, FileDown } from "lucide-react";
+import { Loader2, ArrowLeft, Info } from "lucide-react";
 import toast from "react-hot-toast";
 
 const FORM_STORAGE_KEY = "checkout_form";
@@ -29,8 +29,6 @@ export default function Checkout() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [orderId, setOrderId] = useState(null);
-  const [paid, setPaid] = useState(false);
 
   const activeCart = buyNowData
     ? [
@@ -67,11 +65,16 @@ export default function Checkout() {
     const loadProfile = async () => {
       if (!session?.user?.id) return;
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("phone, username")
         .eq("id", session.user.id)
         .single();
+
+      if (error) {
+        console.warn("PROFILE LOAD ERROR:", error.message);
+        return;
+      }
 
       if (!data) return;
 
@@ -101,22 +104,25 @@ export default function Checkout() {
 
   const normalizePhone = (phone) => {
     let p = phone.trim();
+
     if (p.startsWith("0")) p = "254" + p.slice(1);
     if (p.startsWith("+")) p = p.slice(1);
+
     return p;
   };
 
-  const total = activeCart.reduce(
-    (sum, item) =>
-      sum + (item.products?.price || item.price_at_add) * item.quantity,
-    0,
-  );
+  const total = activeCart.reduce((sum, item) => {
+    const price = item.products?.price || item.price_at_add || 0;
+    return sum + price * item.quantity;
+  }, 0);
 
   const validateFields = () => {
     const required = [form.email, form.phone, form.firstName, form.lastName];
+
     if (form.shippingMethod === "Delivery") {
       required.push(form.address, form.city, form.postalCode);
     }
+
     return required.every((f) => f.trim() !== "");
   };
 
@@ -138,29 +144,42 @@ export default function Checkout() {
       return;
     }
 
+    if (!activeCart.length) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const username = `${form.firstName} ${form.lastName}`.trim();
 
-      await supabase.from("profiles").upsert(
+      // Save profile phone + username
+      const { error: profileError } = await supabase.from("profiles").upsert(
         {
           id: session.user.id,
           phone: form.phone,
-          username,
+          username: username || null,
         },
         { onConflict: "id" },
       );
 
+      if (profileError) {
+        console.error("PROFILE UPSERT ERROR:", profileError);
+        throw profileError;
+      }
+
+      // Build shipping address
       const shippingAddress = `
 ${form.firstName} ${form.lastName}
 ${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
-${form.city}
-Postal: ${form.postalCode}
+${form.city || ""}
+Postal: ${form.postalCode || ""}
 Phone: ${form.phone}
 `.trim();
 
-      const { data: order, error } = await supabase
+      // Create order
+      const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
           user_id: session.user.id,
@@ -173,11 +192,30 @@ Phone: ${form.phone}
         .select()
         .single();
 
-      if (error) throw error;
+      if (orderError) {
+        console.error("ORDER INSERT ERROR:", orderError);
+        throw orderError;
+      }
 
-      setOrderId(order.id);
+      // Insert order items
+      const itemsToInsert = activeCart.map((item) => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.products?.price || item.price_at_add || 0,
+      }));
 
-      const { data, fnError } = await supabase.functions.invoke(
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(itemsToInsert);
+
+      if (itemsError) {
+        console.error("ORDER ITEMS ERROR:", itemsError);
+        throw itemsError;
+      }
+
+      // Call Edge Function for STK Push
+      const { data, error: fnError } = await supabase.functions.invoke(
         "intasend-wallet-stk",
         {
           body: {
@@ -185,25 +223,40 @@ Phone: ${form.phone}
             amount: total,
             phone: normalizePhone(form.phone),
             email: form.email,
-            name: username,
+            name: username || "Customer",
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
           },
         },
       );
 
-      if (fnError) throw error;
+      console.log("FUNCTION DATA:", data);
+      console.log("FUNCTION ERROR:", fnError);
 
+      // Handle Supabase edge function weirdness:
+      // Sometimes fnError exists but response is actually okay.
       if (!data?.success) {
-        throw new Error(data?.fnError || "STK failed");
+        const msg =
+          data?.error ||
+          fnError?.message ||
+          "STK Push failed. Please try again.";
+
+        throw new Error(msg);
       }
 
-      toast.info("Check your phone for the M-PESA STK prompt");
+      toast.success("Check your phone for the M-PESA STK prompt");
+
       localStorage.removeItem(FORM_STORAGE_KEY);
+
       setLoading(false);
+
+      // Redirect to confirmation page
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {
-      console.error(err);
+      console.error("CHECKOUT ERROR:", err);
       setLoading(false);
-      toast.error("Payment initiation failed");
+      toast.error(err.message || "Payment initiation failed");
     }
   };
 
@@ -217,12 +270,13 @@ Phone: ${form.phone}
             <img
               src={BalmOrthoLogo}
               className="h-[50px]"
-              alt="Balm Ortho Medical Supplies image"
+              alt="Balm Ortho Medical Supplies"
             />
             <Link to="/" className="text-xl font-semibold md:text-2xl">
               Balm Ortho Medical Supplies
             </Link>
           </div>
+
           <button onClick={() => navigate("/shop")}>
             <ArrowLeft className="w-4 h-4 inline" /> Shop
           </button>
@@ -241,7 +295,7 @@ Phone: ${form.phone}
             name="email"
             value={form.email}
             readOnly
-            className="w-full border rounded-lg px-4 py-3"
+            className="w-full border rounded-lg px-4 py-3 bg-gray-50"
           />
 
           <input
@@ -346,15 +400,18 @@ Phone: ${form.phone}
                 className="flex items-center gap-4 border-b pb-4 last:border-b-0"
               >
                 <img
-                  src={i.products.image_url}
-                  alt={i.products.name}
+                  src={
+                    i.products?.image_url ||
+                    "https://via.placeholder.com/80?text=No+Image"
+                  }
+                  alt={i.products?.name || "Product"}
                   className="w-16 h-16 rounded-lg object-cover border"
                 />
 
                 <div className="flex-1">
-                  <p className="font-medium">{i.products.name}</p>
+                  <p className="font-medium">{i.products?.name}</p>
                   <p className="text-sm text-gray-500">
-                    KES {i.products.price.toLocaleString()} each
+                    KES {Number(i.products?.price || 0).toLocaleString()} each
                   </p>
                 </div>
 
@@ -363,7 +420,10 @@ Phone: ${form.phone}
                     × {i.quantity}
                   </span>
                   <p className="mt-2 font-semibold">
-                    KES {(i.products.price * i.quantity).toLocaleString()}
+                    KES{" "}
+                    {(
+                      Number(i.products?.price || 0) * Number(i.quantity || 0)
+                    ).toLocaleString()}
                   </p>
                 </div>
               </div>
