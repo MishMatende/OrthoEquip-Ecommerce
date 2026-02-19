@@ -10,8 +10,9 @@ import {
   Clock,
   XCircle,
   RefreshCcw,
+  ImageIcon,
 } from "lucide-react";
-import { pdf, PDFDownloadLink, PDFViewer } from "@react-pdf/renderer";
+import { pdf, PDFViewer } from "@react-pdf/renderer";
 import QuotePDF from "../../components/QuotePDF";
 import {
   Dialog,
@@ -53,7 +54,10 @@ export default function QuoteDetailsAdmin() {
         order_items (
           quantity,
           price,
-          products (name)
+              products (
+                name,
+                image_url
+              )
         )
       `,
         )
@@ -289,26 +293,49 @@ export default function QuoteDetailsAdmin() {
         </div>
 
         <div className="divide-y">
-          {quote.order_items.map((i, idx) => (
-            <div
-              key={idx}
-              className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
-            >
-              <div className="flex flex-col items-start text-left">
-                <p className="font-semibold text-gray-900">
-                  {i.products?.name || "Unknown Product"}
-                </p>
+          {quote.order_items.map((i, idx) => {
+            const img = i.products?.image_url;
 
-                <p className="text-sm text-gray-500">
-                  {i.quantity} × {formatKES(i.price)}
+            return (
+              <div
+                key={idx}
+                className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+              >
+                {/* LEFT */}
+                <div className="flex items-center gap-4">
+                  {/* IMAGE */}
+                  <div className="w-16 h-16 rounded-xl border bg-gray-50 overflow-hidden flex items-center justify-center">
+                    {img ? (
+                      <img
+                        src={img}
+                        alt={i.products?.name || "Product"}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                    )}
+                  </div>
+
+                  {/* DETAILS */}
+                  <div className="flex flex-col items-start text-left">
+                    <p className="font-semibold text-gray-900">
+                      {i.products?.name || "Unknown Product"}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                      {i.quantity} × {formatKES(i.price)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* RIGHT */}
+                <p className="font-bold text-gray-900 md:text-right">
+                  {formatKES(Number(i.quantity) * Number(i.price))}
                 </p>
               </div>
-
-              <p className="font-bold text-gray-900 md:text-right">
-                {formatKES(Number(i.quantity) * Number(i.price))}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* FOOTER TOTAL */}
@@ -317,6 +344,8 @@ export default function QuoteDetailsAdmin() {
           <p className="text-xl font-bold">{formatKES(quote.total || total)}</p>
         </div>
       </div>
+
+      {/* PDF MODAL */}
       <Dialog open={pdfOpen} onOpenChange={setPdfOpen}>
         <DialogContent className="max-w-7xl w-[98vw] h-[92vh] p-0 overflow-hidden rounded-2xl flex flex-col">
           {/* HEADER */}
