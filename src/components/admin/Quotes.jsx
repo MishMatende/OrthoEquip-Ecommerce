@@ -35,7 +35,7 @@ export default function Quotes() {
         return;
       }
 
-      // Fetch related profiles manually
+      // Fetch related customers manually
       const customerIds = [
         ...new Set(data.map((q) => q.customer_id).filter(Boolean)),
       ];
@@ -78,6 +78,25 @@ export default function Quotes() {
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchQuotes]);
 
+  // ✅ Only mark as sent if currently draft (prevents overwriting accepted)
+  async function markQuoteAsSent(quoteId) {
+    const { error } = await supabase
+      .from("orders")
+      .update({ quote_status: "sent" })
+      .eq("id", quoteId)
+      .in("quote_status", ["draft"]);
+
+    if (error) {
+      console.error("Failed to mark quote as sent:", error);
+      return;
+    }
+
+    // Update UI instantly
+    setQuotes((prev) =>
+      prev.map((q) => (q.id === quoteId ? { ...q, quote_status: "sent" } : q)),
+    );
+  }
+
   async function shareOnWhatsApp(quote) {
     if (!quote.customer?.phone) {
       toast.error("Customer phone number missing");
@@ -95,19 +114,8 @@ export default function Quotes() {
       "_blank",
     );
 
-    // Mark quote as SENT
-    const { error } = await supabase
-      .from("orders")
-      .update({ quote_status: "sent" })
-      .eq("id", quote.id);
-
-    if (!error) {
-      setQuotes((prev) =>
-        prev.map((q) =>
-          q.id === quote.id ? { ...q, quote_status: "sent" } : q,
-        ),
-      );
-    }
+    // Mark quote as SENT if it was draft
+    await markQuoteAsSent(quote.id);
   }
 
   async function sendQuoteEmail(quote) {
@@ -134,7 +142,7 @@ export default function Quotes() {
 
       <div style="padding:25px; color:#111;">
         <p style="font-size:15px; margin-top:0;">
-          Hello <strong>${quote?.customers?.name || "Customer"}</strong>,
+                Hello <strong>${quote?.customer?.name || "Customer"}</strong>,
         </p>
 
         <p style="font-size:14px; line-height:1.6;">
@@ -147,7 +155,9 @@ export default function Quotes() {
             <strong>Quotation ID:</strong> ${quote.id}
           </p>
           <p style="margin:6px 0 0; font-size:14px;">
-            <strong>Total Amount:</strong> KES ${Number(quote.total || 0).toLocaleString()}
+                  <strong>Total Amount:</strong> KES ${Number(
+                    quote.total || 0,
+                  ).toLocaleString()}
           </p>
         </div>
 
@@ -205,6 +215,9 @@ export default function Quotes() {
         toast.error("Failed to send email");
       } else {
         toast.success("Email sent");
+
+        // Mark quote as SENT if it was draft
+        await markQuoteAsSent(quote.id);
       }
     } catch (err) {
       console.error("Email send error:", err);
@@ -213,9 +226,11 @@ export default function Quotes() {
       setSendingEmailId(null);
     }
   }
+
   // 🔎 Filter logic
   const filteredQuotes = quotes.filter((q) => {
     if (filter === "all") return true;
+    if (filter === "expired") return isExpired(q);
     return q.quote_status === filter;
   });
 
@@ -285,14 +300,23 @@ export default function Quotes() {
                 <p className="font-semibold">
                   {q.customer?.name || q.customer?.email || "Guest"}
                 </p>
+
                 <p className="font-semibold">Quote ID: {q.id}</p>
-                <p>Status: {q.quote_status}</p>
+
+                <p>
+                  Status:{" "}
+                  <span className="font-semibold capitalize">
+                    {q.quote_status}
+                  </span>
+                </p>
+
                 <p>
                   Total:{" "}
                   <span className="font-semibold">
                     KES {Number(q.total || 0).toLocaleString()}
                   </span>
                 </p>
+
                 <p>
                   Valid until:{" "}
                   <span className={expired ? "text-red-600 font-medium" : ""}>
@@ -311,6 +335,7 @@ export default function Quotes() {
                   <MessageCircle className="w-4 h-4 mr-1" />
                   WhatsApp
                 </Button>
+
                 <Button
                   variant="outline"
                   onClick={() => sendQuoteEmail(q)}
@@ -319,6 +344,7 @@ export default function Quotes() {
                   {sendingEmailId === q.id ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
                     </>
                   ) : (
                     "Email"
