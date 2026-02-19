@@ -11,6 +11,7 @@ import {
   XCircle,
   RefreshCcw,
   ShieldCheck,
+  ImageIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -42,7 +43,7 @@ export default function QuoteDetails() {
         order_items (
           quantity,
           price,
-          products (name)
+              products (name, image_url)
         )
       `,
         )
@@ -218,26 +219,49 @@ export default function QuoteDetails() {
           </div>
 
           <div className="divide-y">
-            {quote.order_items?.map((i, idx) => (
-              <div
-                key={idx}
-                className="p-5 flex items-center justify-between hover:bg-gray-50 transition"
-              >
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    {i.products?.name || "Unknown Product"}
-                  </p>
+            {quote.order_items?.map((i, idx) => {
+              const img = i.products?.image_url;
 
-                  <p className="text-sm text-gray-500">
-                    {i.quantity} × {formatKES(i.price)}
+              return (
+                <div
+                  key={idx}
+                  className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 hover:bg-gray-50 transition"
+                >
+                  {/* LEFT */}
+                  <div className="flex items-center gap-4">
+                    {/* IMAGE */}
+                    <div className="w-16 h-16 rounded-xl border bg-gray-50 overflow-hidden flex items-center justify-center">
+                      {img ? (
+                        <img
+                          src={img}
+                          alt={i.products?.name || "Product"}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      )}
+                    </div>
+
+                    {/* DETAILS */}
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {i.products?.name || "Unknown Product"}
+                      </p>
+
+                      <p className="text-sm text-gray-500">
+                        {i.quantity} × {formatKES(i.price)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* RIGHT */}
+                  <p className="font-bold text-gray-900 md:text-right">
+                    {formatKES(Number(i.quantity) * Number(i.price))}
                   </p>
                 </div>
-
-                <p className="font-bold text-gray-900">
-                  {formatKES(Number(i.quantity) * Number(i.price))}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="p-5 bg-gray-50 flex justify-between items-center">
