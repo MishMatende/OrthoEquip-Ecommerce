@@ -15,7 +15,9 @@ serve(async (req) => {
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get(
+      "SUPABASE_SERVICE_ROLE_KEY",
+    );
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
@@ -33,19 +35,9 @@ serve(async (req) => {
       );
     }
 
-    if (!RESEND_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "Missing RESEND_API_KEY" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
     if (!INTASEND_API_KEY || !INTASEND_SECRET_KEY) {
       return new Response(
-        JSON.stringify({ error: "Missing IntaSend API keys" }),
+        JSON.stringify({ error: "Missing IntaSend keys in environment" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,6 +57,8 @@ serve(async (req) => {
       });
     }
 
+    console.log("📌 Quote ID received:", quoteId);
+
     // 1️⃣ Fetch quote
     const { data: quote, error: quoteError } = await supabase
       .from("orders")
@@ -83,7 +77,8 @@ serve(async (req) => {
       .single();
 
     if (quoteError || !quote) {
-      console.error("Quote fetch error:", quoteError);
+      console.error("❌ Quote fetch error:", quoteError);
+
       return new Response(JSON.stringify({ error: "Quote not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -100,11 +95,12 @@ serve(async (req) => {
       );
     }
 
-    // 2️⃣ If already converted, reuse existing order
+    // 2️⃣ Create/reuse order
     let orderId = quote.converted_to_order_id;
 
     if (!orderId) {
-      // Create new order
+      console.log("🟡 Quote not converted yet, creating order...");
+
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
@@ -120,7 +116,8 @@ serve(async (req) => {
         .single();
 
       if (orderError || !order) {
-        console.error("Order insert error:", orderError);
+        console.error("❌ Order insert error:", orderError);
+
         return new Response(JSON.stringify({ error: "Failed to create order" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -136,7 +133,8 @@ serve(async (req) => {
         .eq("order_id", quote.id);
 
       if (itemsError) {
-        console.error("Move items error:", itemsError);
+        console.error("❌ Move items error:", itemsError);
+
         return new Response(
           JSON.stringify({ error: "Failed to move quote items" }),
           {
@@ -147,17 +145,42 @@ serve(async (req) => {
       }
 
       // Update quote
-      await supabase
+      const { error: updateQuoteError } = await supabase
         .from("orders")
         .update({
           quote_status: "accepted",
           converted_to_order_id: orderId,
         })
         .eq("id", quote.id);
+
+      if (updateQuoteError) {
+        console.error("❌ Failed updating quote:", updateQuoteError);
+      }
     }
 
     // 3️⃣ Generate IntaSend payment link
     const redirectUrl = `https://balmorthomedical.com/order-confirmation/${orderId}`;
+
+    console.log("🟢 Creating IntaSend payment link...");
+
+    const intasendPayload: Record<string, unknown> = {
+      public_key: INTASEND_API_KEY,
+      amount: Number(quote.total),
+      currency: "KES",
+      email: quote.customers.email,
+      phone_number: quote.customers.phone,
+      first_name: quote.customers.name || "Customer",
+      redirect_url: redirectUrl,
+      metadata: {
+        order_id: orderId,
+        quote_id: quote.id,
+      },
+    };
+
+    // Only include wallet_id if it exists
+    if (INTASEND_WALLET_ID) {
+      intasendPayload.wallet_id = INTASEND_WALLET_ID;
+    }
 
     const intasendRes = await fetch(
       "https://api.intasend.com/api/v1/checkout/",
@@ -167,29 +190,20 @@ serve(async (req) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${INTASEND_SECRET_KEY}`,
         },
-        body: JSON.stringify({
-          public_key: INTASEND_API_KEY,
-          wallet_id: INTASEND_WALLET_ID,
-          amount: Number(quote.total),
-          currency: "KES",
-          email: quote.customers.email,
-          phone_number: quote.customers.phone,
-          first_name: quote.customers.name || "Customer",
-          redirect_url: redirectUrl,
-          metadata: {
-            order_id: orderId,
-            quote_id: quote.id,
-          },
-        }),
+        body: JSON.stringify(intasendPayload),
       },
     );
 
     const intasendData = await intasendRes.json();
 
     if (!intasendRes.ok) {
-      console.error("IntaSend error:", intasendData);
+      console.error("❌ IntaSend API Error:", intasendData);
+
       return new Response(
-        JSON.stringify({ error: "Failed to create payment link", details: intasendData }),
+        JSON.stringify({
+          error: "Failed to create IntaSend payment link",
+          details: intasendData,
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -200,8 +214,13 @@ serve(async (req) => {
     const paymentUrl = intasendData?.url || intasendData?.checkout_url;
 
     if (!paymentUrl) {
+      console.error("❌ Payment URL missing:", intasendData);
+
       return new Response(
-        JSON.stringify({ error: "IntaSend did not return payment URL" }),
+        JSON.stringify({
+          error: "IntaSend did not return payment URL",
+          details: intasendData,
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -215,7 +234,12 @@ serve(async (req) => {
       .update({ payment_link: paymentUrl })
       .eq("id", orderId);
 
-    // 5️⃣ Send email via Resend
+    // 5️⃣ Send email (but do NOT fail the whole function if email fails)
+    let emailSent = false;
+
+    if (RESEND_API_KEY) {
+      console.log("📩 Sending payment link email...");
+
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; background:#f7f9fc; padding:30px;">
         <div style="max-width:600px; margin:0 auto; background:white; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
@@ -231,7 +255,7 @@ serve(async (req) => {
             </p>
 
             <p style="font-size:14px; line-height:1.6;">
-              Thank you for accepting your quotation. Your order has been created successfully.
+                Your quotation has been accepted and your order is ready.
             </p>
 
             <div style="background:#f3f4f6; padding:15px; border-radius:10px; margin:20px 0;">
@@ -239,7 +263,9 @@ serve(async (req) => {
                 <strong>Order ID:</strong> ${orderId}
               </p>
               <p style="margin:6px 0 0; font-size:14px;">
-                <strong>Total Amount:</strong> KES ${Number(quote.total || 0).toLocaleString()}
+                  <strong>Total Amount:</strong> KES ${Number(
+                    quote.total || 0,
+                  ).toLocaleString()}
               </p>
             </div>
 
@@ -284,7 +310,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Balm Ortho <noreply@balmorthomedical.com>",
+        from: "Balm Ortho <sales@balmorthomedical.com>",
         to: quote.customers.email,
         subject: "Payment Link - Balm Ortho Medical Supplies",
         html: emailHtml,
@@ -294,26 +320,21 @@ serve(async (req) => {
     const resendData = await resendRes.json();
 
     if (!resendRes.ok) {
-      console.error("Resend error:", resendData);
-      return new Response(
-        JSON.stringify({
-          error: "Payment link created but email failed to send",
-          details: resendData,
-          orderId,
-          payment_url: paymentUrl,
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+        console.error("❌ Resend failed:", resendData);
+      } else {
+        emailSent = true;
+      }
+    } else {
+      console.log("⚠️ RESEND_API_KEY missing, skipping email send.");
     }
 
-    // 6️⃣ Return orderId
+    // 6️⃣ Return orderId + payment link (for fallback)
     return new Response(
       JSON.stringify({
         success: true,
         orderId,
+        payment_url: paymentUrl,
+        emailSent,
       }),
       {
         status: 200,
@@ -321,7 +342,7 @@ serve(async (req) => {
       },
     );
   } catch (err) {
-    console.error("accept-quote-and-send-payment error:", err);
+    console.error("❌ Edge Function crash:", err);
 
     return new Response(
       JSON.stringify({ error: "Server error", details: String(err) }),

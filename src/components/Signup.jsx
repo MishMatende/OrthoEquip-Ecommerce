@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { UserAuth } from "../context/AuthContext";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
+import { Loader2 } from "lucide-react";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
