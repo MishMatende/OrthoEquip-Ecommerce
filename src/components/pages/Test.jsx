@@ -1,441 +1,331 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
-import { useCart } from "../../context/CartContext";
-import { UserAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/button";
-import BalmOrthoLogo from "../../assets/BalmOrthoLogo.png";
-import { Loader2, ArrowLeft, Info } from "lucide-react";
+import {
+  Loader2,
+  FileText,
+  CalendarDays,
+  CheckCircle,
+  Clock,
+  XCircle,
+  RefreshCcw,
+  ShieldCheck,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
-const FORM_STORAGE_KEY = "checkout_form";
-
-export default function Checkout() {
-  const { cart } = useCart();
-  const { session } = UserAuth();
+export default function QuoteDetails() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const buyNowData = location.state?.buyNow ? location.state : null;
 
-  const [form, setForm] = useState({
-    email: "",
-    phone: "",
-    firstName: "",
-    lastName: "",
-    address: "",
-    city: "",
-    postalCode: "",
-    shippingMethod: "Pick up (CBD)",
-  });
-
-  const [loading, setLoading] = useState(false);
-
-  const activeCart = buyNowData
-    ? [
-        {
-          product_id: buyNowData.product.id,
-          products: buyNowData.product,
-          quantity: buyNowData.quantity,
-        },
-      ]
-    : cart;
-
-  /* ------------------ FORM PERSISTENCE ------------------ */
+  const [quote, setQuote] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(FORM_STORAGE_KEY);
-    if (saved) setForm(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
-  }, [form]);
-
-  /* ------------------ SESSION ------------------ */
-
-  useEffect(() => {
-    if (session?.user?.email) {
-      setForm((p) => ({ ...p, email: session.user.email }));
-    }
-  }, [session]);
-
-  /* ------------------ LOAD PROFILE ------------------ */
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!session?.user?.id) return;
+    async function fetchQuote() {
+      setLoading(true);
 
       const { data, error } = await supabase
-        .from("profiles")
-        .select("phone, username")
-        .eq("id", session.user.id)
+        .from("orders")
+        .select(
+          `
+            *,
+            customers (
+              id,
+              name,
+              phone,
+              email,
+              address,
+              city
+            ),
+            order_items (
+              quantity,
+              price,
+              products (name)
+            )
+          `,
+        )
+        .eq("id", id)
         .single();
 
       if (error) {
-        console.warn("PROFILE LOAD ERROR:", error.message);
+        console.error("Quote fetch error:", error);
+        setLoading(false);
         return;
       }
 
-      if (!data) return;
+      setQuote(data);
+      setLoading(false);
+    }
 
-      setForm((p) => {
-        const updated = { ...p };
+    fetchQuote();
+  }, [id]);
 
-        if (!p.phone && data.phone) updated.phone = data.phone;
+  const total = useMemo(() => {
+    if (!quote?.order_items) return 0;
 
-        if ((!p.firstName || !p.lastName) && data.username) {
-          const parts = data.username.trim().split(" ");
-          updated.firstName = p.firstName || parts[0] || "";
-          updated.lastName = p.lastName || parts.slice(1).join(" ") || "";
-        }
+    return quote.order_items.reduce(
+      (sum, i) => sum + Number(i.quantity) * Number(i.price),
+      0,
+    );
+  }, [quote]);
 
-        return updated;
-      });
+  const formatKES = (amount) =>
+    `KES ${Number(amount || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+    })}`;
+
+  function getStatusStyles(status) {
+    if (status === "accepted") {
+      return {
+        icon: <CheckCircle className="w-4 h-4" />,
+        className: "bg-green-100 text-green-700 border-green-200",
+        label: "Accepted",
+      };
+    }
+
+    if (status === "sent") {
+      return {
+        icon: <Clock className="w-4 h-4" />,
+        className: "bg-blue-100 text-blue-700 border-blue-200",
+        label: "Sent",
+      };
+    }
+
+    if (status === "expired") {
+      return {
+        icon: <XCircle className="w-4 h-4" />,
+        className: "bg-red-100 text-red-700 border-red-200",
+        label: "Expired",
+      };
+    }
+
+    return {
+      icon: <RefreshCcw className="w-4 h-4" />,
+      className: "bg-gray-100 text-gray-700 border-gray-200",
+      label: status || "Draft",
     };
+  }
 
-    loadProfile();
-  }, [session]);
-
-  useEffect(() => {
-    if (!activeCart.length) navigate("/cart");
-  }, [activeCart, navigate]);
-
-  /* ------------------ HELPERS ------------------ */
-
-  const normalizePhone = (phone) => {
-    let p = phone.trim();
-
-    if (p.startsWith("0")) p = "254" + p.slice(1);
-    if (p.startsWith("+")) p = p.slice(1);
-
-    return p;
-  };
-
-  const total = activeCart.reduce((sum, item) => {
-    const price = item.products?.price || item.price_at_add || 0;
-    return sum + price * item.quantity;
-  }, 0);
-
-  const validateFields = () => {
-    const required = [form.email, form.phone, form.firstName, form.lastName];
-
-    if (form.shippingMethod === "Delivery") {
-      required.push(form.address, form.city, form.postalCode);
-    }
-
-    return required.every((f) => f.trim() !== "");
-  };
-
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
-
-  /* ------------------ PLACE ORDER ------------------ */
-
-  const handlePlaceOrder = async (e) => {
-    e.preventDefault();
-
-    if (!session) {
-      toast.error("Please sign in");
-      return;
-    }
-
-    if (!validateFields()) {
-      toast.error("Fill in all required fields");
-      return;
-    }
-
-    if (!activeCart.length) {
-      toast.error("Your cart is empty");
-      return;
-    }
-
-    setLoading(true);
+  async function acceptQuote() {
+    if (!quote) return;
 
     try {
-      const username = `${form.firstName} ${form.lastName}`.trim();
+      setAccepting(true);
 
-      // Save profile phone + username
-      const { error: profileError } = await supabase.from("profiles").upsert(
-        {
-          id: session.user.id,
-          phone: form.phone,
-          username: username || null,
-        },
-        { onConflict: "id" },
-      );
-
-      if (profileError) {
-        console.error("PROFILE UPSERT ERROR:", profileError);
-        throw profileError;
-      }
-
-      // Build shipping address
-      const shippingAddress = `
-${form.firstName} ${form.lastName}
-${form.shippingMethod === "Delivery" ? form.address : "Pick up (CBD)"}
-${form.city || ""}
-Postal: ${form.postalCode || ""}
-Phone: ${form.phone}
-`.trim();
-
-      // Create order
-      const { data: order, error: orderError } = await supabase
+      const { error } = await supabase
         .from("orders")
-        .insert({
-          user_id: session.user.id,
-          total_amount: total,
-          status: "pending_verification",
-          payment_provider: "intasend",
-          payment_reference: crypto.randomUUID().slice(0, 10),
-          shipping_address: shippingAddress,
-        })
-        .select()
-        .single();
+        .update({ quote_status: "accepted" })
+        .eq("id", id);
 
-      if (orderError) {
-        console.error("ORDER INSERT ERROR:", orderError);
-        throw orderError;
+      if (error) {
+        console.error("Accept quote error:", error);
+        toast.error("Failed to accept quotation");
+        return;
       }
 
-      // Insert order items
-      const itemsToInsert = activeCart.map((item) => ({
-        order_id: order.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.products?.price || item.price_at_add || 0,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(itemsToInsert);
-
-      if (itemsError) {
-        console.error("ORDER ITEMS ERROR:", itemsError);
-        throw itemsError;
-      }
-
-      // Call Edge Function for STK Push
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "intasend-wallet-stk",
-        {
-          body: {
-            order_id: order.id,
-            amount: total,
-            phone: normalizePhone(form.phone),
-            email: form.email,
-            name: username || "Customer",
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        },
-      );
-
-      console.log("FUNCTION DATA:", data);
-      console.log("FUNCTION ERROR:", fnError);
-
-      // Handle Supabase edge function weirdness:
-      // Sometimes fnError exists but response is actually okay.
-      if (!data?.success) {
-        const msg =
-          data?.error ||
-          fnError?.message ||
-          "STK Push failed. Please try again.";
-
-        throw new Error(msg);
-      }
-
-      toast.success("Check your phone for the M-PESA STK prompt");
-
-      localStorage.removeItem(FORM_STORAGE_KEY);
-
-      setLoading(false);
-
-      // Redirect to confirmation page
-      navigate(`/order-confirmation/${order.id}`);
+      toast.success("Quotation accepted");
+      navigate(`/checkout-from-quote/${id}`);
     } catch (err) {
-      console.error("CHECKOUT ERROR:", err);
-      setLoading(false);
-      toast.error(err.message || "Payment initiation failed");
+      console.error("Accept quote error:", err);
+      toast.error("Something went wrong");
+    } finally {
+      setAccepting(false);
     }
-  };
+  }
 
-  /* ------------------ UI ------------------ */
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <Loader2 className="animate-spin w-6 h-6" />
+          <p className="text-sm font-medium">Loading quotation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!quote) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <p className="text-gray-600 font-medium">Quotation not found.</p>
+      </div>
+    );
+  }
+
+  const status = getStatusStyles(quote.quote_status);
+
+  const expired = quote.valid_until && new Date(quote.valid_until) < new Date();
+
+  const canAccept = !expired && ["sent", "draft"].includes(quote.quote_status);
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      <header className="bg-white border-b">
-        <div className="max-w-5xl mx-auto p-4 flex justify-between">
-          <div className="flex items-center space-x-2">
-            <img
-              src={BalmOrthoLogo}
-              className="h-[50px]"
-              alt="Balm Ortho Medical Supplies"
-            />
-            <Link to="/" className="text-xl font-semibold md:text-2xl">
-              Balm Ortho Medical Supplies
-            </Link>
-          </div>
+    <div className="max-w-6xl mx-auto px-4 py-10 space-y-6">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <FileText className="w-7 h-7 text-blue-600" />
+            Quotation
+          </h1>
 
-          <button onClick={() => navigate("/shop")}>
-            <ArrowLeft className="w-4 h-4 inline" /> Shop
-          </button>
+          <p className="text-gray-500 text-sm mt-1">
+            Quote ID: <span className="font-medium">{quote.id}</span>
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm font-semibold ${status.className}`}
+            >
+              {status.icon}
+              {expired ? "Expired" : status.label}
+            </span>
+
+            <span className="flex items-center gap-2 text-sm text-gray-600">
+              <CalendarDays className="w-4 h-4" />
+              Valid until:{" "}
+              <span className="font-medium text-gray-900">
+                {quote.valid_until
+                  ? new Date(quote.valid_until).toLocaleDateString()
+                  : "—"}
+              </span>
+            </span>
+          </div>
         </div>
-      </header>
 
-      <main className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-10 p-6">
-        {/* ------------------ FORM ------------------ */}
-        <form
-          onSubmit={handlePlaceOrder}
-          className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border space-y-6"
-        >
-          <h2 className="font-semibold text-lg">Contact</h2>
+        {/* TOTAL CARD */}
+        <div className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl p-5 shadow-sm w-full md:w-[320px]">
+          <p className="text-sm text-gray-500">Total Amount</p>
+          <p className="text-3xl font-extrabold text-blue-700 mt-2">
+            {formatKES(quote.total || total)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Includes all selected items
+          </p>
+        </div>
+      </div>
 
-          <input
-            name="email"
-            value={form.email}
-            readOnly
-            className="w-full border rounded-lg px-4 py-3 bg-gray-50"
-          />
-
-          <input
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="Phone e.g. 2547XXXXXXXX"
-            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500"
-          />
-
-          {/* INFO NOTE */}
-          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-            <div className="flex gap-3">
-              <Info className="w-4 h-4 text-blue-600 mt-0.5" />
-              <div className="text-sm text-blue-800 space-y-1">
-                <p className="font-medium">
-                  Secure M-PESA payment via IntaSend
-                </p>
-                <p>
-                  We use <span className="font-semibold">IntaSend</span> to
-                  initiate an M-PESA STK push.
-                </p>
-                <p>
-                  Please confirm the phone number above is the number you’ll use
-                  to complete payment.
-                </p>
-              </div>
-            </div>
+      {/* MAIN GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ITEMS */}
+        <div className="lg:col-span-2 rounded-2xl border bg-white shadow-sm overflow-hidden">
+          <div className="p-5 border-b">
+            <h2 className="text-lg font-bold text-gray-900">Items</h2>
+            <p className="text-sm text-gray-500">
+              Products included in your quotation
+            </p>
           </div>
 
-          <h2 className="font-semibold text-lg">Recipient</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              name="firstName"
-              value={form.firstName}
-              onChange={handleChange}
-              placeholder="First name"
-              className="border rounded-lg px-4 py-3"
-            />
-            <input
-              name="lastName"
-              value={form.lastName}
-              onChange={handleChange}
-              placeholder="Last name"
-              className="border rounded-lg px-4 py-3"
-            />
-          </div>
-
-          <h2 className="font-semibold text-lg">Shipping</h2>
-          <select
-            name="shippingMethod"
-            value={form.shippingMethod}
-            onChange={handleChange}
-            className="border rounded-lg px-4 py-3 w-full"
-          >
-            <option>Pick up (CBD)</option>
-            <option>Delivery</option>
-          </select>
-
-          {form.shippingMethod === "Delivery" && (
-            <>
-              <input
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                placeholder="Address"
-                className="border rounded-lg px-4 py-3 w-full"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  name="city"
-                  value={form.city}
-                  onChange={handleChange}
-                  placeholder="City"
-                  className="border rounded-lg px-4 py-3"
-                />
-                <input
-                  name="postalCode"
-                  value={form.postalCode}
-                  onChange={handleChange}
-                  placeholder="Postal"
-                  className="border rounded-lg px-4 py-3"
-                />
-              </div>
-            </>
-          )}
-
-          <Button disabled={loading} type="submit" className="w-full">
-            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Pay with M-PESA (STK Push)
-          </Button>
-        </form>
-
-        {/* ------------------ SUMMARY ------------------ */}
-        <aside className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border">
-          <h2 className="font-semibold mb-6 text-lg">Order Summary</h2>
-
-          <div className="space-y-4">
-            {activeCart.map((i) => (
+          <div className="divide-y">
+            {quote.order_items?.map((i, idx) => (
               <div
-                key={i.product_id}
-                className="flex items-center gap-4 border-b pb-4 last:border-b-0"
+                key={idx}
+                className="p-5 flex items-center justify-between hover:bg-gray-50 transition"
               >
-                <img
-                  src={
-                    i.products?.image_url ||
-                    "https://via.placeholder.com/80?text=No+Image"
-                  }
-                  alt={i.products?.name || "Product"}
-                  className="w-16 h-16 rounded-lg object-cover border"
-                />
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    {i.products?.name || "Unknown Product"}
+                  </p>
 
-                <div className="flex-1">
-                  <p className="font-medium">{i.products?.name}</p>
                   <p className="text-sm text-gray-500">
-                    KES {Number(i.products?.price || 0).toLocaleString()} each
+                    {i.quantity} × {formatKES(i.price)}
                   </p>
                 </div>
 
-                <div className="text-right">
-                  <span className="inline-flex bg-gray-100 rounded-full px-3 py-1 text-sm font-medium">
-                    × {i.quantity}
-                  </span>
-                  <p className="mt-2 font-semibold">
-                    KES{" "}
-                    {(
-                      Number(i.products?.price || 0) * Number(i.quantity || 0)
-                    ).toLocaleString()}
-                  </p>
-                </div>
+                <p className="font-bold text-gray-900">
+                  {formatKES(Number(i.quantity) * Number(i.price))}
+                </p>
               </div>
             ))}
           </div>
 
-          <div className="border-t mt-6 pt-6 flex justify-between text-lg font-bold">
-            <span>Total</span>
-            <span>KES {total.toLocaleString()}</span>
+          <div className="p-5 bg-gray-50 flex justify-between items-center">
+            <p className="font-semibold text-gray-700">Grand Total</p>
+            <p className="text-xl font-bold text-gray-900">
+              {formatKES(quote.total || total)}
+            </p>
           </div>
-        </aside>
-      </main>
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="space-y-6">
+          {/* CUSTOMER CARD */}
+          <div className="rounded-2xl border bg-white shadow-sm p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-3">
+              Customer Details
+            </h2>
+
+            <div className="space-y-2 text-sm text-gray-700">
+              <p>
+                <span className="font-semibold">Name:</span>{" "}
+                {quote.customers?.name || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">Phone:</span>{" "}
+                {quote.customers?.phone || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">Email:</span>{" "}
+                {quote.customers?.email || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">City:</span>{" "}
+                {quote.customers?.city || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">Address:</span>{" "}
+                {quote.customers?.address || "—"}
+              </p>
+            </div>
+          </div>
+
+          {/* ACTION CARD */}
+          <div className="rounded-2xl border bg-white shadow-sm p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Actions</h2>
+
+            <p className="text-sm text-gray-500 mb-4">
+              Review the quotation and proceed to checkout.
+            </p>
+
+            {canAccept ? (
+              <Button
+                onClick={acceptQuote}
+                disabled={accepting}
+                className="w-full rounded-xl py-6 text-base font-semibold"
+              >
+                {accepting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5" />
+                    Accept Quote & Checkout
+                  </span>
+                )}
+              </Button>
+            ) : (
+              <div className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-4">
+                This quotation cannot be accepted.
+                <div className="mt-2 font-semibold text-gray-900 capitalize">
+                  Current status: {expired ? "expired" : quote.quote_status}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* NOTE */}
+          <div className="rounded-2xl border bg-blue-50 p-5">
+            <p className="text-sm font-semibold text-blue-900">Note:</p>
+            <p className="text-sm text-blue-800 mt-1 leading-relaxed">
+              Once accepted, you will be redirected to checkout to complete
+              payment and confirm your order.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
