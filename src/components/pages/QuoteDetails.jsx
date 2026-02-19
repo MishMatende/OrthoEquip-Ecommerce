@@ -110,26 +110,31 @@ export default function QuoteDetails() {
   }
 
   async function acceptQuote() {
-    if (!quote) return;
-
     try {
       setAccepting(true);
 
-      const { error } = await supabase
-        .from("orders")
-        .update({ quote_status: "accepted" })
-        .eq("id", id);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-intasend-payment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ quoteId: id }),
+        },
+      );
 
-      if (error) {
-        console.error("Accept quote error:", error);
-        toast.error("Failed to accept quotation");
+      const json = await res.json();
+
+      if (!res.ok) {
+        toast.error(json?.error || "Failed to accept quote");
         return;
       }
 
-      toast.success("Quotation accepted");
-      navigate(`/checkout-from-quote/${id}`);
+      toast.success("Payment link sent to your email!");
+      navigate(`/order-confirmation/${json.orderId}`);
     } catch (err) {
-      console.error("Accept quote error:", err);
+      console.error(err);
       toast.error("Something went wrong");
     } finally {
       setAccepting(false);

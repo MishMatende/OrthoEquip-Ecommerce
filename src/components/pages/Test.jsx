@@ -1,137 +1,233 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
-import { Button } from "../../components/ui/button";
-import {
-  Loader2,
-  FileText,
-  CalendarDays,
-  CheckCircle,
-  Clock,
-  XCircle,
-  RefreshCcw,
-  ShieldCheck,
-} from "lucide-react";
-import toast from "react-hot-toast";
+import { Loader2 } from "lucide-react";
 
-export default function QuoteDetails() {
+export default function CheckoutFromQuote() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [accepting, setAccepting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    async function fetchQuote() {
-      setLoading(true);
+    convertQuoteToOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-      const { data, error } = await supabase
+  async function convertQuoteToOrder() {
+    try {
+      setLoading(true);
+      setErrorMsg("");
+
+      // 1️⃣ Fetch quote + customer info
+      const { data: quote, error: quoteError } = await supabase
         .from("orders")
         .select(
           `
-            *,
-            customers (
-              id,
-              name,
-              phone,
-              email,
-              address,
-              city
-            ),
-            order_items (
-              quantity,
-              price,
-              products (name)
-            )
-          `,
+          *,
+          customers (
+            id,
+            name,
+            email,
+            phone
+          )
+        `,
         )
         .eq("id", id)
         .single();
 
-      if (error) {
-        console.error("Quote fetch error:", error);
-        setLoading(false);
+      if (quoteError || !quote) {
+        console.error("Quote fetch error:", quoteError);
+        setErrorMsg("Quote not found.");
         return;
       }
 
-      setQuote(data);
-      setLoading(false);
-    }
+      if (!quote.customers?.email) {
+        setErrorMsg("Customer email is missing. Cannot send payment link.");
+        return;
+      }
 
-    fetchQuote();
-  }, [id]);
+      let orderId = quote.converted_to_order_id;
 
-  const total = useMemo(() => {
-    if (!quote?.order_items) return 0;
+      // 2️⃣ Create order if not already converted
+      if (!orderId) {
+        const { data: order, error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            customer_id: quote.customer_id,
+            created_by: quote.created_by,
+            order_type: "order",
+            status: "pending",
+            total: quote.total,
+            payment_status: "pending_payment",
+            converted_from_quote: quote.id,
+          })
+          .select()
+          .single();
 
-    return quote.order_items.reduce(
-      (sum, i) => sum + Number(i.quantity) * Number(i.price),
-      0,
-    );
-  }, [quote]);
+        if (orderError || !order) {
+          console.error("Order insert error:", orderError);
+          setErrorMsg("Failed to create order.");
+          return;
+        }
 
-  const formatKES = (amount) =>
-    `KES ${Number(amount || 0).toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-    })}`;
+        orderId = order.id;
 
-  function getStatusStyles(status) {
-    if (status === "accepted") {
-      return {
-        icon: <CheckCircle className="w-4 h-4" />,
-        className: "bg-green-100 text-green-700 border-green-200",
-        label: "Accepted",
-      };
-    }
+        // 3️⃣ Move quote items to new order
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .update({ order_id: orderId })
+          .eq("order_id", quote.id);
 
-    if (status === "sent") {
-      return {
-        icon: <Clock className="w-4 h-4" />,
-        className: "bg-blue-100 text-blue-700 border-blue-200",
-        label: "Sent",
-      };
-    }
+        if (itemsError) {
+          console.error("Move items error:", itemsError);
+          setErrorMsg("Failed to move quote items.");
+          return;
+        }
 
-    if (status === "expired") {
-      return {
-        icon: <XCircle className="w-4 h-4" />,
-        className: "bg-red-100 text-red-700 border-red-200",
-        label: "Expired",
-      };
-    }
+        // 4️⃣ Update quote status + link order id
+        await supabase
+          .from("orders")
+          .update({
+            quote_status: "accepted",
+            converted_to_order_id: orderId,
+          })
+          .eq("id", quote.id);
+      }
 
-    return {
-      icon: <RefreshCcw className="w-4 h-4" />,
-      className: "bg-gray-100 text-gray-700 border-gray-200",
-      label: status || "Draft",
-    };
-  }
+      // 5️⃣ Generate IntaSend payment link
+      const paymentRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-intasend-payment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            orderId,
+            amount: quote.total,
+            customer_name: quote.customers?.name,
+            customer_email: quote.customers?.email,
+            customer_phone: quote.customers?.phone,
+            redirect_url: `${window.location.origin}/order-confirmation/${orderId}`,
+          }),
+        },
+      );
 
-  async function acceptQuote() {
-    if (!quote) return;
+      const paymentJson = await paymentRes.json();
 
-    try {
-      setAccepting(true);
+      if (!paymentRes.ok) {
+        console.error("Payment link error:", paymentJson);
+        setErrorMsg(paymentJson?.error || "Failed to generate payment link.");
+        return;
+      }
 
-      const { error } = await supabase
+      const paymentUrl = paymentJson?.payment_url;
+
+      if (!paymentUrl) {
+        setErrorMsg("Payment link not received.");
+        return;
+      }
+
+      // 6️⃣ Save payment link to the order
+      await supabase
         .from("orders")
-        .update({ quote_status: "accepted" })
-        .eq("id", id);
+        .update({ payment_link: paymentUrl })
+        .eq("id", orderId);
 
-      if (error) {
-        console.error("Accept quote error:", error);
-        toast.error("Failed to accept quotation");
+      // 7️⃣ Send email to customer with payment link
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; background:#f7f9fc; padding:30px;">
+          <div style="max-width:600px; margin:0 auto; background:white; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
+            
+            <div style="background:#4eb0e3; padding:20px; color:white;">
+              <h2 style="margin:0; font-size:20px;">Balm Ortho Medical Supplies</h2>
+              <p style="margin:5px 0 0; font-size:14px;">Payment Link for Your Order</p>
+            </div>
+
+            <div style="padding:25px; color:#111;">
+              <p style="font-size:15px; margin-top:0;">
+                Hello <strong>${quote.customers?.name || "Customer"}</strong>,
+              </p>
+
+              <p style="font-size:14px; line-height:1.6;">
+                Thank you for accepting your quotation. Your order has been created successfully.
+              </p>
+
+              <div style="background:#f3f4f6; padding:15px; border-radius:10px; margin:20px 0;">
+                <p style="margin:0; font-size:14px;">
+                  <strong>Order ID:</strong> ${orderId}
+                </p>
+                <p style="margin:6px 0 0; font-size:14px;">
+                  <strong>Total Amount:</strong> KES ${Number(
+                    quote.total || 0,
+                  ).toLocaleString()}
+                </p>
+              </div>
+
+              <p style="font-size:14px; margin-bottom:20px;">
+                Click the button below to complete payment:
+              </p>
+
+              <a href="${paymentUrl}"
+                style="
+                  display:inline-block;
+                  background:#16a34a;
+                  color:white;
+                  padding:12px 18px;
+                  text-decoration:none;
+                  border-radius:8px;
+                  font-weight:bold;
+                  font-size:14px;
+                ">
+                Pay Now
+              </a>
+
+              <p style="font-size:12px; color:#6b7280; margin-top:25px;">
+                If the button doesn’t work, copy and paste this link into your browser:
+                <br/>
+                <a href="${paymentUrl}" style="color:#16a34a;">${paymentUrl}</a>
+              </p>
+            </div>
+
+            <div style="padding:15px; background:#f9fafb; border-top:1px solid #e5e7eb; font-size:12px; color:#6b7280; text-align:center;">
+              Balm Ortho Medical Supplies • Nairobi, Kenya <br/>
+              Need help? Reply to this email.
+            </div>
+
+          </div>
+        </div>
+      `;
+
+      const emailRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: quote.customers.email,
+            subject: "Payment Link - Balm Ortho Medical Supplies",
+            html: emailHtml,
+          }),
+        },
+      );
+
+      if (!emailRes.ok) {
+        console.error("Email send failed");
+        setErrorMsg("Order created but email failed to send.");
         return;
       }
 
-      toast.success("Quotation accepted");
-      navigate(`/checkout-from-quote/${id}`);
+      // 8️⃣ Redirect user to confirmation page
+      navigate(`/order-confirmation/${orderId}`);
     } catch (err) {
-      console.error("Accept quote error:", err);
-      toast.error("Something went wrong");
+      console.error("CheckoutFromQuote crash:", err);
+      setErrorMsg("Something went wrong.");
     } finally {
-      setAccepting(false);
+      setLoading(false);
     }
   }
 
@@ -139,193 +235,30 @@ export default function QuoteDetails() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="flex items-center gap-3 text-gray-600">
-          <Loader2 className="animate-spin w-6 h-6" />
-          <p className="text-sm font-medium">Loading quotation...</p>
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <p className="text-sm font-medium">Generating payment link...</p>
         </div>
       </div>
     );
   }
 
-  if (!quote) {
+  if (errorMsg) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <p className="text-gray-600 font-medium">Quotation not found.</p>
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white border rounded-2xl p-6 shadow-sm text-center">
+          <h2 className="text-lg font-bold text-gray-900">Checkout Failed</h2>
+          <p className="text-sm text-gray-600 mt-2">{errorMsg}</p>
+
+          <button
+            onClick={() => navigate("/")}
+            className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold"
+          >
+            Back Home
+          </button>
+        </div>
       </div>
     );
   }
 
-  const status = getStatusStyles(quote.quote_status);
-
-  const expired = quote.valid_until && new Date(quote.valid_until) < new Date();
-
-  const canAccept = !expired && ["sent", "draft"].includes(quote.quote_status);
-
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-6">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="w-7 h-7 text-blue-600" />
-            Quotation
-          </h1>
-
-          <p className="text-gray-500 text-sm mt-1">
-            Quote ID: <span className="font-medium">{quote.id}</span>
-          </p>
-
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm font-semibold ${status.className}`}
-            >
-              {status.icon}
-              {expired ? "Expired" : status.label}
-            </span>
-
-            <span className="flex items-center gap-2 text-sm text-gray-600">
-              <CalendarDays className="w-4 h-4" />
-              Valid until:{" "}
-              <span className="font-medium text-gray-900">
-                {quote.valid_until
-                  ? new Date(quote.valid_until).toLocaleDateString()
-                  : "—"}
-              </span>
-            </span>
-          </div>
-        </div>
-
-        {/* TOTAL CARD */}
-        <div className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl p-5 shadow-sm w-full md:w-[320px]">
-          <p className="text-sm text-gray-500">Total Amount</p>
-          <p className="text-3xl font-extrabold text-blue-700 mt-2">
-            {formatKES(quote.total || total)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Includes all selected items
-          </p>
-        </div>
-      </div>
-
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ITEMS */}
-        <div className="lg:col-span-2 rounded-2xl border bg-white shadow-sm overflow-hidden">
-          <div className="p-5 border-b">
-            <h2 className="text-lg font-bold text-gray-900">Items</h2>
-            <p className="text-sm text-gray-500">
-              Products included in your quotation
-            </p>
-          </div>
-
-          <div className="divide-y">
-            {quote.order_items?.map((i, idx) => (
-              <div
-                key={idx}
-                className="p-5 flex items-center justify-between hover:bg-gray-50 transition"
-              >
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    {i.products?.name || "Unknown Product"}
-                  </p>
-
-                  <p className="text-sm text-gray-500">
-                    {i.quantity} × {formatKES(i.price)}
-                  </p>
-                </div>
-
-                <p className="font-bold text-gray-900">
-                  {formatKES(Number(i.quantity) * Number(i.price))}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="p-5 bg-gray-50 flex justify-between items-center">
-            <p className="font-semibold text-gray-700">Grand Total</p>
-            <p className="text-xl font-bold text-gray-900">
-              {formatKES(quote.total || total)}
-            </p>
-          </div>
-        </div>
-
-        {/* RIGHT SIDE */}
-        <div className="space-y-6">
-          {/* CUSTOMER CARD */}
-          <div className="rounded-2xl border bg-white shadow-sm p-5">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">
-              Customer Details
-            </h2>
-
-            <div className="space-y-2 text-sm text-gray-700">
-              <p>
-                <span className="font-semibold">Name:</span>{" "}
-                {quote.customers?.name || "—"}
-              </p>
-              <p>
-                <span className="font-semibold">Phone:</span>{" "}
-                {quote.customers?.phone || "—"}
-              </p>
-              <p>
-                <span className="font-semibold">Email:</span>{" "}
-                {quote.customers?.email || "—"}
-              </p>
-              <p>
-                <span className="font-semibold">City:</span>{" "}
-                {quote.customers?.city || "—"}
-              </p>
-              <p>
-                <span className="font-semibold">Address:</span>{" "}
-                {quote.customers?.address || "—"}
-              </p>
-            </div>
-          </div>
-
-          {/* ACTION CARD */}
-          <div className="rounded-2xl border bg-white shadow-sm p-5">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Actions</h2>
-
-            <p className="text-sm text-gray-500 mb-4">
-              Review the quotation and proceed to checkout.
-            </p>
-
-            {canAccept ? (
-              <Button
-                onClick={acceptQuote}
-                disabled={accepting}
-                className="w-full rounded-xl py-6 text-base font-semibold"
-              >
-                {accepting ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5" />
-                    Accept Quote & Checkout
-                  </span>
-                )}
-              </Button>
-            ) : (
-              <div className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-4">
-                This quotation cannot be accepted.
-                <div className="mt-2 font-semibold text-gray-900 capitalize">
-                  Current status: {expired ? "expired" : quote.quote_status}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* NOTE */}
-          <div className="rounded-2xl border bg-blue-50 p-5">
-            <p className="text-sm font-semibold text-blue-900">Note:</p>
-            <p className="text-sm text-blue-800 mt-1 leading-relaxed">
-              Once accepted, you will be redirected to checkout to complete
-              payment and confirm your order.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }

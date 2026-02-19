@@ -8,6 +8,7 @@ export default function CheckoutFromQuote() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     convertQuoteToOrder();
@@ -17,8 +18,9 @@ export default function CheckoutFromQuote() {
   async function convertQuoteToOrder() {
     try {
       setLoading(true);
+      setErrorMsg("");
 
-      // 1️⃣ Fetch quote
+      // 1️⃣ Fetch quote + customer info
       const { data: quote, error: quoteError } = await supabase
         .from("orders")
         .select(
@@ -37,14 +39,18 @@ export default function CheckoutFromQuote() {
 
       if (quoteError || !quote) {
         console.error("Quote fetch error:", quoteError);
-        alert("Quote not found.");
-        navigate("/");
+        setErrorMsg("Quote not found.");
+        return;
+      }
+
+      if (!quote.customers?.email) {
+        setErrorMsg("Customer email is missing. Cannot send payment link.");
         return;
       }
 
       let orderId = quote.converted_to_order_id;
 
-      // 2️⃣ If not converted, create new order
+      // 2️⃣ Create order if not already converted
       if (!orderId) {
         const { data: order, error: orderError } = await supabase
           .from("orders")
@@ -62,7 +68,7 @@ export default function CheckoutFromQuote() {
 
         if (orderError || !order) {
           console.error("Order insert error:", orderError);
-          alert("Failed to create order.");
+          setErrorMsg("Failed to create order.");
           return;
         }
 
@@ -75,8 +81,8 @@ export default function CheckoutFromQuote() {
           .eq("order_id", quote.id);
 
         if (itemsError) {
-          console.error("Failed to move order items:", itemsError);
-          alert("Failed to move order items.");
+          console.error("Move items error:", itemsError);
+          setErrorMsg("Failed to move quote items.");
           return;
         }
 
@@ -90,17 +96,13 @@ export default function CheckoutFromQuote() {
           .eq("id", quote.id);
       }
 
-      // 5️⃣ Create IntaSend payment link using Edge Function
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      const res = await fetch(
+      // 5️⃣ Generate IntaSend payment link
+      const paymentRes = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-intasend-payment`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             orderId,
@@ -113,43 +115,150 @@ export default function CheckoutFromQuote() {
         },
       );
 
-      const json = await res.json();
+      const paymentJson = await paymentRes.json();
 
-      if (!res.ok) {
-        console.error("IntaSend error:", json);
-        alert(json?.error || "Failed to create payment link.");
+      if (!paymentRes.ok) {
+        console.error("Payment link error:", paymentJson);
+        setErrorMsg(paymentJson?.error || "Failed to generate payment link.");
         return;
       }
 
-      const paymentUrl = json?.payment_url;
+      const paymentUrl = paymentJson?.payment_url;
 
       if (!paymentUrl) {
-        alert("Payment link not received.");
+        setErrorMsg("Payment link not received.");
         return;
       }
 
-      // (Optional) store payment URL in order for tracking
+      // 6️⃣ Save payment link to the order
       await supabase
         .from("orders")
         .update({ payment_link: paymentUrl })
         .eq("id", orderId);
 
-      // 6️⃣ Redirect to IntaSend checkout page
-      window.location.href = paymentUrl;
+      // 7️⃣ Send email to customer with payment link
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; background:#f7f9fc; padding:30px;">
+          <div style="max-width:600px; margin:0 auto; background:white; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
+            
+            <div style="background:#4eb0e3; padding:20px; color:white;">
+              <h2 style="margin:0; font-size:20px;">Balm Ortho Medical Supplies</h2>
+              <p style="margin:5px 0 0; font-size:14px;">Payment Link for Your Order</p>
+            </div>
+
+            <div style="padding:25px; color:#111;">
+              <p style="font-size:15px; margin-top:0;">
+                Hello <strong>${quote.customers?.name || "Customer"}</strong>,
+              </p>
+
+              <p style="font-size:14px; line-height:1.6;">
+                Thank you for accepting your quotation. Your order has been created successfully.
+              </p>
+
+              <div style="background:#f3f4f6; padding:15px; border-radius:10px; margin:20px 0;">
+                <p style="margin:0; font-size:14px;">
+                  <strong>Order ID:</strong> ${orderId}
+                </p>
+                <p style="margin:6px 0 0; font-size:14px;">
+                  <strong>Total Amount:</strong> KES ${Number(
+                    quote.total || 0,
+                  ).toLocaleString()}
+                </p>
+              </div>
+
+              <p style="font-size:14px; margin-bottom:20px;">
+                Click the button below to complete payment:
+              </p>
+
+              <a href="${paymentUrl}"
+                style="
+                  display:inline-block;
+                  background:#16a34a;
+                  color:white;
+                  padding:12px 18px;
+                  text-decoration:none;
+                  border-radius:8px;
+                  font-weight:bold;
+                  font-size:14px;
+                ">
+                Pay Now
+              </a>
+
+              <p style="font-size:12px; color:#6b7280; margin-top:25px;">
+                If the button doesn’t work, copy and paste this link into your browser:
+                <br/>
+                <a href="${paymentUrl}" style="color:#16a34a;">${paymentUrl}</a>
+              </p>
+            </div>
+
+            <div style="padding:15px; background:#f9fafb; border-top:1px solid #e5e7eb; font-size:12px; color:#6b7280; text-align:center;">
+              Balm Ortho Medical Supplies • Nairobi, Kenya <br/>
+              Need help? Reply to this email.
+            </div>
+
+          </div>
+        </div>
+      `;
+
+      const emailRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: quote.customers.email,
+            subject: "Payment Link - Balm Ortho Medical Supplies",
+            html: emailHtml,
+          }),
+        },
+      );
+
+      if (!emailRes.ok) {
+        console.error("Email send failed");
+        setErrorMsg("Order created but email failed to send.");
+        return;
+      }
+
+      // 8️⃣ Redirect user to confirmation page
+      navigate(`/order-confirmation/${orderId}`);
     } catch (err) {
-      console.error("Conversion error:", err);
-      alert("Something went wrong.");
+      console.error("CheckoutFromQuote crash:", err);
+      setErrorMsg("Something went wrong.");
     } finally {
       setLoading(false);
     }
   }
 
-  return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="flex items-center gap-3 text-gray-600">
-        <Loader2 className="w-6 h-6 animate-spin" />
-        <p className="text-sm font-medium">Preparing payment checkout...</p>
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <p className="text-sm font-medium">Generating payment link...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white border rounded-2xl p-6 shadow-sm text-center">
+          <h2 className="text-lg font-bold text-gray-900">Checkout Failed</h2>
+          <p className="text-sm text-gray-600 mt-2">{errorMsg}</p>
+
+          <button
+            onClick={() => navigate("/")}
+            className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold"
+          >
+            Back Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
