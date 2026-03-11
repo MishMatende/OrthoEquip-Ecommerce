@@ -14,6 +14,7 @@ export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
   const [cartId, setCartId] = useState(null);
   const [loadingItemId, setLoadingItemId] = useState(null);
+  const [creatingCart, setCreatingCart] = useState(false);
 
   useEffect(() => {
     if (loadingAuth === true) return;
@@ -30,79 +31,66 @@ export function CartProvider({ children }) {
   async function fetchOrCreateCart() {
     if (!session?.user?.id) return null;
 
+    if (creatingCart) return cartId;
+
+    setCreatingCart(true);
+
     try {
-      const { data: carts, error: fetchError } = await supabase
+      const { data: cartRow, error: cartError } = await supabase
         .from("carts")
+        .upsert({ user_id: session.user.id }, { onConflict: "user_id" })
         .select("id")
-        .eq("user_id", session.user.id);
+        .single();
 
-      if (fetchError) throw fetchError;
+      if (cartError) throw cartError;
 
-      let id;
-      if (!carts || carts.length === 0) {
-        const { data: newCart, error: insertError } = await supabase
-          .from("carts")
-          .insert({ user_id: session.user.id })
-          .select("id")
-          .single();
-        if (insertError) throw insertError;
-        id = newCart.id;
-      } else {
-        id = carts[0].id;
-      }
+      const id = cartRow.id;
 
       setCartId(id);
 
-      const { data: items, error: itemsError } = await supabase
+      // 2️⃣ Fetch existing server items
+      const { data: serverItems, error: itemsError } = await supabase
         .from("cart_items")
         .select("*, products(name, image_url, price, brand)")
         .eq("cart_id", id);
 
       if (itemsError) throw itemsError;
 
-      const anon = JSON.parse(localStorage.getItem("cart") || "[]");
-      if (anon && anon.length > 0) {
+      // 3️⃣ Load anonymous cart
+      const anonCart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+      if (anonCart.length > 0) {
         const serverMap = new Map();
-        (items || []).forEach((it) => {
-          serverMap.set(String(it.product_id), { ...it });
+
+        (serverItems || []).forEach((item) => {
+          serverMap.set(item.product_id, item);
         });
 
-        for (const a of anon) {
-          const pid = String(a.product_id ?? a.product?.id ?? "");
-          if (!pid) continue;
+        for (const anonItem of anonCart) {
+          const existing = serverMap.get(anonItem.product_id);
 
-          const existing = serverMap.get(pid);
           if (existing) {
-            const newQty =
-              Number(existing.quantity || 0) + Number(a.quantity || 0);
-            const { error: updateError } = await supabase
+            await supabase
               .from("cart_items")
-              .update({ quantity: newQty })
+              .update({
+                quantity: existing.quantity + anonItem.quantity,
+              })
               .eq("id", existing.id);
-            if (updateError)
-              console.error("Error updating merged item:", updateError);
           } else {
-            const insertObj = {
+            await supabase.from("cart_items").insert({
               cart_id: id,
-              product_id: a.product_id ?? a.product?.id,
-              quantity: a.quantity ?? 1,
-              price_at_add: a.product?.price ?? null,
-            };
-            const { error: insertError } = await supabase
-              .from("cart_items")
-              .insert(insertObj);
-            if (insertError)
-              console.error("Error inserting merged item:", insertError);
+              product_id: anonItem.product_id,
+              quantity: anonItem.quantity,
+              price_at_add: anonItem.product?.price ?? null,
+            });
           }
         }
 
-        try {
-          localStorage.removeItem("cart");
-        } catch (e) {
-          console.warn("Couldn't remove anon cart from localStorage", e);
-        }
+        // 4️⃣ Clear local cart AFTER merge
+        localStorage.removeItem("cart");
       }
 
+      // 5️⃣ Reload updated cart
       const { data: refreshedItems, error: refreshedError } = await supabase
         .from("cart_items")
         .select("*, products(name, image_url, price, brand)")
@@ -111,10 +99,13 @@ export function CartProvider({ children }) {
       if (refreshedError) throw refreshedError;
 
       setCart(refreshedItems || []);
+
       return id;
     } catch (err) {
       console.error("Error fetching/creating cart:", err);
       return null;
+    } finally {
+      setCreatingCart(false);
     }
   }
 

@@ -16,6 +16,13 @@ export default function Cart() {
       toast.error("Please sign in to complete your purchase.", {
         position: "top-right",
       });
+
+      setTimeout(() => {
+        navigate("/signin", {
+          state: { from: "/cart" },
+        });
+      }, 1200);
+
       return;
     }
     if (!cart.length) {

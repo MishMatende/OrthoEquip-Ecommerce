@@ -12,7 +12,7 @@ export default function Footer() {
     <footer className="bg-[#0d1224] text-gray-300 px-6 md:px-16 py-12">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-10">
         {/* LEFT: Brand / About */}
-        <div className="md:col-span-4">
+        <div className="md:col-span-4 text-center md:text-left flex flex-col items-center md:items-start">
           <div className="flex items-center mb-4 space-x-2">
             <img
               src={BalmOrthoLogo}
@@ -30,7 +30,7 @@ export default function Footer() {
             professionals with certified products and dependable delivery.
           </p>
 
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2 text-sm flex flex-col items-center md:items-start">
             <li className="flex items-center space-x-2">
               <FaPhone className="text-teal-500" />
               <span>(+254) 100-219-639</span>
@@ -42,13 +42,15 @@ export default function Footer() {
           </ul>
 
           {/* Socials */}
-          <div className="flex space-x-4 mt-5 text-xl">
+          <div className="flex space-x-4 mt-5 text-xl justify-center md:justify-start">
             <Link to="https://www.facebook.com/profile.php?id=61580544819951">
               <FaFacebookF className="hover:text-teal-400" />
             </Link>
+
             <Link to="https://x.com/BalmOrtho?t=GC7gm5ojOPYqG3Agl85BmQ&s=09">
               <FaXTwitter className="hover:text-teal-400 cursor-pointer" />
             </Link>
+
             <Link to="https://vm.tiktok.com/ZMHc5xsa9rJev-RGEZS/">
               <FaTiktok className="hover:text-teal-400" />
             </Link>
@@ -58,57 +60,58 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* RIGHT: Company + Services + Payments */}
-        <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-8">
+        {/* RIGHT: Company + Services */}
+        <div className="md:col-span-8 grid grid-cols-2 md:grid-cols-2 gap-10 md:gap-16 justify-items-center items-start text-center md:text-left">
           {/* Company */}
-          <div className="flex flex-row justify-center gap-10 md:justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Company</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link to="/">Home</Link>
-                </li>
-                <li>
-                  <Link to="/about">About</Link>
-                </li>
-                <li>
-                  <Link to="/shop">Products</Link>
-                </li>
-                <li>
-                  <Link to="/contact">Contact us</Link>
-                </li>
-                {session && (
-                  <li>
-                    <Link to="/orders">My Orders</Link>
-                  </li>
-                )}
-              </ul>
-            </div>
+          <div className="flex flex-col items-center md:items-start">
+            <h3 className="text-lg font-semibold text-white mb-4">Company</h3>
 
-            {/* Services */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Services
-              </h3>
-              <ul className="space-y-2 text-sm">
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link to="/">Home</Link>
+              </li>
+
+              <li>
+                <Link to="/about">About</Link>
+              </li>
+
+              <li>
+                <Link to="/shop">Products</Link>
+              </li>
+
+              <li>
+                <Link to="/contact">Contact us</Link>
+              </li>
+
+              {session && (
                 <li>
-                  <Link to="/signin">Login</Link>
+                  <Link to="/orders">My Orders</Link>
                 </li>
-                {/* <li>
-                  <Link to="/">Profile</Link>
-                </li> */}
-                <li>
-                  <Link to="/about#about-policies">Terms & Conditions</Link>
-                </li>
-                <li>
-                  <Link to="/about#about-FAQs">FAQ</Link>
-                </li>
-              </ul>
-            </div>
+              )}
+            </ul>
+          </div>
+
+          {/* Services */}
+          <div className="flex flex-col items-center md:items-start">
+            <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
+
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link to="/signin">Login</Link>
+              </li>
+
+              <li>
+                <Link to="/about#about-policies">Terms & Conditions</Link>
+              </li>
+
+              <li>
+                <Link to="/about#about-FAQs">FAQ</Link>
+              </li>
+            </ul>
           </div>
 
           {/* Payments */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-white mb-4">
               Payment Methods
             </h3>
@@ -134,13 +137,14 @@ export default function Footer() {
                 className="h-6"
               />
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
+
       {/* Bottom copyright bar */}
       <div className="border-t border-white/10 mt-10 pt-6 text-sm text-gray-400">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-6 md:px-16">
-          <p className="text-center md:text-left">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+          <p>
             © {new Date().getFullYear()}{" "}
             <span className="text-white">Balm Ortho Medical Supplies</span>. All
             rights reserved.
@@ -150,7 +154,9 @@ export default function Footer() {
             <Link to="/about#about-policies" className="hover:text-teal-400">
               Privacy Policy
             </Link>
+
             <span className="opacity-40">|</span>
+
             <Link to="/about#about-policies" className="hover:text-teal-400">
               Terms of Service
             </Link>

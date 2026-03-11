@@ -4,34 +4,53 @@ import { Button } from "./ui/button";
 import { UserAuth } from "../context/AuthContext";
 import BalmOrthoLogo from "../assets/BalmOrthoLogo.png";
 import { Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showBanner, setShowBanner] = useState(false);
 
   const { signupNewUser } = UserAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+
+  const from = location.state?.from || "/";
 
   const handleSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setShowBanner(false);
 
     try {
       const result = await signupNewUser(email, password);
 
+      /* ---------------- SUCCESS ---------------- */
       if (result.success) {
-        // Show banner and do NOT redirect
-        setShowBanner(true);
+        toast.success("Account created!");
+
+        navigate("/signin", { state: { from } });
+        return;
       }
-    } catch (error) {
-      setError("An error occurred during signup. Please try again.");
+
+      /* ---------------- ERROR HANDLING ---------------- */
+      switch (result.code) {
+        case "USER_EXISTS":
+          toast.error("This email is already registered. Please sign in.");
+          break;
+
+        case "WEAK_PASSWORD":
+          toast.error("Password must be at least 6 characters.");
+          break;
+
+        case "NETWORK_ERROR":
+          toast.error("Network error. Please check your connection.");
+          break;
+
+        default:
+          toast.error("Signup failed. Please try again.");
+      }
+    } catch {
+      toast.error("Unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -39,16 +58,6 @@ export default function Signup() {
 
   return (
     <div className="w-full flex flex-col items-center justify-center px-4 py-8">
-      {/* Success Banner */}
-      {showBanner && (
-        <div
-          role="alert"
-          className="bg-[#4eb0e3]/90 text-white px-4 py-3 rounded-lg mb-5 text-center font-medium shadow-md w-full max-w-sm"
-        >
-          ✅ Please check your email for a link to confirm your account.
-        </div>
-      )}
-
       <form
         onSubmit={handleSignUp}
         autoComplete="off"
@@ -64,7 +73,7 @@ export default function Signup() {
         </div>
 
         <div className="flex flex-col space-y-4">
-          {/* Hidden fake inputs to stop autofill */}
+          {/* Autofill blockers */}
           <input
             type="text"
             name="fakeuser"
@@ -106,19 +115,16 @@ export default function Signup() {
             disabled={loading}
             className="mt-3 w-full py-2.5 bg-[#4eb0e3] hover:bg-[#3ca0d4] text-white font-semibold rounded-lg transition-all text-sm cursor-pointer"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : ""}
+            {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
             {loading ? "Signing up..." : "Sign up"}
           </Button>
-
-          {error && (
-            <p className="text-red-600 text-center pt-1 text-sm">{error}</p>
-          )}
 
           <p className="text-center text-gray-700 text-sm">
             Already have an account?{" "}
             <Link
-              className="text-[#4eb0e3] font-semibold hover:underline"
               to="/signin"
+              state={{ from }}
+              className="text-[#4eb0e3] font-semibold hover:underline"
             >
               Sign in
             </Link>

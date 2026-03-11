@@ -22,15 +22,28 @@ export const AuthContextProvider = ({ children }) => {
   /* -------------------- SIGN UP -------------------- */
   const signupNewUser = async (email, password) => {
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
       if (error) {
-        return { success: false, error: error.message };
+        const message = error.message?.toLowerCase() || "";
+
+        if (message.includes("user already registered")) {
+          return { success: false, code: "USER_EXISTS" };
+        }
+
+        if (message.includes("password")) {
+          return { success: false, code: "WEAK_PASSWORD" };
+        }
+
+        return { success: false, code: "UNKNOWN", raw: error.message };
       }
 
       return { success: true, data };
     } catch {
-      return { success: false, error: "NETWORK_ERROR" };
+      return { success: false, code: "NETWORK_ERROR" };
     }
   };
 

@@ -24,6 +24,7 @@ import QuoteDetailsAdmin from "./components/admin/QuoteDetailsAdmin";
 import { Buffer } from "buffer";
 import ProtectedAdminRoute from "./components/admin/ProtectedAdminRoute";
 import { Toaster } from "react-hot-toast";
+import RatingsPage from "./components/pages/RatingsPage";
 
 // ✅ Lazy-load all pages and layouts
 const Home = lazy(() => import("./components/pages/Home"));
@@ -92,6 +93,7 @@ createRoot(document.getElementById("root")).render(
                 <Route path="track/:orderId" element={<OrderTracking />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="about" element={<About />} />
+                <Route path="/ratings/:productId" element={<RatingsPage />} />
                 <Route
                   path="order-confirmation/:orderId"
                   element={<OrderConfirmation />}

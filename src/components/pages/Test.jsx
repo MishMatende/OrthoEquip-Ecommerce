@@ -1,264 +1,346 @@
-import { useEffect, useState } from "react";
+// src/pages/ProductDetails.jsx
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Loader2, Minus, Plus, X } from "lucide-react";
+
+import { Button } from "../../components/ui/button";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "../../components/ui/tabs";
+
+import { useCart } from "../../context/CartContext";
+import { UserAuth } from "../../context/AuthContext";
+import { useProduct } from "../../hooks/useProduct";
+import WhatsAppChat from "../../components/WhatsAppChat";
 import { supabase } from "../../supabaseClient";
-import { Loader2 } from "lucide-react";
 
-export default function CheckoutFromQuote() {
-  const { id } = useParams();
+export default function ProductDetails() {
+  const { session } = UserAuth();
+  const { addToCart } = useCart();
   const navigate = useNavigate();
+  const { id } = useParams();
 
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [zoom, setZoom] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
+  const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
+  const [displayWidth, setDisplayWidth] = useState(0);
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalImageSrc, setModalImageSrc] = useState(null);
+  const modalRef = useRef(null);
+  const imageRef = useRef(null);
+
+  const { data, isLoading, isError, error } = useProduct(id);
+
+  const product =
+    (data && data.product) ?? (data && (data.id ? data : null)) ?? null;
+  const images = (data && data.images) ?? [];
 
   useEffect(() => {
-    convertQuoteToOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedImage(null);
+    setZoom(false);
   }, [id]);
 
-  async function convertQuoteToOrder() {
-    try {
-      setLoading(true);
-      setErrorMsg("");
-
-      // 1️⃣ Fetch quote + customer info
-      const { data: quote, error: quoteError } = await supabase
-        .from("orders")
+  useEffect(() => {
+    async function fetchReviews() {
+      const { data, error } = await supabase
+        .from("reviews")
         .select(
           `
-          *,
-          customers (
-            id,
-            name,
-            email,
-            phone
-          )
+          id,
+          rating,
+          comment,
+          anonymous,
+          created_at,
+          profiles(username)
         `,
         )
-        .eq("id", id)
-        .single();
+        .eq("product_id", id)
+        .order("created_at", { ascending: false });
 
-      if (quoteError || !quote) {
-        console.error("Quote fetch error:", quoteError);
-        setErrorMsg("Quote not found.");
-        return;
+      if (!error) {
+        setReviews(data || []);
       }
 
-      if (!quote.customers?.email) {
-        setErrorMsg("Customer email is missing. Cannot send payment link.");
-        return;
-      }
+      setReviewsLoading(false);
+    }
 
-      let orderId = quote.converted_to_order_id;
+    fetchReviews();
+  }, [id]);
 
-      // 2️⃣ Create order if not already converted
-      if (!orderId) {
-        const { data: order, error: orderError } = await supabase
-          .from("orders")
-          .insert({
-            customer_id: quote.customer_id,
-            created_by: quote.created_by,
-            order_type: "order",
-            status: "pending",
-            total: quote.total,
-            payment_status: "pending_payment",
-            converted_from_quote: quote.id,
-          })
-          .select()
-          .single();
+  const averageRating =
+    reviews.length > 0
+      ? (
+          reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        ).toFixed(1)
+      : 0;
 
-        if (orderError || !order) {
-          console.error("Order insert error:", orderError);
-          setErrorMsg("Failed to create order.");
-          return;
-        }
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-20 text-gray-500">
+        <Loader2 className="w-6 h-6 animate-spin mr-3" />
+        Loading product details...
+      </div>
+    );
+  }
 
-        orderId = order.id;
+  if (isError) {
+    return (
+      <div className="text-center py-20 text-red-600">
+        Failed to load product: {error?.message}
+      </div>
+    );
+  }
 
-        // 3️⃣ Move quote items to new order
-        const { error: itemsError } = await supabase
-          .from("order_items")
-          .update({ order_id: orderId })
-          .eq("order_id", quote.id);
+  if (!product) {
+    return (
+      <div className="text-center py-20 text-gray-500">
+        Product not found 😕
+      </div>
+    );
+  }
 
-        if (itemsError) {
-          console.error("Move items error:", itemsError);
-          setErrorMsg("Failed to move quote items.");
-          return;
-        }
+  const handleImgLoad = (e) => {
+    const img = e.target;
+    setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+    setDisplayWidth(img.getBoundingClientRect().width);
+  };
 
-        // 4️⃣ Update quote status + link order id
-        await supabase
-          .from("orders")
-          .update({
-            quote_status: "accepted",
-            converted_to_order_id: orderId,
-          })
-          .eq("id", quote.id);
-      }
+  const handleClickImage = () => {
+    const src = selectedImage || product.image_url;
 
-      // 5️⃣ Generate IntaSend payment link
-      const paymentRes = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-intasend-payment`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            orderId,
-            amount: quote.total,
-            customer_name: quote.customers?.name,
-            customer_email: quote.customers?.email,
-            customer_phone: quote.customers?.phone,
-            redirect_url: `${window.location.origin}/order-confirmation/${orderId}`,
-          }),
-        },
-      );
+    setModalImageSrc(src);
+    setModalOpen(true);
+  };
 
-      const paymentJson = await paymentRes.json();
+  const handleBackdropClick = (e) => {
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      setModalOpen(false);
+    }
+  };
 
-      if (!paymentRes.ok) {
-        console.error("Payment link error:", paymentJson);
-        setErrorMsg(paymentJson?.error || "Failed to generate payment link.");
-        return;
-      }
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-24 py-8">
+      {/* Top Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* Images */}
+        <div>
+          <div className="relative border rounded-2xl overflow-hidden bg-gray-50">
+            <img
+              ref={imageRef}
+              src={selectedImage || product.image_url}
+              alt={product.name}
+              onLoad={handleImgLoad}
+              onClick={handleClickImage}
+              className="w-full max-h-[60vh] object-contain cursor-zoom-in"
+            />
+          </div>
 
-      const paymentUrl = paymentJson?.payment_url;
-
-      if (!paymentUrl) {
-        setErrorMsg("Payment link not received.");
-        return;
-      }
-
-      // 6️⃣ Save payment link to the order
-      await supabase
-        .from("orders")
-        .update({ payment_link: paymentUrl })
-        .eq("id", orderId);
-
-      // 7️⃣ Send email to customer with payment link
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; background:#f7f9fc; padding:30px;">
-          <div style="max-width:600px; margin:0 auto; background:white; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
-            
-            <div style="background:#4eb0e3; padding:20px; color:white;">
-              <h2 style="margin:0; font-size:20px;">Balm Ortho Medical Supplies</h2>
-              <p style="margin:5px 0 0; font-size:14px;">Payment Link for Your Order</p>
-            </div>
-
-            <div style="padding:25px; color:#111;">
-              <p style="font-size:15px; margin-top:0;">
-                Hello <strong>${quote.customers?.name || "Customer"}</strong>,
-              </p>
-
-              <p style="font-size:14px; line-height:1.6;">
-                Thank you for accepting your quotation. Your order has been created successfully.
-              </p>
-
-              <div style="background:#f3f4f6; padding:15px; border-radius:10px; margin:20px 0;">
-                <p style="margin:0; font-size:14px;">
-                  <strong>Order ID:</strong> ${orderId}
-                </p>
-                <p style="margin:6px 0 0; font-size:14px;">
-                  <strong>Total Amount:</strong> KES ${Number(
-                    quote.total || 0,
-                  ).toLocaleString()}
-                </p>
-              </div>
-
-              <p style="font-size:14px; margin-bottom:20px;">
-                Click the button below to complete payment:
-              </p>
-
-              <a href="${paymentUrl}"
-                style="
-                  display:inline-block;
-                  background:#16a34a;
-                  color:white;
-                  padding:12px 18px;
-                  text-decoration:none;
-                  border-radius:8px;
-                  font-weight:bold;
-                  font-size:14px;
-                ">
-                Pay Now
-              </a>
-
-              <p style="font-size:12px; color:#6b7280; margin-top:25px;">
-                If the button doesn’t work, copy and paste this link into your browser:
-                <br/>
-                <a href="${paymentUrl}" style="color:#16a34a;">${paymentUrl}</a>
-              </p>
-            </div>
-
-            <div style="padding:15px; background:#f9fafb; border-top:1px solid #e5e7eb; font-size:12px; color:#6b7280; text-align:center;">
-              Balm Ortho Medical Supplies • Nairobi, Kenya <br/>
-              Need help? Reply to this email.
-            </div>
-
+          <div className="flex gap-3 mt-3 overflow-x-auto">
+            {(images.length ? images : [product.image_url])
+              .filter(Boolean)
+              .map((url, idx) => (
+                <img
+                  key={idx}
+                  src={url}
+                  onClick={() => setSelectedImage(url)}
+                  className={`w-20 h-20 object-cover rounded-xl border-2 cursor-pointer ${
+                    selectedImage === url
+                      ? "border-[#4eb0e3]"
+                      : "border-transparent hover:border-gray-300"
+                  }`}
+                  alt={`Thumbnail ${idx + 1}`}
+                />
+              ))}
           </div>
         </div>
-      `;
 
-      const emailRes = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: quote.customers.email,
-            subject: "Payment Link - Balm Ortho Medical Supplies",
-            html: emailHtml,
-          }),
-        },
-      );
+        {/* Product Info */}
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">
+            {product.name}
+          </h1>
 
-      if (!emailRes.ok) {
-        console.error("Email send failed");
-        setErrorMsg("Order created but email failed to send.");
-        return;
-      }
+          {/* Rating */}
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-yellow-400">
+              {"★".repeat(Math.round(averageRating))}
+            </span>
 
-      // 8️⃣ Redirect user to confirmation page
-      navigate(`/order-confirmation/${orderId}`);
-    } catch (err) {
-      console.error("CheckoutFromQuote crash:", err);
-      setErrorMsg("Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }
+            <span className="text-sm text-gray-600">
+              {averageRating} ({reviews.length} reviews)
+            </span>
+          </div>
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-gray-600">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <p className="text-sm font-medium">Generating payment link...</p>
+          <p className="text-3xl font-bold text-[#4eb0e3] mt-3">
+            KES {Number(product.price).toLocaleString()}
+          </p>
+
+          <p className="text-gray-600 mt-4">
+            {product.description || "No description available."}
+          </p>
+
+          <div className="mt-6 space-y-2 text-sm">
+            {product.category && (
+              <p>
+                <strong>Category:</strong> {product.category}
+              </p>
+            )}
+
+            {product.brand && (
+              <p>
+                <strong>Brand:</strong> {product.brand}
+              </p>
+            )}
+
+            <p>
+              <strong>Stock:</strong>{" "}
+              {product.stock > 0
+                ? `${product.stock} available`
+                : "Out of stock"}
+            </p>
+          </div>
+
+          {/* Quantity + Actions */}
+          <div className="mt-6 flex flex-col sm:flex-row gap-4">
+            <div className="flex border rounded-xl">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="p-2"
+              >
+                <Minus size={16} />
+              </button>
+
+              <span className="px-4 flex items-center">{quantity}</span>
+
+              <button
+                onClick={() =>
+                  setQuantity((q) => (q < product.stock ? q + 1 : q))
+                }
+                className="p-2"
+                disabled={quantity >= product.stock}
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+
+            <Button
+              disabled={product.stock <= 0}
+              onClick={() =>
+                addToCart(product, Math.min(quantity, product.stock))
+              }
+              className="bg-[#4eb0e3] hover:bg-[#3ca0d4]"
+            >
+              Add to Cart
+            </Button>
+
+            <Button
+              disabled={product.stock <= 0}
+              onClick={() => {
+                if (!session) {
+                  navigate("/signin", {
+                    state: { redirectTo: "/checkout" },
+                  });
+                } else {
+                  navigate("/checkout", {
+                    state: { buyNow: true, product, quantity },
+                  });
+                }
+              }}
+            >
+              Buy it now
+            </Button>
+          </div>
         </div>
       </div>
-    );
-  }
 
-  if (errorMsg) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white border rounded-2xl p-6 shadow-sm text-center">
-          <h2 className="text-lg font-bold text-gray-900">Checkout Failed</h2>
-          <p className="text-sm text-gray-600 mt-2">{errorMsg}</p>
+      {/* Tabs */}
+      <div className="mt-10">
+        <Tabs defaultValue="description">
+          <TabsList>
+            <TabsTrigger value="description">Description</TabsTrigger>
+            <TabsTrigger value="reviews">Reviews</TabsTrigger>
+            <TabsTrigger value="shipping">Shipping</TabsTrigger>
+          </TabsList>
 
-          <button
-            onClick={() => navigate("/")}
-            className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold"
+          <TabsContent value="description">{product.description}</TabsContent>
+
+          {/* Reviews */}
+          <TabsContent value="reviews">
+            {reviewsLoading ? (
+              <p className="text-gray-500 mt-4">Loading reviews...</p>
+            ) : reviews.length === 0 ? (
+              <p className="text-gray-500 mt-4">No reviews yet.</p>
+            ) : (
+              <div className="space-y-4 mt-4">
+                {reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="border rounded-xl p-4 bg-white shadow-sm"
+                  >
+                    <div className="flex justify-between mb-2">
+                      <span className="text-yellow-400">
+                        {"★".repeat(review.rating)}
+                      </span>
+
+                      <span className="text-xs text-gray-400">
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <p className="text-gray-700 mb-2">{review.comment}</p>
+
+                    <p className="text-sm text-gray-500">
+                      {review.anonymous
+                        ? "Anonymous"
+                        : `@${review.profiles?.username || "user"}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="shipping">Fast delivery nationwide.</TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Image Modal */}
+      {modalOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onMouseDown={handleBackdropClick}
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg p-3 max-w-4xl w-full relative"
           >
-            Back Home
-          </button>
-        </div>
-      </div>
-    );
-  }
+            <button
+              onClick={() => setModalOpen(false)}
+              className="absolute top-2 right-2"
+            >
+              <X />
+            </button>
 
-  return null;
+            <img
+              src={modalImageSrc}
+              alt={product.name}
+              className="max-h-[80vh] mx-auto object-contain"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Chat */}
+      <WhatsAppChat productName={product.name} hidden={modalOpen} />
+    </div>
+  );
 }

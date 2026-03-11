@@ -10,13 +10,22 @@ import { supabase } from "../supabaseClient";
 
 export default function Signin() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const { signinUser } = UserAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { signinUser } = UserAuth();
-  const navigate = useNavigate();
+  // Where the user came from (cart, checkout, etc.)
+  const from = location.state?.from || "/";
+
+  useEffect(() => {
+    if (location.state?.from) {
+      sessionStorage.setItem("redirectAfterLogin", location.state.from);
+    }
+  }, [location.state]);
 
   /* -------- SIGN IN -------- */
   const handleSignIn = async (e) => {
@@ -54,19 +63,39 @@ export default function Signin() {
     try {
       const user = result.data.session?.user;
 
+      // Check if admin
       const { data: profile, error } = await supabase
         .from("profiles")
         .select("is_admin")
         .eq("id", user.id)
         .single();
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success("Signed in successfully");
-      navigate(profile?.is_admin ? "/admin" : "/", { replace: true });
+
+      // Admin redirect
+      if (profile?.is_admin) {
+        navigate("/admin", { replace: true });
+        return;
+      }
+
+      // If user came from cart, inform them their cart is preserved
+      if (from === "/cart") {
+        toast.success("Your cart items have been restored.");
+      }
+
+      // Redirect back to where they came from
+      const redirectTo =
+        location.state?.from ||
+        sessionStorage.getItem("redirectAfterLogin") ||
+        "/";
+
+      sessionStorage.removeItem("redirectAfterLogin");
+
+      navigate(redirectTo, { replace: true });
     } catch (err) {
+      console.error(err);
       toast.warning(
         "Signed in, but we couldn't verify your profile due to a network issue.",
       );
@@ -75,6 +104,7 @@ export default function Signin() {
     }
   };
 
+  /* -------- MESSAGE FROM OTHER PAGES -------- */
   useEffect(() => {
     if (location.state?.message) {
       toast.success(location.state.message);
@@ -128,7 +158,7 @@ export default function Signin() {
             className="w-full bg-[#4eb0e3] text-white cursor-pointer"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-2 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Please wait
               </span>
@@ -141,6 +171,7 @@ export default function Signin() {
             Don’t have an account?{" "}
             <Link
               to="/signup"
+              state={{ from }}
               className="text-[#4eb0e3] font-semibold cursor-pointer"
             >
               Sign up

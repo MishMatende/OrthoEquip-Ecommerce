@@ -31,7 +31,8 @@ export default function Orders() {
             id,
             quantity,
             price,
-            products (name, image_url)
+            product_id,
+            products (id, name, image_url)
           )
         `,
         )
@@ -193,8 +194,9 @@ export default function Orders() {
                 {order.order_items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between py-3"
+                    className="grid grid-cols-1 md:grid-cols-3 items-center gap-3 py-3"
                   >
+                    {/* Left - Product Info */}
                     <div className="flex items-center gap-3">
                       <img
                         src={
@@ -204,23 +206,41 @@ export default function Orders() {
                         alt={item.products?.name}
                         className="w-16 h-16 object-cover rounded-lg border"
                       />
+
                       <div>
                         <p className="text-gray-800 font-medium">
                           {item.products?.name}
                         </p>
+
                         <p className="text-sm text-gray-500">
                           Qty: {item.quantity}
                         </p>
                       </div>
                     </div>
 
-                    <p className="font-semibold text-gray-700">
-                      KES {(item.price * item.quantity).toLocaleString()}
-                    </p>
+                    {/* Center - Rate Product */}
+                    <div className="flex justify-start md:justify-center">
+                      {order.tracking_stage === "delivered" && (
+                        <Link
+                          to={`/ratings/${item.product_id}`}
+                          className="text-sm font-medium text-[#4eb0e3] hover:text-[#056eb1] flex items-center gap-1"
+                        >
+                          ⭐ Rate Product
+                        </Link>
+                      )}
+                    </div>
+
+                    {/* Right - Price */}
+                    <div className="flex justify-end">
+                      <p className="font-semibold text-gray-700">
+                        KES {(item.price * item.quantity).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
 
+              {/* Order Actions */}
               <div className="flex flex-col sm:flex-row justify-between gap-3 mt-4">
                 <Link
                   to={`/order-confirmation/${order.id}`}

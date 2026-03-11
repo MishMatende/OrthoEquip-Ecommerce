@@ -15,6 +15,7 @@ import { useCart } from "../../context/CartContext";
 import { UserAuth } from "../../context/AuthContext";
 import { useProduct } from "../../hooks/useProduct";
 import WhatsAppChat from "../../components/WhatsAppChat";
+import { supabase } from "../../supabaseClient";
 
 export default function ProductDetails() {
   const { session } = UserAuth();
@@ -29,7 +30,9 @@ export default function ProductDetails() {
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
   const [displayWidth, setDisplayWidth] = useState(0);
 
-  // modal state
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [modalImageSrc, setModalImageSrc] = useState(null);
   const modalRef = useRef(null);
@@ -40,6 +43,13 @@ export default function ProductDetails() {
   const product =
     (data && data.product) ?? (data && (data.id ? data : null)) ?? null;
   const images = (data && data.images) ?? [];
+
+  const averageRating =
+    reviews.length > 0
+      ? (
+          reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        ).toFixed(1)
+      : 0;
 
   useEffect(() => {
     setSelectedImage(null);
@@ -58,6 +68,33 @@ export default function ProductDetails() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    async function fetchReviews() {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select(
+          `
+        id,
+        rating,
+        comment,
+        anonymous,
+        created_at,
+        profiles(username)
+      `,
+        )
+        .eq("product_id", id)
+        .order("created_at", { ascending: false });
+
+      if (!error) {
+        setReviews(data || []);
+      }
+
+      setReviewsLoading(false);
+    }
+
+    fetchReviews();
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -192,6 +229,16 @@ export default function ProductDetails() {
             {product.name}
           </h1>
 
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-yellow-400">
+              {"★".repeat(Math.round(averageRating))}
+            </span>
+
+            <span className="text-sm text-gray-600">
+              {averageRating} ({reviews.length} reviews)
+            </span>
+          </div>
+
           <p className="text-3xl font-bold text-[#4eb0e3] mt-3">
             KES {Number(product.price).toLocaleString()}
           </p>
@@ -286,7 +333,40 @@ export default function ProductDetails() {
 
           <TabsContent value="description">{product.description}</TabsContent>
 
-          <TabsContent value="reviews">No reviews yet.</TabsContent>
+          <TabsContent value="reviews">
+            {reviewsLoading ? (
+              <p className="text-gray-500 mt-4">Loading reviews...</p>
+            ) : reviews.length === 0 ? (
+              <p className="text-gray-500 mt-4">No reviews yet.</p>
+            ) : (
+              <div className="space-y-4 mt-4">
+                {reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="border rounded-xl p-4 bg-white shadow-sm"
+                  >
+                    <div className="flex justify-between mb-2">
+                      <span className="text-yellow-400">
+                        {"★".repeat(review.rating)}
+                      </span>
+
+                      <span className="text-xs text-gray-400">
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <p className="text-gray-700 mb-2">{review.comment}</p>
+
+                    <p className="text-sm text-gray-500">
+                      {review.anonymous
+                        ? "Anonymous"
+                        : `@${review.profiles?.username || "user"}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="shipping">Fast delivery nationwide.</TabsContent>
         </Tabs>
