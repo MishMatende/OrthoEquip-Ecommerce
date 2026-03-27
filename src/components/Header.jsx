@@ -180,7 +180,9 @@ export default function Header() {
           <Link to="/shop" onClick={() => setIsOpen(false)}>
             <span className="hover:text-[#4eb0e3] cursor-pointer">Shop</span>
           </Link>
-          <span className="hover:text-[#4eb0e3] cursor-pointer">About</span>
+          <Link to="/about" onClick={() => setIsOpen(false)}>
+            <span className="hover:text-[#4eb0e3] cursor-pointer">About</span>
+          </Link>
           <Link to="/contact" onClick={() => setIsOpen(false)}>
             <span className="hover:text-[#4eb0e3] cursor-pointer">Contact</span>
           </Link>
