@@ -2,16 +2,30 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import { MessageCircle, Plus, Loader2 } from "lucide-react";
+import { MessageCircle, Plus, Loader2, Trash2 } from "lucide-react";
 import { UserAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 
+// 🧩 Dialog imports
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../components/ui/dialog";
+
 export default function Quotes() {
   const [quotes, setQuotes] = useState([]);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("All");
   const { session } = UserAuth();
   const [sendingEmailId, setSendingEmailId] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // 🔥 Modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState(null);
 
   const fetchQuotes = useCallback(async () => {
     try {
@@ -19,7 +33,9 @@ export default function Quotes() {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total, quote_status, valid_until, customer_id, created_at")
+        .select(
+          "id, total, quote_status, valid_until, customer_id, created_at, quote_number",
+        )
         .eq("order_type", "quote")
         .order("created_at", { ascending: false });
 
@@ -78,7 +94,29 @@ export default function Quotes() {
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchQuotes]);
 
-  // ✅ Only mark as sent if currently draft (prevents overwriting accepted)
+  // 🗑 DELETE FUNCTION
+  async function deleteQuote() {
+    if (!selectedQuote) return;
+
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("id", selectedQuote.id)
+      .eq("quote_status", "draft");
+
+    if (error) {
+      console.error("Delete failed:", error);
+      toast.error("Failed to delete quotation");
+      return;
+    }
+
+    setQuotes((prev) => prev.filter((q) => q.id !== selectedQuote.id));
+
+    toast.success("Quotation deleted");
+    setDeleteModalOpen(false);
+    setSelectedQuote(null);
+  }
+
   async function markQuoteAsSent(quoteId) {
     const { error } = await supabase
       .from("orders")
@@ -152,7 +190,7 @@ export default function Quotes() {
 
         <div style="background:#f3f4f6; padding:15px; border-radius:10px; margin:20px 0;">
           <p style="margin:0; font-size:14px;">
-            <strong>Quotation ID:</strong> ${quote.id}
+            <strong>Quotation Number:</strong> ${quote.quote_number}
           </p>
           <p style="margin:6px 0 0; font-size:14px;">
                   <strong>Total Amount:</strong> KES ${Number(
@@ -227,20 +265,20 @@ export default function Quotes() {
     }
   }
 
-  // 🔎 Filter logic
-  const filteredQuotes = quotes.filter((q) => {
-    if (filter === "all") return true;
-    if (filter === "expired") return isExpired(q);
-    return q.quote_status === filter;
-  });
-
   // 🕒 Expiry helper
   const isExpired = (q) =>
     q.valid_until && new Date(q.valid_until) < new Date();
 
+  // 🔎 Filter logic
+  const filteredQuotes = quotes.filter((q) => {
+    if (filter === "All") return true;
+    if (filter === "expired") return isExpired(q);
+    return q.quote_status === filter;
+  });
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* 🔝 HEADER */}
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Quotations</h1>
 
@@ -258,9 +296,9 @@ export default function Quotes() {
         </div>
       </div>
 
-      {/* 🎛 FILTERS */}
+      {/* FILTERS */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "draft", "sent", "accepted", "expired"].map((f) => (
+        {["All", "draft", "sent", "accepted", "expired"].map((f) => (
           <Button
             key={f}
             variant={filter === f ? "default" : "outline"}
@@ -301,7 +339,7 @@ export default function Quotes() {
                   {q.customer?.name || q.customer?.email || "Guest"}
                 </p>
 
-                <p className="font-semibold">Quote ID: {q.id}</p>
+                <p className="font-semibold">Quote Number: {q.quote_number}</p>
 
                 <p>
                   Status:{" "}
@@ -325,8 +363,7 @@ export default function Quotes() {
                 </p>
               </div>
 
-              <div className="flex gap-2">
-                {/* ✅ ADMIN VIEW */}
+              <div className="flex gap-2 items-center">
                 <Link to={`/admin/quotes/${q.id}`}>
                   <Button variant="outline">View</Button>
                 </Link>
@@ -350,10 +387,63 @@ export default function Quotes() {
                     "Email"
                   )}
                 </Button>
+
+                {/* 🗑 DELETE BUTTON */}
+                {q.quote_status === "draft" && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setSelectedQuote(q);
+                      setDeleteModalOpen(true);
+                    }}
+                    className="border cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                )}
               </div>
             </div>
           );
         })}
+
+      {/* 🧩 DELETE CONFIRM MODAL */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Quotation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this quotation?
+              <br />
+              <span className="font-semibold">
+                Quote ID: {selectedQuote?.id}
+              </span>
+              <br />
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteModalOpen(false);
+                setSelectedQuote(null);
+              }}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={deleteQuote}
+              className="bg-red-500 text-white cursor-pointer"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

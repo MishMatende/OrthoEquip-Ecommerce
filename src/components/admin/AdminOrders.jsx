@@ -43,11 +43,47 @@ export default function AdminOrders() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast.error("Failed to fetch orders", { position: "top-right" });
-    } else {
-      setOrders(data || []);
+      toast.error("Failed to fetch orders");
+      setLoading(false);
+      return;
     }
 
+    if (!data || data.length === 0) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
+    // 🔥 Collect user_ids
+    const userIds = [...new Set(data.map((o) => o.user_id).filter(Boolean))];
+
+    // 🔥 Fetch profiles
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", userIds);
+
+    // 🔥 Fetch customers
+    const { data: customers } = await supabase
+      .from("customers")
+      .select("id, name")
+      .in("id", userIds);
+
+    const profileMap = Object.fromEntries(
+      (profiles || []).map((p) => [p.id, p.username]),
+    );
+
+    const customerMap = Object.fromEntries(
+      (customers || []).map((c) => [c.id, c.name]),
+    );
+
+    // 🔥 Attach display name
+    const enrichedOrders = data.map((o) => ({
+      ...o,
+      display_name: profileMap[o.user_id] || customerMap[o.user_id] || "Guest",
+    }));
+
+    setOrders(enrichedOrders);
     setLoading(false);
   };
 
@@ -131,8 +167,8 @@ export default function AdminOrders() {
 
     return orders.filter((o) => {
       return (
-        o.id?.toLowerCase().includes(search.toLowerCase()) ||
-        o.user_id?.toLowerCase().includes(search.toLowerCase()) ||
+        o.order_number?.toLowerCase().includes(search.toLowerCase()) ||
+        o.display_name?.toLowerCase().includes(search.toLowerCase()) ||
         o.payment_method?.toLowerCase().includes(search.toLowerCase())
       );
     });
@@ -140,15 +176,11 @@ export default function AdminOrders() {
 
   // Quick stats
   const stats = useMemo(() => {
-    const total = orders.length;
-    const verified = orders.filter(
-      (o) => o.status === "payment_verified",
-    ).length;
-    const pending = orders.filter(
-      (o) => o.status === "pending_verification",
-    ).length;
-
-    return { total, verified, pending };
+    return {
+      total: orders.length,
+      verified: orders.filter((o) => o.status === "payment_verified").length,
+      pending: orders.filter((o) => o.status === "pending_verification").length,
+    };
   }, [orders]);
 
   return (
@@ -170,7 +202,7 @@ export default function AdminOrders() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search order ID, user ID..."
+            placeholder="Search order number, name..."
             className="w-full pl-9 pr-3 py-2 border rounded-xl text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#4eb0e3]"
           />
         </div>
@@ -403,11 +435,11 @@ export default function AdminOrders() {
                       {/* Order row */}
                       <tr className="border-t hover:bg-gray-50 transition">
                         <td className="p-4 font-mono text-xs text-gray-800">
-                          {order.id.slice(0, 12)}...
+                          {order.order_number || "—"}
                         </td>
 
                         <td className="p-4 font-mono text-xs text-gray-600">
-                          {order.user_id?.slice(0, 10) || "N/A"}...
+                          {order.display_name}
                         </td>
 
                         <td className="p-4 font-semibold text-gray-900">

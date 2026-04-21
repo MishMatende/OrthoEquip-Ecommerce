@@ -210,7 +210,7 @@ export default function QuoteDetailsAdmin() {
           <Button
             variant="outline"
             onClick={() => navigate("/admin/quotes")}
-            className="w-fit flex items-center gap-2 rounded-full border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 hover:text-black transition-all"
+            className="w-fit flex items-center gap-2 rounded-full border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Quotations
@@ -221,8 +221,10 @@ export default function QuoteDetailsAdmin() {
           </h1>
 
           <p className="text-sm text-gray-500">
-            Quote ID:{" "}
-            <span className="font-medium text-gray-800">{quote.id}</span>
+            Quote Number:{" "}
+            <span className="font-medium text-gray-800">
+              {quote.quote_number}
+            </span>
           </p>
         </div>
 
@@ -272,7 +274,7 @@ export default function QuoteDetailsAdmin() {
         </div>
 
         {/* TOTAL */}
-        <div className="rounded-2xl border bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm">
+        <div className="rounded-2xl border bg-linear-to-br from-blue-50 to-white p-5 shadow-sm">
           <p className="text-sm text-gray-500 mb-2">Total Amount</p>
           <p className="text-2xl font-bold tracking-tight">
             {formatKES(quote.total || total)}

@@ -229,7 +229,7 @@ export default function ProductDetails() {
             {product.name}
           </h1>
 
-          <div className="flex items-center gap-2 mt-2">
+          {/* <div className="flex items-center gap-2 mt-2">
             <span className="text-yellow-400">
               {"★".repeat(Math.round(averageRating))}
             </span>
@@ -237,7 +237,7 @@ export default function ProductDetails() {
             <span className="text-sm text-gray-600">
               {averageRating} ({reviews.length} reviews)
             </span>
-          </div>
+          </div> */}
 
           <p className="text-3xl font-bold text-[#4eb0e3] mt-3">
             KES {Number(product.price).toLocaleString()}
