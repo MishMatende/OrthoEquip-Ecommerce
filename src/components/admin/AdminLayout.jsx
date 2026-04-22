@@ -15,6 +15,8 @@ import {
   Settings,
   Loader2,
   MessageCircle,
+  User2,
+  Settings2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -46,6 +48,7 @@ export default function AdminLayout() {
       path: "/admin/analytics",
       icon: <BarChart2 size={18} />,
     },
+    { name: "Customers", path: "/admin/customers", icon: <User2 size={18} /> },
     { name: "Settings", path: "/admin/settings", icon: <Settings size={18} /> },
   ];
 
@@ -98,7 +101,8 @@ export default function AdminLayout() {
 
       {/* SIDEBAR (desktop always visible) */}
       <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col shadow-sm sticky top-0 h-screen">
-        <div className="px-5 py-4 text-xl font-bold border-b border-gray-100">
+        <div className="px-5 py-4 text-xl font-bold border-b border-gray-100 flex gap-2 items-center">
+          <Settings2 size={20} />
           Admin Panel
         </div>
 
@@ -128,7 +132,7 @@ export default function AdminLayout() {
         </nav>
 
         <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
-          <span className="truncate text-xs max-w-[140px]">
+          <span className="truncate text-xs max-w-35">
             {userProfile?.email || "No email"}
           </span>
 
@@ -158,6 +162,7 @@ export default function AdminLayout() {
             className="fixed z-30 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg md:hidden"
           >
             <div className="px-5 py-4 text-xl font-bold border-b border-gray-100 flex justify-between items-center">
+              <Settings2 size={20} />
               <span className="truncate">Admin Panel</span>
 
               <button
@@ -195,7 +200,7 @@ export default function AdminLayout() {
             </nav>
 
             <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-600">
-              <span className="truncate text-xs max-w-[140px]">
+              <span className="truncate text-xs max-w-35">
                 {userProfile?.email || "No email"}
               </span>
 
@@ -228,7 +233,10 @@ export default function AdminLayout() {
               <Menu size={18} />
             </button>
 
-            <div className="text-lg font-semibold">Admin Panel</div>
+            <div className="text-lg font-semibold flex gap-2 items-center">
+              <Settings2 size={20} />
+              Admin Panel
+            </div>
           </div>
 
           <button

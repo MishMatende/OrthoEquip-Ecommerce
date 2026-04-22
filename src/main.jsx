@@ -48,6 +48,7 @@ const AdminOrders = lazy(() => import("./components/admin/AdminOrders"));
 const AdminAnalytics = lazy(() => import("./components/admin/AdminAnalytics"));
 const AdminDashboard = lazy(() => import("./components/admin/AdminDashboard"));
 const AdminSettings = lazy(() => import("./components/admin/AdminSettings"));
+const AdminCustomers = lazy(() => import("./components/admin/AdminCustomers"));
 
 // ✅ Global fallback loader (for Suspense)
 const LoadingScreen = () => (
@@ -134,6 +135,7 @@ createRoot(document.getElementById("root")).render(
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="customers" element={<AdminCustomers />} />
                 <Route path="quotes" element={<Quotes />} />
                 <Route path="quotes/new" element={<CreateQuote />} />
                 <Route path="quotes/:id" element={<QuoteDetailsAdmin />} />

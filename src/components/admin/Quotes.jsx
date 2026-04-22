@@ -277,12 +277,12 @@ export default function Quotes() {
   });
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 px-3 md:px-0">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <h1 className="text-2xl font-bold">Quotations</h1>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={fetchQuotes}>
             Refresh
           </Button>
@@ -330,11 +330,12 @@ export default function Quotes() {
           return (
             <div
               key={q.id}
-              className={`border p-4 rounded flex justify-between items-center ${
-                expired ? "border-red-400 bg-red-50" : ""
-              }`}
+              className={`border p-4 rounded 
+          flex flex-col md:flex-row md:justify-between md:items-center 
+          gap-4 ${expired ? "border-red-400 bg-red-50" : ""}`}
             >
-              <div className="space-y-1">
+              {/* LEFT */}
+              <div className="space-y-1 text-sm">
                 <p className="font-semibold">
                   {q.customer?.name || q.customer?.email || "Guest"}
                 </p>
@@ -363,12 +364,22 @@ export default function Quotes() {
                 </p>
               </div>
 
-              <div className="flex gap-2 items-center">
-                <Link to={`/admin/quotes/${q.id}`}>
-                  <Button variant="outline">View</Button>
+              {/* RIGHT ACTIONS */}
+              <div className="flex flex-wrap md:flex-nowrap gap-2 items-center w-full md:w-auto">
+                <Link
+                  to={`/admin/quotes/${q.id}`}
+                  className="flex-1 md:flex-none"
+                >
+                  <Button variant="outline" className="w-full md:w-auto">
+                    View
+                  </Button>
                 </Link>
 
-                <Button variant="outline" onClick={() => shareOnWhatsApp(q)}>
+                <Button
+                  variant="outline"
+                  onClick={() => shareOnWhatsApp(q)}
+                  className="flex-1 md:flex-none w-full md:w-auto"
+                >
                   <MessageCircle className="w-4 h-4 mr-1" />
                   WhatsApp
                 </Button>
@@ -377,6 +388,7 @@ export default function Quotes() {
                   variant="outline"
                   onClick={() => sendQuoteEmail(q)}
                   disabled={sendingEmailId === q.id}
+                  className="flex-1 md:flex-none w-full md:w-auto"
                 >
                   {sendingEmailId === q.id ? (
                     <>
@@ -396,7 +408,7 @@ export default function Quotes() {
                       setSelectedQuote(q);
                       setDeleteModalOpen(true);
                     }}
-                    className="border cursor-pointer"
+                    className="flex-1 md:flex-none w-full md:w-auto border cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </Button>

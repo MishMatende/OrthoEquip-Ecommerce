@@ -16,7 +16,7 @@ export default function Footer() {
           <div className="flex items-center mb-4 space-x-2">
             <img
               src={BalmOrthoLogo}
-              className="h-[50px]"
+              className="h-12.5"
               alt="Balm Ortho Medical Supplies Logo"
             />
             <h2 className="text-2xl font-semibold text-white">

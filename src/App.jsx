@@ -16,7 +16,7 @@ function App() {
         <TopBar />
         <Header />
         <Navbar />
-        <main className="flex-grow">
+        <main className="grow">
           <Outlet />
         </main>
         <FooterInfoBanner />

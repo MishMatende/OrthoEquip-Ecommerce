@@ -114,10 +114,10 @@ export default function AdminProducts() {
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <h1 className="text-3xl font-semibold text-gray-800 tracking-tight">
+    <div className="p-4 md:p-6 space-y-6">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
           Products
         </h1>
         <button
@@ -125,25 +125,25 @@ export default function AdminProducts() {
             setEditingProduct(null);
             setShowForm(true);
           }}
-          className="flex items-center gap-2 bg-[#4eb0e3] text-white px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition active:scale-95 cursor-pointer"
+          className="flex items-center justify-center gap-2 bg-[#4eb0e3] text-white px-4 py-2 rounded-xl shadow hover:bg-blue-600 transition"
         >
           <Plus size={18} /> Add Product
         </button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
+      {/* FILTERS */}
+      <div className="flex flex-col md:flex-row gap-3">
         <input
           type="text"
           placeholder="Search by name or code..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:w-64 px-3 py-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 outline-none"
+          className="w-full md:w-72 px-3 py-2 border rounded-xl"
         />
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 border rounded-lg shadow-sm bg-white focus:ring-2 focus:ring-blue-400"
+          className="px-3 py-2 border rounded-xl"
         >
           {uniqueCategories.map((cat) => (
             <option key={cat}>{cat}</option>
@@ -151,155 +151,169 @@ export default function AdminProducts() {
         </select>
       </div>
 
-      {/* Table */}
+      {/* LOADING / ERROR */}
       {isLoading ? (
-        <div className="flex justify-center items-center text-gray-500 h-40">
-          <Loader2 className="w-6 h-6 animate-spin mr-2" />
-          Loading products...
+        <div className="flex justify-center py-10">
+          <Loader2 className="animate-spin" />
         </div>
       ) : isError ? (
-        <div className="text-center text-red-600 py-10">
-          Failed to load products: {error?.message}
-        </div>
-      ) : products.length === 0 ? (
-        <div className="text-center text-gray-500 py-10">
-          No matching products.
-        </div>
+        <p className="text-red-500">{error?.message}</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl shadow-lg border border-gray-100 bg-white/70 backdrop-blur-sm">
-          <table className="min-w-full text-sm text-gray-700">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                {[
-                  { name: "Image", key: "" },
-                  { name: "Code", key: "product_code" },
-                  { name: "Name", key: "name" },
-                  { name: "Brand", key: "brand" },
-                  { name: "Category", key: "category" },
-                  { name: "Price", key: "price" },
-                  { name: "Stock", key: "stock" },
-                  { name: "Sales", key: "sales_count" },
-                  { name: "Actions", key: "" },
-                ].map(({ name, key }) => (
-                  <th
-                    key={name}
-                    onClick={() => key && handleSort(key)}
-                    className={`px-4 py-3 text-left font-medium uppercase tracking-wide text-gray-600 cursor-${
-                      key ? "pointer" : "default"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1">
-                      {name}
-                      {key === sortField && (
-                        <ArrowUpDown
-                          size={14}
-                          className={`transition ${
-                            sortAsc ? "rotate-180" : ""
-                          }`}
-                        />
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr
-                  key={product.id}
-                  className="border-b border-gray-100 hover:bg-blue-50/50 transition duration-150 ease-in-out"
-                >
-                  <td className="px-4 py-3">
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-12 h-12 rounded-lg object-cover shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                        N/A
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{product.product_code}</td>
-                  <td className="px-4 py-3 font-medium">{product.name}</td>
-                  <td className="px-4 py-3">{product.brand}</td>
-                  <td className="px-4 py-3">{product.category}</td>
-                  <td className="px-4 py-3">KES {product.price}</td>
-                  <td className="px-4 py-3">{product.stock}</td>
-                  <td className="px-4 py-3">{product.sales_count}</td>
-                  <td className="px-4 py-3 flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        setEditingProduct(product);
-                        setShowForm(true);
-                      }}
-                      className="text-[#4eb0e3] hover:text-blue-800 transition cursor-pointer"
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-600 hover:text-red-800 transition flex items-center cursor-pointer"
-                      disabled={deletingId === product.id}
-                    >
-                      {deletingId === product.id ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Deleting
-                        </span>
-                      ) : (
-                        <Trash2 size={18} />
-                      )}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <>
+          {/* ✅ MOBILE CARDS */}
+          <div className="space-y-4 md:hidden">
+            {products.map((p) => (
+              <div
+                key={p.id}
+                className="bg-white border rounded-2xl p-4 shadow-sm space-y-3"
+              >
+                <div className="flex gap-3">
+                  <img
+                    src={p.image_url}
+                    className="w-14 h-14 rounded-xl object-cover border"
+                  />
 
-          {/* Pagination */}
-          <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-t border-gray-100">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{p.name}</p>
+                    <p className="text-xs text-gray-500">{p.product_code}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-between text-sm">
+                  <span>{p.brand}</span>
+                  <span className="font-semibold">KES {p.price}</span>
+                </div>
+
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Stock: {p.stock}</span>
+                  <span>Sales: {p.sales_count}</span>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setEditingProduct(p);
+                      setShowForm(true);
+                    }}
+                    className="text-blue-600"
+                  >
+                    <Pencil size={18} />
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    disabled={deletingId === p.id}
+                    className="text-red-600"
+                  >
+                    {deletingId === p.id ? (
+                      <Loader2 className="animate-spin w-4 h-4" />
+                    ) : (
+                      <Trash2 size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ✅ DESKTOP TABLE */}
+          <div className="hidden md:block overflow-x-auto bg-white border rounded-2xl shadow">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  {[
+                    { name: "Image" },
+                    { name: "Code", key: "product_code" },
+                    { name: "Name", key: "name" },
+                    { name: "Brand" },
+                    { name: "Category" },
+                    { name: "Price", key: "price" },
+                    { name: "Stock" },
+                    { name: "Sales" },
+                    { name: "Actions" },
+                  ].map((col) => (
+                    <th
+                      key={col.name}
+                      onClick={() => col.key && handleSort(col.key)}
+                      className="px-4 py-3 text-left cursor-pointer"
+                    >
+                      {col.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p.id} className="border-t hover:bg-gray-50">
+                    <td className="p-3">
+                      <img
+                        src={p.image_url}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                    </td>
+                    <td className="p-3">{p.product_code}</td>
+                    <td className="p-3 font-medium">{p.name}</td>
+                    <td className="p-3">{p.brand}</td>
+                    <td className="p-3">{p.category}</td>
+                    <td className="p-3">KES {p.price}</td>
+                    <td className="p-3">{p.stock}</td>
+                    <td className="p-3">{p.sales_count}</td>
+                    <td className="p-3 flex gap-3">
+                      <Pencil
+                        className="cursor-pointer text-blue-600"
+                        onClick={() => {
+                          setEditingProduct(p);
+                          setShowForm(true);
+                        }}
+                      />
+                      <Trash2
+                        className="cursor-pointer text-red-600"
+                        onClick={() => handleDelete(p.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* PAGINATION */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-3">
             <p className="text-sm text-gray-500">
               Showing {products.length} of {total}
             </p>
+
             <div className="flex gap-2">
               <button
                 disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 cursor-pointer"
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="px-3 py-1 border rounded-lg"
               >
                 Prev
               </button>
-              <span className="px-3 py-1 text-sm text-gray-600">
-                Page {currentPage} / {totalPages}
+
+              <span className="text-sm">
+                {currentPage} / {totalPages}
               </span>
+
               <button
                 disabled={currentPage === totalPages}
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                className="px-3 py-1 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 cursor-pointer"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-3 py-1 border rounded-lg"
               >
                 Next
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Modal */}
+      {/* MODAL */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative">
-            <button
-              onClick={() => setShowForm(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
-            >
-              ✕
-            </button>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6">
             <ProductForm
+              editingProduct={editingProduct}
               onClose={() => setShowForm(false)}
               onSaved={() => {
                 queryClient.invalidateQueries({
@@ -307,7 +321,6 @@ export default function AdminProducts() {
                 });
                 setShowForm(false);
               }}
-              editingProduct={editingProduct}
             />
           </div>
         </div>
